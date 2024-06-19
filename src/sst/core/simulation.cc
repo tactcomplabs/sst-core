@@ -1268,6 +1268,18 @@ Simulation_impl::intializeProfileTools(const std::string& config)
 #endif
 }
 
+#if 1
+#define SER_INI( var ) \
+    if (checkpoint_id==1) {std::cout << "#V,"<< #var << ",";} \
+    ser& var; \
+    if (checkpoint_id==1) {std::cout << ser.size() << std::endl; }
+#define SER_INI_END( name, size ) \
+    if (checkpoint_id==1) { std::cout << "#S," << name << "," << size << std::endl; }
+#else
+#define SER_INI( var ) ser& var
+#define SER_INI_END
+#endif
+
 void
 Simulation_impl::checkpoint()
 {
@@ -1285,21 +1297,23 @@ Simulation_impl::checkpoint()
 
     /* Section 1: Config options */
     ser.start_sizing();
-    ser&        num_ranks.rank;
-    ser&        num_ranks.thread;
+    SER_INI(num_ranks.rank);
+    SER_INI(num_ranks.thread);
+    // User specific (and long), is this needed? I don't see it in restart code - reloaded by main
     std::string libpath = factory->getSearchPaths();
-    ser&        libpath;
-    ser&        timeLord.timeBaseString;
-    ser&        output_directory;
+    SER_INI(libpath);
+    SER_INI(timeLord.timeBaseString);
+    // User specific. Can it be overridden for portability?
+    SER_INI(output_directory);
     std::string prefix = sim_output.getPrefix();
-    ser&        prefix;
+    SER_INI(prefix);
     uint32_t    verbose = sim_output.getVerboseLevel();
-    ser&        verbose;
-    ser&        globalOutputFileName;
-    ser&        checkpointPrefix;
-    ser&        Params::keyMap;
-    ser&        Params::keyMapReverse;
-    ser&        Params::nextKeyID;
+    SER_INI(verbose);
+    SER_INI(globalOutputFileName);
+    SER_INI(checkpointPrefix);
+    SER_INI(Params::keyMap);
+    SER_INI(Params::keyMapReverse);
+    SER_INI(Params::nextKeyID);
 
     size        = ser.size();
     buffer_size = size;
@@ -1321,12 +1335,13 @@ Simulation_impl::checkpoint()
 
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(buffer, size);
+    SER_INI_END("CONFIG_OPTIONS", size);
 
     /* Section 2: Loaded libraries */
     ser.start_sizing();
     std::set<std::string> libnames;
     factory->getLoadedLibraryNames(libnames);
-    ser& libnames;
+    SER_INI(libnames);
 
     size = ser.size();
     if ( size > buffer_size ) {
@@ -1340,44 +1355,45 @@ Simulation_impl::checkpoint()
 
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(buffer, size);
+    SER_INI_END("LOADED_LIBRARIES", size);
 
 
     /* Section 3: Simulation_impl */
     ser.start_sizing();
-    ser& num_ranks;
-    ser& my_rank;
-    ser& currentSimCycle;
-    // ser& threadMinPartTC;
-    ser& minPart;
-    ser& minPartTC;
-    ser& interThreadLatencies;
-    ser& interThreadMinLatency;
-    ser& endSim;
-    ser& independent;
-    // ser& sim_output;
-    ser& runMode;
-    ser& currentPriority;
-    ser& endSimCycle;
-    ser& output_directory;
-    ser& timeLord;
+    SER_INI(num_ranks);
+    SER_INI(my_rank);
+    SER_INI(currentSimCycle);
+    // SER_INI(threadMinPartTC);
+    SER_INI(minPart);
+    SER_INI(minPartTC);
+    SER_INI(interThreadLatencies);
+    SER_INI(interThreadMinLatency);
+    SER_INI(endSim);
+    SER_INI(independent);
+    // ser& sim_output);
+    SER_INI(runMode);
+    SER_INI(currentPriority);
+    SER_INI(endSimCycle);
+    SER_INI(output_directory);
+    SER_INI(timeLord);
     // Actions that may also be in TV
-    ser& m_exit;
-    ser& syncManager;
-    ser& m_heartbeat;
+    SER_INI(m_exit);
+    SER_INI(syncManager);
+    SER_INI(m_heartbeat);
 
     // Add statistics engine and associated state
     // Individual statistics are checkpointing with component
-    ser& StatisticProcessingEngine::m_statOutputs;
-    ser& stat_engine;
+    SER_INI(StatisticProcessingEngine::m_statOutputs);
+    SER_INI(stat_engine);
 
     // Add shared regions
-    ser& SharedObject::manager;
+    SER_INI(SharedObject::manager);
 
     // Serialize the clockmap
-    ser& clockMap;
+    SER_INI(clockMap);
 
     // Last, get the timevortex
-    ser& timeVortex;
+    SER_INI(timeVortex);
 
     size = ser.size();
     if ( size > buffer_size ) {
@@ -1429,12 +1445,13 @@ Simulation_impl::checkpoint()
 
     size = compInfoMap.size();
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    SER_INI_END("Simulation_impl", size);
 
     // Serialize component blobs individually
     for ( auto comp = compInfoMap.begin(); comp != compInfoMap.end(); comp++ ) {
         ser.start_sizing();
         ComponentInfo* compinfo = *comp;
-        ser&           compinfo;
+        SER_INI(compinfo);
         size = ser.size();
 
         if ( buffer_size < size ) {
@@ -1448,6 +1465,7 @@ Simulation_impl::checkpoint()
 
         fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
         fs.write(buffer, size);
+        SER_INI_END(compinfo->getName(), size);
     }
 
     fs.close();

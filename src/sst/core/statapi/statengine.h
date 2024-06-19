@@ -95,7 +95,7 @@ public:
      */
     static void stat_outputs_simulation_end();
 
-    void serialize_order(SST::Core::Serialization::serializer& ser);
+    void serialize_order(SST::Core::Serialization::serializer& ser) override;
     ImplementSerializable(SST::Statistics::StatisticProcessingEngine)
 private:
     friend class SST::Simulation_impl;
