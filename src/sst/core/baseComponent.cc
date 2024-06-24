@@ -819,8 +819,8 @@ BaseComponent::getComponentProfileTools(const std::string& point)
 void
 BaseComponent::serialize_order(SST::Core::Serialization::serializer& ser)
 {
-    ser& my_info;
-    ser& isExtension;
+    SER_INI(my_info);
+    SER_INI(isExtension);
 
     switch ( ser.mode() ) {
     case SST::Core::Serialization::serializer::SIZER:
@@ -828,13 +828,13 @@ BaseComponent::serialize_order(SST::Core::Serialization::serializer& ser)
     {
         // Need to serialize each handler
         std::pair<Clock::HandlerBase*, SimTime_t> p;
-        size_t                                    num_handlers = clock_handlers.size();
-        ser&                                      num_handlers;
+        size_t num_handlers = clock_handlers.size();
+        SER_INI(num_handlers);
         for ( auto* handler : clock_handlers ) {
             p.first  = handler;
             // See if it's currently registered with a clock
             p.second = sim_->getClockForHandler(handler);
-            ser& p;
+            SER_INI(p);
         }
         break;
     }

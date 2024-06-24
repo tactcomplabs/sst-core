@@ -13,6 +13,7 @@
 #define SST_CORE_SERIALIZATION_SERIALIZABLE_BASE_H
 
 #include "sst/core/serialization/serializer.h"
+#include "sst/core/serialization/serialize_schema.h"
 #include "sst/core/warnmacros.h"
 
 #include <limits>

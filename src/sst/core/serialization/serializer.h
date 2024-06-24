@@ -69,8 +69,12 @@ public:
 
     SERIALIZE_MODE
     mode() const { return mode_; }
+    std::string name() const { return name_; }
+    bool dump_schema() const { return dump_schema_ && ( mode_ == SIZER ); }
 
     void set_mode(SERIALIZE_MODE mode) { mode_ = mode; }
+    void set_name(const std::string& name) { name_ = name; }
+    void set_dump_schema(const bool& d) { dump_schema_ = d; }
 
     void reset()
     {
@@ -84,6 +88,9 @@ public:
     {
         switch ( mode_ ) {
         case SIZER:
+            if (dump_schema_) {
+                std::cout << "#X{" << name_ << " " << sizer_.size() << "}" << std::endl;
+            }
             sizer_.size(t);
             break;
         case PACK:
@@ -236,6 +243,8 @@ protected:
     pvt::ser_sizer    sizer_;
     SERIALIZE_MODE    mode_;
     bool              enable_ptr_tracking_ = false;
+    std::string       name_;
+    bool              dump_schema_ = false;
 
     std::set<uintptr_t>            ser_pointer_set;
     std::map<uintptr_t, uintptr_t> ser_pointer_map;

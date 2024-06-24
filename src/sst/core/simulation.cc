@@ -1268,18 +1268,6 @@ Simulation_impl::intializeProfileTools(const std::string& config)
 #endif
 }
 
-#if 1
-#define SER_INI( var ) \
-    if (checkpoint_id==1) {std::cout << "#V,"<< #var << ",";} \
-    ser& var; \
-    if (checkpoint_id==1) {std::cout << ser.size() << std::endl; }
-#define SER_INI_END( name, size ) \
-    if (checkpoint_id==1) { std::cout << "#S," << name << "," << size << std::endl; }
-#else
-#define SER_INI( var ) ser& var
-#define SER_INI_END
-#endif
-
 void
 Simulation_impl::checkpoint()
 {
@@ -1291,6 +1279,7 @@ Simulation_impl::checkpoint()
 
     SST::Core::Serialization::serializer ser;
     ser.enable_pointer_tracking();
+    ser.set_dump_schema(checkpoint_id==1);
 
     size_t size, buffer_size;
     char*  buffer;
@@ -1335,7 +1324,7 @@ Simulation_impl::checkpoint()
 
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(buffer, size);
-    SER_INI_END("CONFIG_OPTIONS", size);
+    SER_MARKER("#S","CONFIG_OPTIONS", size);
 
     /* Section 2: Loaded libraries */
     ser.start_sizing();
@@ -1355,7 +1344,7 @@ Simulation_impl::checkpoint()
 
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(buffer, size);
-    SER_INI_END("LOADED_LIBRARIES", size);
+    SER_MARKER("#S","LOADED_LIBRARIES", size);
 
 
     /* Section 3: Simulation_impl */
@@ -1442,10 +1431,11 @@ Simulation_impl::checkpoint()
     // Write buffer to file
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(buffer, size);
+    SER_MARKER("#S", "Simulation_impl", size);
 
     size = compInfoMap.size();
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
-    SER_INI_END("Simulation_impl", size);
+    SER_MARKER("#H","compInfoMap", size);
 
     // Serialize component blobs individually
     for ( auto comp = compInfoMap.begin(); comp != compInfoMap.end(); comp++ ) {
@@ -1465,9 +1455,10 @@ Simulation_impl::checkpoint()
 
         fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
         fs.write(buffer, size);
-        SER_INI_END(compinfo->getName(), size);
+        SER_MARKER("#S",compinfo->getName(), size);
     }
 
+    ser.set_dump_schema(false);
     fs.close();
     delete[] buffer;
 

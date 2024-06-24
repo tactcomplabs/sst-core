@@ -184,8 +184,8 @@ ComponentInfo::~ComponentInfo()
 void
 ComponentInfo::serialize_comp(SST::Core::Serialization::serializer& ser)
 {
-    ser& component;
-    ser& link_map;
+    SER_INI(component);
+    SER_INI(link_map);
     for ( auto it = subComponents.begin(); it != subComponents.end(); ++it ) {
         it->second.serialize_comp(ser);
     }
@@ -204,23 +204,23 @@ ComponentInfo::serialize_order(SST::Core::Serialization::serializer& ser)
 
     // Serialize all my data except the component and link_map
 
-    ser& const_cast<ComponentId_t&>(id);
-    ser& parent_info;
-    ser& const_cast<std::string&>(name);
-    ser& const_cast<std::string&>(type);
+    SER_INI(const_cast<ComponentId_t&>(id));
+    SER_INI(parent_info);
+    SER_INI(const_cast<std::string&>(name));
+    SER_INI(const_cast<std::string&>(type));
 
     // Not used after construction, no need to serialize
-    // ser& params;
+    // SER_INI(params;
 
-    ser& defaultTimeBase;
+    SER_INI(defaultTimeBase);
     // ser& statConfigs;
     // ser& allStatConfig;
     // ser& statLoadLevel;
     // ser& coordinates;
-    ser& subIDIndex;
-    ser& const_cast<std::string&>(slot_name);
-    ser& slot_num;
-    ser& share_flags;
+    SER_INI(subIDIndex);
+    SER_INI(const_cast<std::string&>(slot_name));
+    SER_INI(slot_num);
+    SER_INI(share_flags);
 
     // For SubComponents map, need to serialize map by hand since we
     // we will need to use the track non-pointer as pointer feature in
@@ -234,10 +234,10 @@ ComponentInfo::serialize_order(SST::Core::Serialization::serializer& ser)
     case SST::Core::Serialization::serializer::SIZER:
     {
         size_t size = subComponents.size();
-        ser&   size;
+        SER_INI(size);
         for ( auto it = subComponents.begin(); it != subComponents.end(); ++it ) {
             // keys are const values - annoyingly
-            ser& const_cast<ComponentId_t&>(it->first);
+            SER_INI(const_cast<ComponentId_t&>(it->first));
             ser | it->second;
         }
         break;
