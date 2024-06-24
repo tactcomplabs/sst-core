@@ -88,9 +88,6 @@ public:
     {
         switch ( mode_ ) {
         case SIZER:
-            if (dump_schema_) {
-                std::cout << "#X{" << name_ << " " << sizer_.size() << "}" << std::endl;
-            }
             sizer_.size(t);
             break;
         case PACK:
