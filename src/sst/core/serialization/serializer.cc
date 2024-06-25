@@ -107,7 +107,7 @@ serialize_schema::serialize_schema(std::string& pfx) {
 
 serialize_schema::~serialize_schema() {   
     if (sfs.is_open()) {
-        sfs << "]}";
+        sfs << "]}\n";
         sfs.flush();
         sfs.close();
     }
@@ -121,9 +121,10 @@ serialize_schema::update(std::string name, size_t pos, size_t hash_code, size_t 
     type_map[hash_code] = std::make_pair(type_name,sz);
 }
 
-void serialize_schema::flush_names(std::string name, size_t size)
+void serialize_schema::write_segment(std::string name, size_t size)
 {
     //  "seg_name" : "stuff",
+    //  "seg_num"  : "2",
     //  "seg_size" : "8",
     //  "names" :
     //  [
@@ -134,9 +135,10 @@ void serialize_schema::flush_names(std::string name, size_t size)
     std::string term = "";
 
     sfs << "{\n";
-    sfs << q << "seg_name" << q << " : " << q << name << q << ",\n"
-        << q << "seg_size" << q << " : " << q << size << q << ",\n"
-        << q << "names" << q << " :\n[\n";
+    sfs << q << "seg_name" << q << " : " << q << name      << q << ",\n"
+        << q << "seg_num"  << q << " : " << q << seg_num++ << q << ",\n"
+        << q << "seg_size" << q << " : " << q << size      << q << ",\n"
+        << q << "names"    << q << " :\n[\n";
     term = "";
     for (auto r : namepos_vector) {
         sfs << term;
@@ -153,7 +155,7 @@ void serialize_schema::flush_names(std::string name, size_t size)
     namepos_vector.clear();
 } 
 
-void serialize_schema::flush_types()
+void serialize_schema::write_types()
 {
         std::string term = "";
         std::string sp = "   ";

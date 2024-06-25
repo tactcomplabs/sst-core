@@ -1459,13 +1459,12 @@ Simulation_impl::checkpoint()
         fs.write(buffer, size);
         SER_SEG_DONE(compinfo->getName(), size);
     }
-    SER_COMPONENTS_END();
 
     fs.close();
     delete[] buffer;
 
     if (ser.schema()) {
-        ser.schema()->flush_types();
+        ser.schema()->write_types();
         ser.disable_schema();
     }
 

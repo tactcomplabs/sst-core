@@ -36,10 +36,11 @@ public:
     serialize_schema(std::string& schema_filename);
     ~serialize_schema();
     void update(std::string name, size_t pos, size_t hash_code, size_t sz, std::string type_name);
-    void flush_names( std::string name, size_t size);
-    void flush_types();
+    void write_segment( std::string name, size_t size);
+    void write_types();
 
 private:
+    unsigned seg_num = 0;
     std::ofstream sfs;
     std::map<size_t, std::pair<std::string, size_t>> type_map;           // type hash_code, <name, size>
     std::vector<std::tuple<std::string, size_t, size_t>> namepos_vector; // variable name, position, hash_code
@@ -59,12 +60,17 @@ private:
 
 #define SER_SEG_DONE( name, size ) \
     if (ser.schema()) {    \
-        ser.schema()->flush_names( name, size); \
+        ser.schema()->write_segment( name, size); \
     }
 
-#define SER_COMPONENTS_START(compInfoMap, size)
+#define SER_COMPONENTS_START(obj, size) \
+    if (ser.schema()) { \
+        ser.schema()->update(  \
+            #obj, ser.size(),   \
+            typeid(obj).hash_code(), sizeof(obj), typeid(obj).name()); \
+        ser.schema()->write_segment( #obj, size ); \
+    }
 
-#define SER_COMPONENTS_END()
 
 /**
  * This class is basically a wrapper for objects to declare the order in
