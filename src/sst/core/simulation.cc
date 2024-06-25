@@ -1482,20 +1482,23 @@ Simulation_impl::checkpoint()
             sfs << sp << "{" 
                 << q << "hash_code" << q << " : " << q << "0x" << it->first  << q << " , " 
                 << q << "name" << q << " : " << q << r.first  << q << " , " 
-                << q << "size"  << q << " : " << q << r.second << q << " }";
+                << q << "size"  << q << " : " << q << r.second << q 
+                << " }";
             term = ",\n";
         }
         sfs << "\n],\n";
 
-        // "name_pos" [ { "name" : "fubar", "pos", "8"}, ... ]
+        // "name_pos" [ { "name" : "fubar", "pos" : "8", "hash_code" : "0x1234"}, ... ]
         sfs << q << "name_pos" << q << ": [\n";
         term = "";
         auto namepos_vector = ser.get_name_vector();
         for (auto r : namepos_vector) {
             sfs << term;
             sfs << sp << "{" 
-                << q << "name" << q << " : " << q << r.first  << q << " , " 
-                << q << "pos"  << q << " : " << q << r.second << q << " }";
+                << q << "name"      << q << " : " << q << std::get<0>(r) << q << " , " 
+                << q << "pos"       << q << " : " << q << std::get<1>(r) << q << " , "
+                << q << "hash_code" << q << " : " << q << std::get<2>(r) << q
+                << " }";
             term = ",\n";
         }
         sfs << "\n]\n";

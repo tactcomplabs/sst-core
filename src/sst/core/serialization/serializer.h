@@ -232,12 +232,12 @@ public:
     inline bool is_pointer_tracking_enabled() { return enable_ptr_tracking_; }
 
     inline void update_schema(std::string name, size_t pos, size_t hash_code, size_t sz, std::string type_name) {
-        namepos_vector.push_back(std::make_pair(name, pos));
+        namepos_vector.push_back(std::make_tuple(name, pos, hash_code));
         if (type_map.find(hash_code) != type_map.end()) return;
         type_map[hash_code] = std::make_pair(type_name,sz);
     }
 
-    inline const std::vector<std::pair<std::string, size_t>>& get_name_vector() {
+    inline const std::vector<std::tuple<std::string, size_t, size_t>>& get_name_vector() {
         return namepos_vector;
     }
 
@@ -264,7 +264,7 @@ protected:
     // Data type extraction
     std::map<std::string, size_t> name_typehash_map;            // variable name,  type hash code
     std::map<size_t, std::pair<std::string, size_t>> type_map;  // type hash_code, <name, size>
-    std::vector<std::pair<std::string, size_t>> namepos_vector; // variable name, position
+    std::vector<std::tuple<std::string, size_t, size_t>> namepos_vector; // variable name, position, hash_code
     
 };
 
