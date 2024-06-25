@@ -15,7 +15,6 @@
 #include "sst/core/serialization/serialize_packer.h"
 #include "sst/core/serialization/serialize_sizer.h"
 #include "sst/core/serialization/serialize_unpacker.h"
-#include "sst/core/serialization/serialize_schema.h"
 
 #include <assert.h>
 #include <cstdint>
@@ -26,10 +25,40 @@
 #include <typeinfo>
 #include <vector>
 #include <iostream>
+#include <fstream>
 
 namespace SST {
 namespace Core {
 namespace Serialization {
+
+class serialize_schema {
+public:
+    serialize_schema(std::string& schema_filename);
+    virtual ~serialize_schema();
+    void update(std::string name, size_t pos, size_t hash_code, size_t sz, std::string type_name);
+    void flush_segment( std::string name, size_t size);
+
+private:
+    std::ofstream sfs;
+    std::map<size_t, std::pair<std::string, size_t>> type_map;           // type hash_code, <name, size>
+    std::vector<std::tuple<std::string, size_t, size_t>> namepos_vector; // variable name, position, hash_code
+};
+
+#define SER_INI(obj) \
+    if (ser.schema_enabled()) { \
+        ser.schema()->update(  \
+            #obj, ser.size(),   \
+            typeid(obj).hash_code(), sizeof(obj), typeid(obj).name()); \
+    } \
+    ser& obj;
+
+// TODO #define SER_INI_PTR(obj) ser | obj;
+
+#define SER_SEG_DONE( name, size )
+
+#define SER_COMPONENTS_START(compInfoMap, size)
+
+#define SER_COMPONENTS_END()
 
 /**
  * This class is basically a wrapper for objects to declare the order in
@@ -66,10 +95,6 @@ public:
     void unpack(T& t)
     {
         unpacker_.unpack<T>(t);
-    }
-
-    virtual ~serializer() {
-        if (schema_) delete schema_; // warn
     }
 
     SERIALIZE_MODE
@@ -257,7 +282,6 @@ protected:
     uintptr_t                      split_key;
 
 };
-
 
 } // namespace Serialization
 } // namespace Core
