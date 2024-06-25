@@ -1468,28 +1468,37 @@ Simulation_impl::checkpoint()
             schema_filename = checkpointPrefix + "_" + schema_filename;
         std::ofstream sfs(schema_filename, std::ios::out);
         char q = '\"';
+        std::string sp = "   ";
+        std::string sp2 = sp + sp;
         sfs << "{\n" ;
 
         // "type_info" [ { "hash_code" : "0x1234", "name" : "fubar", "size" : "8" }, ... ]
         sfs << q << "type_info" << q << ": [\n";
         auto type_map = ser.get_type_map();
+        std::string term = "";
         for (auto it=type_map.begin(); it != type_map.end(); ++it) {
             auto r = it->second;
-            sfs << "\t{" 
+            sfs << term;
+            sfs << sp << "{" 
                 << q << "hash_code" << q << " : " << q << "0x" << it->first  << q << " , " 
                 << q << "name" << q << " : " << q << r.first  << q << " , " 
-                << q << "size"  << q << " : " << q << r.second << q << " },\n";
+                << q << "size"  << q << " : " << q << r.second << q << " }";
+            term = ",\n";
         }
+        sfs << "\n],\n";
 
         // "name_pos" [ { "name" : "fubar", "pos", "8"}, ... ]
         sfs << q << "name_pos" << q << ": [\n";
+        term = "";
         auto namepos_vector = ser.get_name_vector();
         for (auto r : namepos_vector) {
-            sfs << "\t{" 
+            sfs << term;
+            sfs << sp << "{" 
                 << q << "name" << q << " : " << q << r.first  << q << " , " 
-                << q << "pos"  << q << " : " << q << r.second << q << " },\n";
+                << q << "pos"  << q << " : " << q << r.second << q << " }";
+            term = ",\n";
         }
-        sfs << "],\n";
+        sfs << "\n]\n";
 
         sfs << "}\n";
         sfs.close();
