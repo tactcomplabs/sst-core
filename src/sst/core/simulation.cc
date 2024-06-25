@@ -1434,10 +1434,11 @@ Simulation_impl::checkpoint()
     fs.write(buffer, size);
     SER_SEG_DONE("simulation_impl",size);
 
-    // SST Components special header
-    size = compInfoMap.size();
+    // SST Components special header. 
+    // Here 'size' is the number of components and not sizeof(compInfoMap)
+    size = compInfoMap.size(); 
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
-    SER_COMPONENTS_START(compInfoMap, size);
+    SER_COMPONENTS_START(size);
 
     // Serialize component blobs individually
     for ( auto comp = compInfoMap.begin(); comp != compInfoMap.end(); comp++ ) {

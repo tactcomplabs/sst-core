@@ -63,12 +63,12 @@ private:
         ser.schema()->write_segment( name, size); \
     }
 
-#define SER_COMPONENTS_START(obj, size) \
+#define SER_COMPONENTS_START(obj) \
     if (ser.schema()) { \
         ser.schema()->update(  \
-            #obj, ser.size(),   \
-            typeid(obj).hash_code(), sizeof(obj), typeid(obj).name()); \
-        ser.schema()->write_segment( #obj, size ); \
+            "NUM_COMPONENTS", 0,   \
+            typeid(const char *).hash_code(), sizeof(obj), typeid(const char *).name()); \
+        ser.schema()->write_segment( "NUM_COMPONENTS", sizeof(obj) ); \
     }
 
 

@@ -128,24 +128,25 @@ void serialize_schema::write_segment(std::string name, size_t size)
     //  "seg_size" : "8",
     //  "names" :
     //  [
-    //     {"name" : "fubar" , "pos" : "0" , "hash_code" : "6974964765" },
-    //     {"name" : "snafu" , "pos" : "4" , "hash_code" : "6974964765" }
+    //     {"name" : "fubar" , "pos" : "0" , "hash_code" : "0x2343f2321" },
+    //     {"name" : "snafu" , "pos" : "4" , "hash_code" : "0x1cde3123" }
     //  ]
 
     std::string term = "";
 
     sfs << "{\n";
-    sfs << q << "seg_name" << q << " : " << q << name      << q << ",\n"
-        << q << "seg_num"  << q << " : " << q << seg_num++ << q << ",\n"
-        << q << "seg_size" << q << " : " << q << size      << q << ",\n"
+    sfs << q << "rec_type" << q << " : " << q             << "seg_info" << q << ",\n"
+        << q << "seg_name" << q << " : " << q             << name       << q << ",\n"
+        << q << "seg_num"  << q << " : " << q << std::dec << seg_num++  << q << ",\n"
+        << q << "seg_size" << q << " : " << q << std::dec << size       << q << ",\n"
         << q << "names"    << q << " :\n[\n";
     term = "";
     for (auto r : namepos_vector) {
         sfs << term;
         sfs << sp << "{" 
-            << q << "name"      << q << " : " << q << std::get<0>(r) << q << " , " 
-            << q << "pos"       << q << " : " << q << std::get<1>(r) << q << " , "
-            << q << "hash_code" << q << " : " << q << std::get<2>(r) << q
+            << q << "name"      << q << " : " << q <<                     std::get<0>(r) << q << " , " 
+            << q << "pos"       << q << " : " << q <<         std::dec << std::get<1>(r) << q << " , "
+            << q << "hash_code" << q << " : " << q << "0x" << std::hex << std::get<2>(r) << q
             << " }";
         term = ",\n";
     }
@@ -162,14 +163,15 @@ void serialize_schema::write_types()
 
         // "type_info" [ { "hash_code" : "0x1234", "name" : "fubar", "size" : "8" }, ... ]
         sfs << "{\n";
+        sfs << q << "rec_type"  << q << " : " << q             << "type_info" << q << ",\n";
         sfs << q << "type_info" << q << ": [\n";
         for (auto it=type_map.begin(); it != type_map.end(); ++it) {
             auto r = it->second;
             sfs << term;
             sfs << sp << "{" 
-                << q << "hash_code" << q << " : " << q << "0x" << it->first  << q << " , " 
+                << q << "hash_code" << q << " : " << q << "0x" << std::hex << it->first  << q << " , " 
                 << q << "name" << q << " : " << q << r.first  << q << " , " 
-                << q << "size"  << q << " : " << q << r.second << q 
+                << q << "size"  << q << " : " << q << std::dec << r.second << q 
                 << " }";
             term = ",\n";
         }
