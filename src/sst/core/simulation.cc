@@ -1463,32 +1463,37 @@ Simulation_impl::checkpoint()
 
     if (checkpoint_id==1) {
         ser.set_dump_schema(false);
-        std::string v_filename  = "v.json";
-        std::string t_filename = "t.json";
-        if (checkpointPrefix != "") {
-            v_filename = checkpointPrefix + "_" + v_filename;
-            t_filename = checkpointPrefix + "_" + t_filename;
-        }
-        // variable name, position
-        std::ofstream vfs(v_filename, std::ios::out);
-        vfs << "# variable_name, position" << "\n";
-        auto namepos_vector = ser.get_name_vector();
-        for (auto r : namepos_vector) {
-            vfs << r.first << "," << r.second << "\n";
-        }
-        vfs.close();
-        // type information
-        std::ofstream tfs(t_filename, std::ios::out);
-        tfs << "# hash_code, name, size" << "\n";
+        std::string schema_filename  = "schema.json";
+        if (checkpointPrefix != "")
+            schema_filename = checkpointPrefix + "_" + schema_filename;
+        std::ofstream sfs(schema_filename, std::ios::out);
+        char q = '\"';
+        sfs << "{\n" ;
+
+        // "type_info" [ { "hash_code" : "0x1234", "name" : "fubar", "size" : "8" }, ... ]
+        sfs << q << "type_info" << q << ": [\n";
         auto type_map = ser.get_type_map();
         for (auto it=type_map.begin(); it != type_map.end(); ++it) {
-            auto v = it->second;
-            tfs << std::hex << "0x" << it->first << "," << v.first << "," << v.second << "\n";
+            auto r = it->second;
+            sfs << "\t{" 
+                << q << "hash_code" << q << " : " << q << "0x" << it->first  << q << " , " 
+                << q << "name" << q << " : " << q << r.first  << q << " , " 
+                << q << "size"  << q << " : " << q << r.second << q << " },\n";
         }
-        tfs.close();
 
-        
-        //std::ofstream tfs(t_filename, std::ios::out);
+        // "name_pos" [ { "name" : "fubar", "pos", "8"}, ... ]
+        sfs << q << "name_pos" << q << ": [\n";
+        auto namepos_vector = ser.get_name_vector();
+        for (auto r : namepos_vector) {
+            sfs << "\t{" 
+                << q << "name" << q << " : " << q << r.first  << q << " , " 
+                << q << "pos"  << q << " : " << q << r.second << q << " },\n";
+        }
+        sfs << "],\n";
+
+        sfs << "}\n";
+        sfs.close();
+
     }
 
 
