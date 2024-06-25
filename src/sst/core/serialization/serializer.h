@@ -34,14 +34,17 @@ namespace Serialization {
 class serialize_schema {
 public:
     serialize_schema(std::string& schema_filename);
-    virtual ~serialize_schema();
+    ~serialize_schema();
     void update(std::string name, size_t pos, size_t hash_code, size_t sz, std::string type_name);
-    void flush_segment( std::string name, size_t size);
+    void flush_names( std::string name, size_t size);
+    void flush_types();
 
 private:
     std::ofstream sfs;
     std::map<size_t, std::pair<std::string, size_t>> type_map;           // type hash_code, <name, size>
     std::vector<std::tuple<std::string, size_t, size_t>> namepos_vector; // variable name, position, hash_code
+    const char q = '\"';
+    const std::string sp = "   ";
 };
 
 #define SER_INI(obj) \
@@ -54,7 +57,10 @@ private:
 
 // TODO #define SER_INI_PTR(obj) ser | obj;
 
-#define SER_SEG_DONE( name, size )
+#define SER_SEG_DONE( name, size ) \
+    if (ser.schema()) {    \
+        ser.schema()->flush_names( name, size); \
+    }
 
 #define SER_COMPONENTS_START(compInfoMap, size)
 

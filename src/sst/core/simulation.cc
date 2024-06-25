@@ -1465,7 +1465,7 @@ Simulation_impl::checkpoint()
     delete[] buffer;
 
     if (ser.schema()) {
-        ser.schema()->flush_segment("fubar",0);
+        ser.schema()->flush_types();
         ser.disable_schema();
     }
 

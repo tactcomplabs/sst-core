@@ -101,10 +101,16 @@ serialize_schema::serialize_schema(std::string& pfx) {
     if (pfx != "")
         schema_filename = pfx + "_" + schema_filename;
     sfs = std::ofstream(schema_filename, std::ios::out);
+    sfs << "{ ";
+    sfs << q << "checkpoint_def" << q << " : [\n";
  }
 
 serialize_schema::~serialize_schema() {   
-    if (sfs.is_open()) sfs.close();
+    if (sfs.is_open()) {
+        sfs << "]}";
+        sfs.flush();
+        sfs.close();
+    }
 }
 
 void
@@ -115,16 +121,46 @@ serialize_schema::update(std::string name, size_t pos, size_t hash_code, size_t 
     type_map[hash_code] = std::make_pair(type_name,sz);
 }
 
-void serialize_schema::flush_segment(std::string name, size_t size)
+void serialize_schema::flush_names(std::string name, size_t size)
 {
-        char q = '\"';
+    //  "seg_name" : "stuff",
+    //  "seg_size" : "8",
+    //  "names" :
+    //  [
+    //     {"name" : "fubar" , "pos" : "0" , "hash_code" : "6974964765" },
+    //     {"name" : "snafu" , "pos" : "4" , "hash_code" : "6974964765" }
+    //  ]
+
+    std::string term = "";
+
+    sfs << "{\n";
+    sfs << q << "seg_name" << q << " : " << q << name << q << ",\n"
+        << q << "seg_size" << q << " : " << q << size << q << ",\n"
+        << q << "names" << q << " :\n[\n";
+    term = "";
+    for (auto r : namepos_vector) {
+        sfs << term;
+        sfs << sp << "{" 
+            << q << "name"      << q << " : " << q << std::get<0>(r) << q << " , " 
+            << q << "pos"       << q << " : " << q << std::get<1>(r) << q << " , "
+            << q << "hash_code" << q << " : " << q << std::get<2>(r) << q
+            << " }";
+        term = ",\n";
+    }
+    sfs << "\n]\n},\n";
+
+    // reset collection
+    namepos_vector.clear();
+} 
+
+void serialize_schema::flush_types()
+{
+        std::string term = "";
         std::string sp = "   ";
-        std::string sp2 = sp + sp;
-        sfs << "{\n" ;
 
         // "type_info" [ { "hash_code" : "0x1234", "name" : "fubar", "size" : "8" }, ... ]
+        sfs << "{\n";
         sfs << q << "type_info" << q << ": [\n";
-        std::string term = "";
         for (auto it=type_map.begin(); it != type_map.end(); ++it) {
             auto r = it->second;
             sfs << term;
@@ -135,25 +171,10 @@ void serialize_schema::flush_segment(std::string name, size_t size)
                 << " }";
             term = ",\n";
         }
-        sfs << "\n],\n";
+        sfs << "\n]\n}\n";
 
-        // "name_pos" [ { "name" : "fubar", "pos" : "8", "hash_code" : "0x1234"}, ... ]
-        sfs << q << "name_pos" << q << ": [\n";
-        term = "";
-        for (auto r : namepos_vector) {
-            sfs << term;
-            sfs << sp << "{" 
-                << q << "name"      << q << " : " << q << std::get<0>(r) << q << " , " 
-                << q << "pos"       << q << " : " << q << std::get<1>(r) << q << " , "
-                << q << "hash_code" << q << " : " << q << std::get<2>(r) << q
-                << " }";
-            term = ",\n";
-        }
-        sfs << "\n]\n";
-
-        sfs << "}\n";
-
-        // reset collections
+        // reset collection
+        type_map.clear();
 } 
 
 } // namespace Serialization
