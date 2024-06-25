@@ -319,7 +319,6 @@ template <class T>
 inline void
 operator&(serializer& ser, T& t)
 {
-    //std::cout << "TYPEINFO: " << std::hex << &t << " " << typeid(T).hash_code() << " " << typeid(T).name() << std::endl;
     serialize<T>()(t, ser);
 }
 template <class T>

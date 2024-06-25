@@ -23,6 +23,7 @@
 #include <set>
 #include <typeinfo>
 #include <vector>
+#include <iostream>
 
 namespace SST {
 namespace Core {
@@ -69,11 +70,9 @@ public:
 
     SERIALIZE_MODE
     mode() const { return mode_; }
-    std::string name() const { return name_; }
     bool dump_schema() const { return dump_schema_ && ( mode_ == SIZER ); }
 
     void set_mode(SERIALIZE_MODE mode) { mode_ = mode; }
-    void set_name(const std::string& name) { name_ = name; }
     void set_dump_schema(const bool& d) { dump_schema_ = d; }
 
     void reset()
@@ -232,6 +231,22 @@ public:
 
     inline bool is_pointer_tracking_enabled() { return enable_ptr_tracking_; }
 
+    inline void update_schema(std::string name, size_t pos, size_t hash_code, size_t sz, std::string type_name) {
+        namepos_vector.push_back(std::make_pair(name, pos));
+        if (type_map.find(hash_code) != type_map.end()) return;
+        type_map[hash_code] = std::make_pair(type_name,sz);
+    }
+
+    inline const std::vector<std::pair<std::string, size_t>>& get_name_vector() {
+        return namepos_vector;
+    }
+
+    inline const std::map<size_t, std::pair<std::string, size_t>>& get_type_map() {
+        return type_map;
+    }
+
+
+
 protected:
     // only one of these is going to be valid for this serializer
     // not very good class design, but a little more convenient
@@ -240,13 +255,19 @@ protected:
     pvt::ser_sizer    sizer_;
     SERIALIZE_MODE    mode_;
     bool              enable_ptr_tracking_ = false;
-    std::string       name_;
     bool              dump_schema_ = false;
 
     std::set<uintptr_t>            ser_pointer_set;
     std::map<uintptr_t, uintptr_t> ser_pointer_map;
     uintptr_t                      split_key;
+
+    // Data type extraction
+    std::map<std::string, size_t> name_typehash_map;            // variable name,  type hash code
+    std::map<size_t, std::pair<std::string, size_t>> type_map;  // type hash_code, <name, size>
+    std::vector<std::pair<std::string, size_t>> namepos_vector; // variable name, position
+    
 };
+
 
 } // namespace Serialization
 } // namespace Core

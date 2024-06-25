@@ -1273,13 +1273,13 @@ Simulation_impl::checkpoint()
 {
     std::string checkpoint_filename = std::to_string(currentSimCycle) + "_" + std::to_string(checkpoint_id) + ".sstcpt";
     if ( checkpointPrefix != "" ) checkpoint_filename = checkpointPrefix + "_" + checkpoint_filename;
-    checkpoint_id++;
-
     std::ofstream fs(checkpoint_filename, std::ios::out | std::ios::binary);
 
     SST::Core::Serialization::serializer ser;
     ser.enable_pointer_tracking();
-    ser.set_dump_schema(checkpoint_id==1);
+    ser.set_dump_schema(checkpoint_id==0);
+
+    checkpoint_id++;
 
     size_t size, buffer_size;
     char*  buffer;
@@ -1458,9 +1458,41 @@ Simulation_impl::checkpoint()
         SER_MARKER("#S",compinfo->getName(), size);
     }
 
-    ser.set_dump_schema(false);
     fs.close();
     delete[] buffer;
+
+    if (checkpoint_id==1) {
+        ser.set_dump_schema(false);
+        std::string v_filename  = "v.json";
+        std::string t_filename = "t.json";
+        if (checkpointPrefix != "") {
+            v_filename = checkpointPrefix + "_" + v_filename;
+            t_filename = checkpointPrefix + "_" + t_filename;
+        }
+        // variable name, position
+        std::ofstream vfs(v_filename, std::ios::out);
+        vfs << "# variable_name, position" << "\n";
+        auto namepos_vector = ser.get_name_vector();
+        for (auto r : namepos_vector) {
+            vfs << r.first << "," << r.second << "\n";
+        }
+        vfs.close();
+        // type information
+        std::ofstream tfs(t_filename, std::ios::out);
+        tfs << "# hash_code, name, size" << "\n";
+        auto type_map = ser.get_type_map();
+        for (auto it=type_map.begin(); it != type_map.end(); ++it) {
+            auto v = it->second;
+            tfs << std::hex << "0x" << it->first << "," << v.first << "," << v.second << "\n";
+        }
+        tfs.close();
+
+        
+        //std::ofstream tfs(t_filename, std::ios::out);
+    }
+
+
+
 
     /*
      * Still needs to be added to checkpoint:

@@ -12,17 +12,17 @@
 #ifndef SST_CORE_SERIALIZATION_SERIALIZE_SCHEMA_H
 #define SST_CORE_SERIALIZATION_SERIALIZE_SCHEMA_H
 
-#if 1
 #define SER_INI(obj) \
-   if (ser.dump_schema()) { std::cout << "#V," << #obj << " {"; } \
-   ser& obj; \
-   if (ser.dump_schema()) { std::cout << ser.size() << "}," << std::endl; };
-// TODO #define SST_SER_AS_PTR_DBG(obj) ser | obj;
-#define SER_MARKER( tag, name, size ) \
-    if (ser.dump_schema()) { std::cout << tag << "," << name << "}," << size << std::endl; }
-#else
-#define SER_INI( obj ) ser& var
-#define SER_MARKER
-#endif
+    if (ser.dump_schema()) { \
+        ser.update_schema( \
+            #obj, ser.size(), \
+            typeid(obj).hash_code(), sizeof(obj), typeid(obj).name()); \
+    } \
+    ser& obj;
+// TODO #define SER_INI_PTR(obj) ser | obj;
+// #define SER_MARKER( tag, name, size ) \
+//     if (ser.dump_schema()) { std::cout << tag << "," << name << "}," << size << std::endl; }
+#define SER_MARKER( tag, name, size )
+
 
 #endif //SST_CORE_SERIALIZATION_SERIALIZE_SCHEMA_H
