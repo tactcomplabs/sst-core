@@ -15,7 +15,9 @@
 #include "sst/core/serialization/serialize_packer.h"
 #include "sst/core/serialization/serialize_sizer.h"
 #include "sst/core/serialization/serialize_unpacker.h"
+#include "sst/core/serialization/serialize_schema.h"
 
+#include <assert.h>
 #include <cstdint>
 #include <cstring>
 #include <list>
@@ -66,14 +68,23 @@ public:
         unpacker_.unpack<T>(t);
     }
 
-    virtual ~serializer() {}
+    virtual ~serializer() {
+        if (schema_) delete schema_; // warn
+    }
 
     SERIALIZE_MODE
     mode() const { return mode_; }
-    bool dump_schema() const { return dump_schema_ && ( mode_ == SIZER ); }
-
     void set_mode(SERIALIZE_MODE mode) { mode_ = mode; }
-    void set_dump_schema(const bool& d) { dump_schema_ = d; }
+
+    void enable_schema(std::string& pfx) {  
+        assert(!schema_); 
+        schema_ = new serialize_schema(pfx); 
+    }
+    void disable_schema() { 
+        assert(schema_); delete schema_; 
+    }
+    bool schema_enabled() const { return schema_ && ( mode_ == SIZER ); }
+    serialize_schema* schema() const { return schema_; }
 
     void reset()
     {
@@ -231,22 +242,6 @@ public:
 
     inline bool is_pointer_tracking_enabled() { return enable_ptr_tracking_; }
 
-    inline void update_schema(std::string name, size_t pos, size_t hash_code, size_t sz, std::string type_name) {
-        namepos_vector.push_back(std::make_tuple(name, pos, hash_code));
-        if (type_map.find(hash_code) != type_map.end()) return;
-        type_map[hash_code] = std::make_pair(type_name,sz);
-    }
-
-    inline const std::vector<std::tuple<std::string, size_t, size_t>>& get_name_vector() {
-        return namepos_vector;
-    }
-
-    inline const std::map<size_t, std::pair<std::string, size_t>>& get_type_map() {
-        return type_map;
-    }
-
-
-
 protected:
     // only one of these is going to be valid for this serializer
     // not very good class design, but a little more convenient
@@ -255,17 +250,12 @@ protected:
     pvt::ser_sizer    sizer_;
     SERIALIZE_MODE    mode_;
     bool              enable_ptr_tracking_ = false;
-    bool              dump_schema_ = false;
+    serialize_schema* schema_ = nullptr;
 
     std::set<uintptr_t>            ser_pointer_set;
     std::map<uintptr_t, uintptr_t> ser_pointer_map;
     uintptr_t                      split_key;
 
-    // Data type extraction
-    std::map<std::string, size_t> name_typehash_map;            // variable name,  type hash code
-    std::map<size_t, std::pair<std::string, size_t>> type_map;  // type hash_code, <name, size>
-    std::vector<std::tuple<std::string, size_t, size_t>> namepos_vector; // variable name, position, hash_code
-    
 };
 
 

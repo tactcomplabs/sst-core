@@ -1277,7 +1277,9 @@ Simulation_impl::checkpoint()
 
     SST::Core::Serialization::serializer ser;
     ser.enable_pointer_tracking();
-    ser.set_dump_schema(checkpoint_id==0);
+    
+    if (checkpoint_id==0)
+        ser.enable_schema(checkpointPrefix);
 
     checkpoint_id++;
 
@@ -1324,7 +1326,7 @@ Simulation_impl::checkpoint()
 
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(buffer, size);
-    SER_MARKER("#S","CONFIG_OPTIONS", size);
+    SER_SEG_DONE("config_options",size);
 
     /* Section 2: Loaded libraries */
     ser.start_sizing();
@@ -1344,8 +1346,7 @@ Simulation_impl::checkpoint()
 
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(buffer, size);
-    SER_MARKER("#S","LOADED_LIBRARIES", size);
-
+    SER_SEG_DONE("loaded_libraries",size);
 
     /* Section 3: Simulation_impl */
     ser.start_sizing();
@@ -1431,11 +1432,12 @@ Simulation_impl::checkpoint()
     // Write buffer to file
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(buffer, size);
-    SER_MARKER("#S", "Simulation_impl", size);
+    SER_SEG_DONE("simulation_impl",size);
 
+    // SST Components special header
     size = compInfoMap.size();
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
-    SER_MARKER("#H","compInfoMap", size);
+    SER_COMPONENTS_START(compInfoMap, size);
 
     // Serialize component blobs individually
     for ( auto comp = compInfoMap.begin(); comp != compInfoMap.end(); comp++ ) {
@@ -1455,61 +1457,17 @@ Simulation_impl::checkpoint()
 
         fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
         fs.write(buffer, size);
-        SER_MARKER("#S",compinfo->getName(), size);
+        SER_SEG_DONE(compinfo->getName(), size);
     }
+    SER_COMPONENTS_END();
 
     fs.close();
     delete[] buffer;
 
-    if (checkpoint_id==1) {
-        ser.set_dump_schema(false);
-        std::string schema_filename  = "schema.json";
-        if (checkpointPrefix != "")
-            schema_filename = checkpointPrefix + "_" + schema_filename;
-        std::ofstream sfs(schema_filename, std::ios::out);
-        char q = '\"';
-        std::string sp = "   ";
-        std::string sp2 = sp + sp;
-        sfs << "{\n" ;
-
-        // "type_info" [ { "hash_code" : "0x1234", "name" : "fubar", "size" : "8" }, ... ]
-        sfs << q << "type_info" << q << ": [\n";
-        auto type_map = ser.get_type_map();
-        std::string term = "";
-        for (auto it=type_map.begin(); it != type_map.end(); ++it) {
-            auto r = it->second;
-            sfs << term;
-            sfs << sp << "{" 
-                << q << "hash_code" << q << " : " << q << "0x" << it->first  << q << " , " 
-                << q << "name" << q << " : " << q << r.first  << q << " , " 
-                << q << "size"  << q << " : " << q << r.second << q 
-                << " }";
-            term = ",\n";
-        }
-        sfs << "\n],\n";
-
-        // "name_pos" [ { "name" : "fubar", "pos" : "8", "hash_code" : "0x1234"}, ... ]
-        sfs << q << "name_pos" << q << ": [\n";
-        term = "";
-        auto namepos_vector = ser.get_name_vector();
-        for (auto r : namepos_vector) {
-            sfs << term;
-            sfs << sp << "{" 
-                << q << "name"      << q << " : " << q << std::get<0>(r) << q << " , " 
-                << q << "pos"       << q << " : " << q << std::get<1>(r) << q << " , "
-                << q << "hash_code" << q << " : " << q << std::get<2>(r) << q
-                << " }";
-            term = ",\n";
-        }
-        sfs << "\n]\n";
-
-        sfs << "}\n";
-        sfs.close();
-
+    if (ser.schema()) {
+        ser.schema()->flush_segment("fubar",0);
+        ser.disable_schema();
     }
-
-
-
 
     /*
      * Still needs to be added to checkpoint:
