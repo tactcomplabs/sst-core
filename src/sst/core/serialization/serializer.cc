@@ -134,6 +134,10 @@ void serialize_schema::write_segment(std::string name, size_t size)
 
     std::string term = "";
 
+    // The first entry is always size_t size. We can use this as a consistency check.
+    // Just need to offset all the positions by size_of(size_t);
+    size_t offset = sizeof(size_t);
+    size += offset;
     sfs << "{\n";
     sfs << q << "rec_type" << q << " : " << q             << "seg_info" << q << ",\n"
         << q << "seg_name" << q << " : " << q             << name       << q << ",\n"
@@ -141,12 +145,13 @@ void serialize_schema::write_segment(std::string name, size_t size)
         << q << "seg_size" << q << " : " << q << std::dec << size       << q << ",\n"
         << q << "names"    << q << " :\n[\n";
     term = "";
+
     for (auto r : namepos_vector) {
         sfs << term;
         sfs << sp << "{" 
-            << q << "name"      << q << " : " << q <<                     std::get<0>(r) << q << " , " 
-            << q << "pos"       << q << " : " << q <<         std::dec << std::get<1>(r) << q << " , "
-            << q << "hash_code" << q << " : " << q << "0x" << std::hex << std::get<2>(r) << q
+            << q << "name"      << q << " : " << q <<                      std::get<0>(r) << q << " , " 
+            << q << "pos"       << q << " : " << q << std::dec << offset + std::get<1>(r) << q << " , "
+            << q << "hash_code" << q << " : " << q << "0x" << std::hex <<  std::get<2>(r) << q
             << " }";
         term = ",\n";
     }

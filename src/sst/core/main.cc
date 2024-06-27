@@ -743,6 +743,7 @@ main(int argc, char* argv[])
     // If restarting, update config from checkpoint
     uint32_t cpt_num_threads, cpt_num_ranks;
     if ( restart ) {
+        assert(false); // restart will not work in this branch
         size_t size;
         char*  buffer;
 

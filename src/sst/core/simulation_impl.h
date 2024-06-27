@@ -505,6 +505,21 @@ public:
     RankInfo my_rank;
     RankInfo num_ranks;
 
+    // Debug Markers
+    uint64_t seg0begin = 0xa5a5a5a5a5a5bb00ULL;
+    uint64_t seg1begin = 0xa5a5a5a5a5a5bb01ULL;
+    uint64_t seg2begin = 0xa5a5a5a5a5a5bb02ULL;
+    uint64_t segcbegin = 0xa5a5a5a5a5a5bb0cULL;
+
+    uint64_t seg0end = 0xa5a5a5a5a5a5ee00ULL;
+    uint64_t seg1end = 0xa5a5a5a5a5a5ee01ULL;
+    uint64_t seg2end = 0xa5a5a5a5a5a5ee02ULL;
+    uint64_t segcend = 0xa5a5a5a5a5a5ee0cULL;
+
+    uint64_t marker0  = 0xaced00000000feedULL;
+    uint64_t marker1  = 0xaced11111111feedULL;
+    uint64_t marker2  = 0xaced22222222feedULL;
+
     std::string output_directory;
 
     double run_phase_start_time;
