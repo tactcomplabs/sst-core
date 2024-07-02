@@ -236,6 +236,8 @@ public:
      */
     bool load_from_checkpoint() const { return load_from_checkpoint_; }
 
+    bool gen_checkpoint_schema() const { return gen_checkpoint_schema_; }
+    
     /**
        Prefix for checkpoint filenames and directory
     */
@@ -506,6 +508,8 @@ private:
     std::string checkpoint_period_;    /*!< Simulated time interval to generate checkpoints at */
     std::string checkpoint_prefix_;    /*!< Prefix for checkpoint filename and checkpoint directory */
     std::string checkpoint_directory_; /*!< Directory to write checkpoints to */
+
+    bool       gen_checkpoint_schema_ = false;
 
     // Advanced options - envrionment
     bool enable_sig_handling_; /*!< Enable signal handling */

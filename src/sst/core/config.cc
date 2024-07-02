@@ -468,6 +468,13 @@ public:
         return 0;
     }
 
+    // Set whether to generate JSON schema for checkpoint
+    static int setGenCheckpointSchema(Config* cfg, const std::string& UNUSED(arg))
+    {
+        cfg->gen_checkpoint_schema_ = true;
+        return 0;
+    }
+
     // Set the prefix for checkpoint files
     static int setCheckpointPrefix(Config* cfg, const std::string& arg)
     {
@@ -825,6 +832,10 @@ Config::insertOptions()
     DEF_ARG(
         "checkpoint-prefix", 0, "PREFIX", "Set prefix for checkpoint filenames.",
         std::bind(&ConfigHelper::setCheckpointPrefix, this, _1), true);
+    DEF_FLAG(
+        "gen-checkpoint-schema", 0,
+        "(Debug prototyping) Generate JSON representation of serialized data",
+        std::bind(&ConfigHelper::setGenCheckpointSchema, this, _1), false);
 
     enableDashDashSupport(std::bind(&ConfigHelper::setModelOptions, this, _1));
     addPositionalCallback(std::bind(&Config::positionalCallback, this, _1, _2));

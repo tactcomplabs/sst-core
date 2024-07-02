@@ -539,6 +539,7 @@ public:
     uint32_t                       checkpoint_id        = 0;
     std::string                    checkpointPrefix     = "";
     std::string                    globalOutputFileName = "";
+    bool                           gen_checkpoint_schema = false;
 
     void printSimulationState();
 

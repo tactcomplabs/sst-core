@@ -181,7 +181,8 @@ Simulation_impl::Simulation_impl(Config* cfg, RankInfo my_rank, RankInfo num_ran
     complete_phase_start_time(0.0),
     complete_phase_total_time(0.0),
     checkpointPrefix(cfg->checkpoint_prefix()),
-    globalOutputFileName(cfg->debugFile())
+    globalOutputFileName(cfg->debugFile()),
+    gen_checkpoint_schema(cfg->gen_checkpoint_schema())
 {
     sim_output.init(cfg->output_core_prefix(), cfg->verbose(), 0, Output::STDOUT);
     output_directory = cfg->output_directory();
@@ -1279,7 +1280,7 @@ Simulation_impl::checkpoint()
     SST::Core::Serialization::serializer ser;
     ser.enable_pointer_tracking();
     
-    if (checkpoint_id==0)
+    if (checkpoint_id==0 && gen_checkpoint_schema)
         ser.enable_schema(checkpoint_root);
 
     checkpoint_id++;
