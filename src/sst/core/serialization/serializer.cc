@@ -26,7 +26,7 @@ ser_unpacker::unpack_buffer(void* buf, int size)
 {
     if ( size == 0 ) {
         Output& output = Output::getDefaultObject();
-        output.fatal(__LINE__, __FILE__, "ser_unpacker::unpack_bufffer", 1, "trying to unpack buffer of size 0");
+        output.fatal(__LINE__, __FILE__, "ser_unpacker::unpack_buffer", 1, "trying to unpack buffer of size 0");
     }
     // void* only for convenience... actually a void**
     void** bufptr = (void**)buf;
@@ -96,10 +96,8 @@ serializer::string(std::string& str)
     }
 }
 
-serialize_schema::serialize_schema(std::string& pfx) { 
-    std::string schema_filename  = "schema.json";
-    if (pfx != "")
-        schema_filename = pfx + "_" + schema_filename;
+serialize_schema::serialize_schema(std::string& file_root) { 
+    std::string schema_filename  = file_root + ".json";
     sfs = std::ofstream(schema_filename, std::ios::out);
     sfs << "{ ";
     sfs << q << "checkpoint_def" << q << " : [\n";
@@ -121,7 +119,7 @@ serialize_schema::update(std::string name, size_t pos, size_t hash_code, size_t 
     type_map[hash_code] = std::make_pair(type_name,sz);
 }
 
-void serialize_schema::write_segment(std::string name, size_t size)
+void serialize_schema::write_segment(std::string name, size_t size, bool inc_size)
 {
     //  "seg_name" : "stuff",
     //  "seg_num"  : "2",
@@ -136,7 +134,7 @@ void serialize_schema::write_segment(std::string name, size_t size)
 
     // The first entry is always size_t size. We can use this as a consistency check.
     // Just need to offset all the positions by size_of(size_t);
-    size_t offset = sizeof(size_t);
+    size_t offset = inc_size ? sizeof(size_t) : 0;
     size += offset;
     sfs << "{\n";
     sfs << q << "rec_type" << q << " : " << q             << "seg_info" << q << ",\n"

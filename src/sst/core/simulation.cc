@@ -1271,15 +1271,16 @@ Simulation_impl::intializeProfileTools(const std::string& config)
 void
 Simulation_impl::checkpoint()
 {
-    std::string checkpoint_filename = std::to_string(currentSimCycle) + "_" + std::to_string(checkpoint_id) + ".sstcpt";
-    if ( checkpointPrefix != "" ) checkpoint_filename = checkpointPrefix + "_" + checkpoint_filename;
+    std::string checkpoint_root = std::to_string(currentSimCycle) + "_" + std::to_string(checkpoint_id);
+    if ( checkpointPrefix != "" ) checkpoint_root = checkpointPrefix + "_" + checkpoint_root;
+    std::string checkpoint_filename = checkpoint_root + ".sstcpt";
     std::ofstream fs(checkpoint_filename, std::ios::out | std::ios::binary);
 
     SST::Core::Serialization::serializer ser;
     ser.enable_pointer_tracking();
     
     if (checkpoint_id==0)
-        ser.enable_schema(checkpointPrefix);
+        ser.enable_schema(checkpoint_root);
 
     checkpoint_id++;
 
@@ -1372,21 +1373,15 @@ Simulation_impl::checkpoint()
     SER_INI(endSim);
     SER_INI(independent);
     // ser& sim_output);
-
-    //OK HERE
-
     SER_INI(runMode);
     SER_INI(currentPriority);
     SER_INI(endSimCycle);
     SER_INI(output_directory);
     SER_INI(timeLord);
-
     // Actions that may also be in TV
     SER_INI(m_exit);
     SER_INI(syncManager);
     SER_INI(m_heartbeat);
-
-    
 
     // Add statistics engine and associated state
     // Individual statistics are checkpointing with component
@@ -1429,15 +1424,11 @@ Simulation_impl::checkpoint()
     ser& endSim;
     ser& independent;
     // ser& sim_output;
-
-    // OK HERE
-
     ser& runMode;
     ser& currentPriority;
     ser& endSimCycle;
     ser& output_directory;
     ser& timeLord;
-
     // Actions that may also be in TV
     ser& m_exit;
     ser& syncManager;
@@ -1448,6 +1439,7 @@ Simulation_impl::checkpoint()
     // Add statistic engine
     ser& StatisticProcessingEngine::m_statOutputs;
     ser& stat_engine;
+
     // Add shared regions
     ser& SharedObject::manager;
 
@@ -1462,12 +1454,9 @@ Simulation_impl::checkpoint()
     ser& seg2end;
 
     // Write buffer to file
-    std::cout << fs.tellp() << std::endl;
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(buffer, size);
     SER_SEG_DONE("simulation_impl",size);
-    std::cout << fs.tellp() << std::endl;
-    fs.flush();
 
     // SST Components special header. 
     // Here 'size' is the number of components and not sizeof(compInfoMap)

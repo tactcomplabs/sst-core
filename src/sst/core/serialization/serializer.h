@@ -36,7 +36,7 @@ public:
     serialize_schema(std::string& schema_filename);
     ~serialize_schema();
     void update(std::string name, size_t pos, size_t hash_code, size_t sz, std::string type_name);
-    void write_segment( std::string name, size_t size);
+    void write_segment( std::string name, size_t size, bool inc_size=true);
     void write_types();
 
 private:
@@ -63,12 +63,14 @@ private:
         ser.schema()->write_segment( name, size); \
     }
 
+// TODO This should actually be the start of a hierarchical object containing components.
+// The components themselves may or may not be the same size.  
 #define SER_COMPONENTS_START(obj) \
     if (ser.schema()) { \
         ser.schema()->update(  \
             "NUM_COMPONENTS", 0,   \
             typeid(const char *).hash_code(), sizeof(obj), typeid(const char *).name()); \
-        ser.schema()->write_segment( "NUM_COMPONENTS", sizeof(obj) ); \
+        ser.schema()->write_segment( "NUM_COMPONENTS", sizeof(obj), false ); \
     }
 
 
@@ -113,9 +115,9 @@ public:
     mode() const { return mode_; }
     void set_mode(SERIALIZE_MODE mode) { mode_ = mode; }
 
-    void enable_schema(std::string& pfx) {  
+    void enable_schema(std::string& fileroot) {  
         assert(!schema_); 
-        schema_ = new serialize_schema(pfx); 
+        schema_ = new serialize_schema(fileroot); 
     }
     void disable_schema() { 
         assert(schema_); delete schema_; 
