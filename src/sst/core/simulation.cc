@@ -1290,8 +1290,8 @@ Simulation_impl::checkpoint()
 
     /* Section 1: Config options */
     ser.start_sizing();
-    SER_INI(seg0begin);
-    SER_INI(marker0);
+    //SER_INI(seg0begin);
+    //SER_INI(marker0);
     SER_INI(num_ranks.rank);
     SER_INI(num_ranks.thread);
     // User specific (and long), is this needed? I don't see it in restart code - reloaded by main
@@ -1309,15 +1309,15 @@ Simulation_impl::checkpoint()
     SER_INI(Params::keyMap);
     SER_INI(Params::keyMapReverse);
     SER_INI(Params::nextKeyID);
-    SER_INI(seg0end);
+    //SER_INI(seg0end);
 
     size        = ser.size();
     buffer_size = size;
     buffer      = new char[buffer_size];
 
     ser.start_packing(buffer, size);
-    ser& seg0begin;
-    ser& marker0;
+    //ser& seg0begin;
+    //ser& marker0;
     ser& num_ranks.rank;
     ser& num_ranks.thread;
     ser& libpath;
@@ -1330,7 +1330,7 @@ Simulation_impl::checkpoint()
     ser& Params::keyMap;
     ser& Params::keyMapReverse;
     ser& Params::nextKeyID;
-    ser& seg0end;
+    //ser& seg0end;
 
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(buffer, size);
@@ -1338,11 +1338,11 @@ Simulation_impl::checkpoint()
 
     /* Section 2: Loaded libraries */
     ser.start_sizing();
-    SER_INI(seg1begin);
+    //SER_INI(seg1begin);
     std::set<std::string> libnames;
     factory->getLoadedLibraryNames(libnames);
     SER_INI(libnames);
-    SER_INI(seg1end);
+    //SER_INI(seg1end);
 
     size = ser.size();
     if ( size > buffer_size ) {
@@ -1352,9 +1352,9 @@ Simulation_impl::checkpoint()
     }
 
     ser.start_packing(buffer, size);
-    ser& seg1begin;
+    //ser& seg1begin;
     ser& libnames;
-    ser& seg1end;
+    //ser& seg1end;
 
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(buffer, size);
@@ -1362,7 +1362,7 @@ Simulation_impl::checkpoint()
 
     /* Section 3: Simulation_impl */
     ser.start_sizing();
-    SER_INI(seg2begin);
+    //SER_INI(seg2begin);
     SER_INI(num_ranks);
     SER_INI(my_rank);
     SER_INI(currentSimCycle);
@@ -1393,16 +1393,16 @@ Simulation_impl::checkpoint()
     // Add shared regions
     SER_INI(SharedObject::manager);
 
-    SER_INI(marker0);  // OK HERE
+    //SER_INI(marker0);  // OK HERE
 
     // Serialize the clockmap
     SER_INI(clockMap);
-    SER_INI(marker1);  // OK HERE
+    //SER_INI(marker1);  // OK HERE
 
     // Last, get the timevortex
     SER_INI(timeVortex);
-    SER_INI(marker2);  // BAD
-    SER_INI(seg2end);
+    //SER_INI(marker2);  // BAD
+    //SER_INI(seg2end);
 
     size = ser.size();
     if ( size > buffer_size ) {
@@ -1413,7 +1413,7 @@ Simulation_impl::checkpoint()
 
     // Pack buffer
     ser.start_packing(buffer, size);
-    ser& seg2begin;
+    //ser& seg2begin;
     ser& num_ranks;
     ser& my_rank;
     ser& currentSimCycle;
@@ -1444,15 +1444,15 @@ Simulation_impl::checkpoint()
     // Add shared regions
     ser& SharedObject::manager;
 
-    ser& marker0; // OK HERE
+    //ser& marker0;
 
     ser& clockMap;
-    ser& marker1; // OK HERE
+    //ser& marker1;
 
     // Last, get the timevortex
     ser& timeVortex;
-    ser& marker2; // BAD
-    ser& seg2end;
+    //ser& marker2;
+    //ser& seg2end;
 
     // Write buffer to file
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
@@ -1469,9 +1469,9 @@ Simulation_impl::checkpoint()
     for ( auto comp = compInfoMap.begin(); comp != compInfoMap.end(); comp++ ) {
         ser.start_sizing();
         ComponentInfo* compinfo = *comp;
-        SER_INI(segcbegin);
+        //SER_INI(segcbegin);
         SER_INI(compinfo);
-        SER_INI(segcend);
+        //SER_INI(segcend);
         size = ser.size();
 
         if ( buffer_size < size ) {
@@ -1481,9 +1481,9 @@ Simulation_impl::checkpoint()
         }
 
         ser.start_packing(buffer, size);
-        ser& segcbegin;
+        //ser& segcbegin;
         ser& compinfo;
-        ser& segcend;
+        //ser& segcend;
 
         fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
         fs.write(buffer, size);
