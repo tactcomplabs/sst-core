@@ -42,3 +42,5 @@ libtool
 *.lo
 *.la
 sst_test_outputs/
+build/
+.vscode/

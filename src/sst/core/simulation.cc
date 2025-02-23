@@ -203,7 +203,8 @@ Simulation_impl::Simulation_impl(Config* cfg, RankInfo my_rank, RankInfo num_ran
     complete_phase_total_time_(0.0),
     checkpoint_id_(0),
     checkpoint_prefix_(cfg->checkpoint_prefix()),
-    globalOutputFileName(cfg->debugFile())
+    globalOutputFileName(cfg->debugFile()),
+    gen_checkpoint_schema(cfg->gen_checkpoint_schema())
 {
 
     sim_output.init(cfg->output_core_prefix(), cfg->verbose(), 0, Output::STDOUT);
@@ -1489,41 +1490,54 @@ Simulation_impl::scheduleCheckpoint()
 
 void
 Simulation_impl::checkpoint_write_globals(
-    int checkpoint_id, const std::string& registry_filename, const std::string& globals_filename)
+    int checkpoint_id, const std::string& registry_filename, const std::string& checkpoint_root)
 {
+    const std::string globals_filename = checkpoint_root + "_globals.bin";
     std::ofstream fs(globals_filename, std::ios::out | std::ios::binary);
 
     // TODO: Add error checking for file open
 
     SST::Core::Serialization::serializer ser;
     ser.enable_pointer_tracking();
+    
+    if (checkpoint_id==0 && gen_checkpoint_schema)
+        ser.enable_schema(checkpoint_root);
+
+    checkpoint_id++;
 
     size_t size, buffer_size;
     char*  buffer;
 
     /* Section 1: Config options */
     ser.start_sizing();
-    ser&        num_ranks.rank;
-    ser&        num_ranks.thread;
+    //SER_INI(seg0begin);
+    //SER_INI(marker0);
+    SER_INI(num_ranks.rank);
+    SER_INI(num_ranks.thread);
+    // User specific (and long), is this needed? I don't see it in restart code - reloaded by main
     std::string libpath = factory->getSearchPaths();
-    ser&        libpath;
-    ser&        timeLord.timeBaseString;
-    ser&        output_directory;
+    SER_INI(libpath);
+    SER_INI(timeLord.timeBaseString);
+    // User specific. Can it be overridden for portability?
+    SER_INI(output_directory);
     std::string prefix = sim_output.getPrefix();
-    ser&        prefix;
+    SER_INI(prefix);
     uint32_t    verbose = sim_output.getVerboseLevel();
-    ser&        verbose;
-    ser&        globalOutputFileName;
-    ser&        checkpoint_prefix_;
-    ser&        Params::keyMap;
-    ser&        Params::keyMapReverse;
-    ser&        Params::nextKeyID;
+    SER_INI(verbose);
+    SER_INI(globalOutputFileName);
+    SER_INI(checkpoint_prefix_);
+    SER_INI(Params::keyMap);
+    SER_INI(Params::keyMapReverse);
+    SER_INI(Params::nextKeyID);
+    //SER_INI(seg0end);
 
     size        = ser.size();
     buffer_size = size;
     buffer      = new char[buffer_size];
 
     ser.start_packing(buffer, size);
+    //ser& seg0begin;
+    //ser& marker0;
     ser& num_ranks.rank;
     ser& num_ranks.thread;
     ser& libpath;
@@ -1536,9 +1550,11 @@ Simulation_impl::checkpoint_write_globals(
     ser& Params::keyMap;
     ser& Params::keyMapReverse;
     ser& Params::nextKeyID;
+    //ser& seg0end;
 
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(buffer, size);
+    SER_SEG_DONE("config_options",size);
     fs.close();
 
     std::ofstream fs_reg(registry_filename, std::ios::out);
@@ -1610,16 +1626,20 @@ Simulation_impl::checkpoint(const std::string& checkpoint_filename)
 
     /* Section 2: Loaded libraries */
     ser.start_sizing();
+    //SER_INI(seg1begin);
     std::set<std::string> libnames;
     factory->getLoadedLibraryNames(libnames);
-    ser& libnames;
+    SER_INI(libnames);
+    //SER_INI(seg1end);
 
     size        = ser.size();
     buffer_size = size;
     buffer      = new char[buffer_size];
 
     ser.start_packing(buffer, size);
+    //ser& seg1begin;
     ser& libnames;
+    //ser& seg1end;
 
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(buffer, size);
@@ -1628,40 +1648,44 @@ Simulation_impl::checkpoint(const std::string& checkpoint_filename)
 
     /* Section 3: Simulation_impl */
     ser.start_sizing();
-    ser& num_ranks;
-    ser& my_rank;
-    ser& currentSimCycle;
-    // ser& threadMinPartTC;
-    ser& minPart;
-    ser& minPartTC;
-    ser& interThreadLatencies;
-    ser& interThreadMinLatency;
-    ser& endSim;
-    ser& independent;
-    ser& timeVortexType; // Used by TimeVortex serialization
-    // ser& sim_output;
-    ser& runMode;
-    ser& currentPriority;
-    ser& endSimCycle;
-    ser& output_directory;
+    //SER_INI(seg2begin);
+    SER_INI(num_ranks);
+    SER_INI(my_rank);
+    SER_INI(currentSimCycle);
+    // SER_INI(threadMinPartTC);
+    SER_INI(minPart);
+    SER_INI(minPartTC);
+    SER_INI(interThreadLatencies);
+    SER_INI(interThreadMinLatency);
+    SER_INI(endSim);
+    SER_INI(independent);
+    SER_INI(timeVortexType); // Used by TimeVortex serialization
+    // SER_INI(sim_output);
+    SER_INI(runMode);
+    SER_INI(currentPriority);
+    SER_INI(endSimCycle);
+    SER_INI(output_directory);
     // Actions that may also be in TV
-    ser& real_time_;
-    if ( my_rank.thread == 0 ) { ser& m_exit; }
-    ser& m_heartbeat;
+    SER_INI(real_time_);
+    if ( my_rank.thread == 0 ) { SER_INI(m_exit); }
+    SER_INI(m_heartbeat);
 
     // Add statistics engine and associated state
     // Individual statistics are checkpointing with component
-    if ( my_rank.thread == 0 ) { ser& StatisticProcessingEngine::m_statOutputs; }
-    ser& stat_engine;
+    if ( my_rank.thread == 0 ) { SER_INI(StatisticProcessingEngine::m_statOutputs); }
+    SER_INI(stat_engine);
 
     // Add shared regions
-    if ( my_rank.thread == 0 ) { ser& SharedObject::manager; }
+    if ( my_rank.thread == 0 ) { SER_INI(SharedObject::manager); }
 
     // Serialize the clockmap
-    ser& clockMap;
+    SER_INI(clockMap);
+    //SER_INI(marker1);  // OK HERE
 
     // Last, get the timevortex
-    ser& timeVortex;
+    SER_INI(timeVortex);
+    //SER_INI(marker2);  // BAD
+    //SER_INI(seg2end);
 
     size = ser.size();
     if ( size > buffer_size ) {
@@ -1672,6 +1696,7 @@ Simulation_impl::checkpoint(const std::string& checkpoint_filename)
 
     // Pack buffer
     ser.start_packing(buffer, size);
+    //ser& seg2begin;
     ser& num_ranks;
     ser& my_rank;
     ser& currentSimCycle;
@@ -1702,18 +1727,27 @@ Simulation_impl::checkpoint(const std::string& checkpoint_filename)
     // Add shared regions
     if ( my_rank.thread == 0 ) { ser& SharedObject::manager; }
 
+    //ser& marker0;
+
     ser& clockMap;
+    //ser& marker1;
 
     // Last, get the timevortex
     ser& timeVortex;
+    //ser& marker2;
+    //ser& seg2end;
 
     // Write buffer to file
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(buffer, size);
+    SER_SEG_DONE("simulation_impl",size);
     offset += (sizeof(size) + size);
 
-    size = compInfoMap.size();
+    // SST Components special header. 
+    // Here 'size' is the number of components and not sizeof(compInfoMap)
+    size = compInfoMap.size(); 
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    SER_COMPONENTS_START(size);
     offset += size;
 
     // Clear the offsets vector to start this round
@@ -1723,7 +1757,9 @@ Simulation_impl::checkpoint(const std::string& checkpoint_filename)
     for ( auto comp = compInfoMap.begin(); comp != compInfoMap.end(); comp++ ) {
         ser.start_sizing();
         ComponentInfo* compinfo = *comp;
-        ser&           compinfo;
+        //SER_INI(segcbegin);
+        SER_INI(compinfo);
+        //SER_INI(segcend);
         size = ser.size();
 
         if ( buffer_size < size ) {
@@ -1733,16 +1769,24 @@ Simulation_impl::checkpoint(const std::string& checkpoint_filename)
         }
 
         ser.start_packing(buffer, size);
+        //ser& segcbegin;
         ser& compinfo;
+        //ser& segcend;
 
         component_blob_offsets_.emplace_back(compinfo->id, offset);
         fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
         fs.write(buffer, size);
+        SER_SEG_DONE(compinfo->getName(), size);
         offset += (sizeof(size) + size);
     }
 
     fs.close();
     delete[] buffer;
+
+    if (ser.schema()) {
+        ser.schema()->write_types();
+        ser.disable_schema();
+    }
 
     /*
      * Still needs to be added to checkpoint:

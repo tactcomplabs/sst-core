@@ -8,7 +8,7 @@
 // This file is part of the SST software package. For license
 // information, see the LICENSE file in the top level directory of the
 // distribution.
-
+#include "kgdbg.h"
 #include "sst_config.h"
 
 #include "sst/core/warnmacros.h"
@@ -687,6 +687,7 @@ start_simulation(uint32_t tid, SimThreadInfo_t& info, Core::ThreadSafe::Barrier&
 int
 main(int argc, char* argv[])
 {
+    kgdbg::spinner("SST_SPINNER");
 #ifdef SST_CONFIG_HAVE_MPI
     // Initialize MPI
     MPI_Init(&argc, &argv);
@@ -810,6 +811,8 @@ main(int argc, char* argv[])
         fs_globals.close();
         delete[] buffer;
 
+        // KG these provide override support on restart ( being worked on )
+        // Challenge for handling statistics file
         // Error check that ranks & threads match after output is created
         cfg.libpath_  = cpt_lib_path;
         cfg.timeBase_ = cpt_timebase;

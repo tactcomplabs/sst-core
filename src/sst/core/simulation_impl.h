@@ -360,7 +360,7 @@ public:
        and write the header info
      */
     void checkpoint_write_globals(
-        int checkpoint_id, const std::string& registry_filename, const std::string& globals_filename);
+        int checkpoint_id, const std::string& registry_filename, const std::string& checkpoint_root);
     void restart(Config* config);
 
     void initialize_interactive_console(const std::string& type);
@@ -566,6 +566,21 @@ public:
     RankInfo my_rank;
     RankInfo num_ranks;
 
+    // Debug Markers
+    uint64_t seg0begin = 0xa5a5a5a5a5a5bb00ULL;
+    uint64_t seg1begin = 0xa5a5a5a5a5a5bb01ULL;
+    uint64_t seg2begin = 0xa5a5a5a5a5a5bb02ULL;
+    uint64_t segcbegin = 0xa5a5a5a5a5a5bb0cULL;
+
+    uint64_t seg0end = 0xa5a5a5a5a5a5ee00ULL;
+    uint64_t seg1end = 0xa5a5a5a5a5a5ee01ULL;
+    uint64_t seg2end = 0xa5a5a5a5a5a5ee02ULL;
+    uint64_t segcend = 0xa5a5a5a5a5a5ee0cULL;
+
+    uint64_t marker0  = 0xaced00000000feedULL;
+    uint64_t marker1  = 0xaced11111111feedULL;
+    uint64_t marker2  = 0xaced22222222feedULL;
+
     std::string output_directory;
 
     double run_phase_start_time_;
@@ -584,6 +599,7 @@ public:
     uint32_t                       checkpoint_id_       = 0;
     std::string                    checkpoint_prefix_   = "";
     std::string                    globalOutputFileName = "";
+    bool                           gen_checkpoint_schema = false;
 
     void printSimulationState();
 

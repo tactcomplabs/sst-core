@@ -138,8 +138,7 @@ CheckpointAction::createCheckpoint(Simulation_impl* sim)
 
     if ( rank_.rank == 0 && rank_.thread == 0 ) {
         // Need to write out the globals
-        std::string globals_name = directory + "/" + basename + "_globals.bin";
-        sim->checkpoint_write_globals(checkpoint_id - 1, registry_name, globals_name);
+        sim->checkpoint_write_globals(checkpoint_id - 1, registry_name, directory + "/" + basename );
     }
     // No need to barrier here since rank 0 thread 0 will be the first
     // to execute in the loop below and everything else will wait
