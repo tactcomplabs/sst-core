@@ -25,6 +25,8 @@ libcoreTestElement_la_SOURCES = \
 	testElements/coreTest_Message.h \
 	testElements/coreTest_MessageGeneratorComponent.h \
 	testElements/coreTest_MessageGeneratorComponent.cc \
+	testElements/coreTest_Output.h \
+	testElements/coreTest_Output.cc \
 	testElements/coreTest_Serialization.h \
 	testElements/coreTest_Serialization.cc \
 	testElements/coreTest_SharedObjectComponent.h \
@@ -37,6 +39,8 @@ libcoreTestElement_la_SOURCES = \
 	testElements/coreTest_ParamComponent.cc \
 	testElements/coreTest_PerfComponent.h \
 	testElements/coreTest_PerfComponent.cc \
+	testElements/coreTest_PortModule.cc \
+	testElements/coreTest_PortModule.h \
 	testElements/coreTest_MemPoolTest.h \
 	testElements/coreTest_MemPoolTest.cc \
 	testElements/coreTest_Checkpoint.h \

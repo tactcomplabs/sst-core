@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -61,6 +61,18 @@ enum class SimulationRunMode {
     INIT,    /*!< Initialize-only.  Useful for debugging initialization and graph generation */
     RUN,     /*!< Run-only.  Useful when restoring from a checkpoint (not currently supported) */
     BOTH     /*!< Default.  Both initialize and Run the simulation */
+};
+
+/**
+   Struct used as a base class for all AttachPoint metadata passed to
+   registration functions.  Needed so that dynamic cast can be used
+   since different tools may pass different metadata through the
+   AttachPoints.
+ */
+struct AttachPointMetaData
+{
+    AttachPointMetaData() {}
+    virtual ~AttachPointMetaData() {}
 };
 
 } // namespace SST

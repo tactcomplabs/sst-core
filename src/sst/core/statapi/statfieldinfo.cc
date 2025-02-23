@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -54,6 +54,17 @@ StatisticFieldTypeBase::getField(fieldType_t id)
         Simulation_impl::getSimulationOutput().fatal(CALL_INFO, 1, "Invalid Field ID: %d", int(id));
     }
     return iter->second;
+}
+
+fieldType_t
+StatisticFieldTypeBase::getField(const char* fieldShortName)
+{
+    for ( auto iter = fields_->begin(); iter != fields_->end(); iter++ ) {
+        if ( strcmp(iter->second->shortName(), fieldShortName) ) { return iter->first; }
+    }
+    Simulation_impl::getSimulationOutput().fatal(
+        CALL_INFO, 1, "Look up field name: %s; No such field found", fieldShortName);
+    return 0;
 }
 
 void

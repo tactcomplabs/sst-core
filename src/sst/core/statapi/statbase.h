@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -607,7 +607,7 @@ class serialize_impl<Statistics::Statistic<T>*>
 {
     template <class A>
     friend class serialize;
-    void operator()(Statistics::Statistic<T>*& s, serializer& ser)
+    void operator()(Statistics::Statistic<T>*& s, serializer& ser, const char* UNUSED(name) = nullptr)
     {
         // For sizer and pack, need to get the information needed
         // to create a new statistic of the correct type on unpack.
@@ -642,8 +642,16 @@ class serialize_impl<Statistics::Statistic<T>*>
             if ( stattype != "sst.NullStatistic" ) { SST::Stat::pvt::registerStatWithEngineOnRestart(s); }
             break;
         }
+        case serializer::MAP:
+            // Mapping mode not supported for stats
+            break;
         }
     }
+
+    // void operator()(Statistics::Statistic<T>*& UNUSED(s), serializer& UNUSED(ser), const char* UNUSED(name))
+    // {
+    //     // Mapping mode not supported for stats
+    // }
 };
 
 } // namespace Serialization

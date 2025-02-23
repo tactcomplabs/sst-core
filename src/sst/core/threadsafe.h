@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -313,6 +313,24 @@ public:
         }
     }
 };
+
+// Replace with std::atomic_fetch_max at C++26
+template <typename T>
+void
+atomic_fetch_max(std::atomic<T>& max_value, T const& new_value) noexcept
+{
+    T old_value = max_value;
+    while ( old_value < new_value && !max_value.compare_exchange_weak(old_value, new_value) ) {}
+}
+
+// Replace with std::atomic_fetch_min at C++26
+template <typename T>
+void
+atomic_fetch_min(std::atomic<T>& min_value, T const& new_value) noexcept
+{
+    T old_value = min_value;
+    while ( old_value > new_value && !min_value.compare_exchange_weak(old_value, new_value) ) {}
+}
 
 } // namespace ThreadSafe
 } // namespace Core

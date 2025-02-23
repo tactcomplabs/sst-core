@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2009-2024 NTESS. Under the terms
+# Copyright 2009-2025 NTESS. Under the terms
 # of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 #
-# Copyright (c) 2009-2024, NTESS
+# Copyright (c) 2009-2025, NTESS
 # All rights reserved.
 #
 # This file is part of the SST software package. For license
@@ -35,7 +35,7 @@ TEST_SST_CORE = 1
 
 ################################################################################
 
-def startup_and_run(sst_core_bin_dir, test_mode):
+def startup_and_run(sst_core_bin_dir: str, test_mode: int) -> None:
     """ This is the main entry point for loading and running the SST Test Frameworks
         Engine.
 
@@ -72,7 +72,7 @@ def startup_and_run(sst_core_bin_dir, test_mode):
             sys.exit(1)
 
         t_e = test_engine.TestEngine(sst_core_bin_dir, test_mode)
-        t_e.discover_and_run_tests()
+        sys.exit(t_e.discover_and_run_tests())
 
     except Exception as exc_e:
         # NOTE: This is a generic catchall handler for any unhandled exception
@@ -80,7 +80,7 @@ def startup_and_run(sst_core_bin_dir, test_mode):
 
 ###############
 
-def _generic_exception_handler(exc_e):
+def _generic_exception_handler(exc_e: Exception) -> None:
 
     # Dump Exception info to the a log file
     log_filename = "./sst_test_frameworks_crashreport.log"
@@ -91,7 +91,7 @@ def _generic_exception_handler(exc_e):
         log_handler = RotatingFileHandler(log_filename, mode='a',
                                           maxBytes=10*1024*1024,
                                           backupCount=10,
-                                          encoding=None, delay=0)
+                                          encoding=None, delay=False)
         log_handler.setFormatter(log_formatter)
         crashlogger.addHandler(log_handler)
         crashlogger.setLevel(logging.DEBUG)
@@ -138,7 +138,7 @@ def _generic_exception_handler(exc_e):
 
 ####
 
-def _verify_test_frameworks_is_available(sst_core_frameworks_dir):
+def _verify_test_frameworks_is_available(sst_core_frameworks_dir: str) -> None:
     """ Ensure that all test framework files are available.
         :param: sst_core_frameworks_dir = Dir of the test frameworks
     """

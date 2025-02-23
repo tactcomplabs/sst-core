@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -118,11 +118,13 @@ public:
     void serialize_order(SST::Core::Serialization::serializer& ser) override
     {
         SST::Component::serialize_order(ser);
+        SST_SER(count)
         SST_SER(subComps)
     }
     ImplementSerializable(SST::CoreTestSubComponent::SubComponentLoader)
 
 private:
+    uint32_t                       count = 0;
     bool                           tick(SST::Cycle_t);
     std::vector<SubCompInterface*> subComps;
 };
@@ -234,6 +236,8 @@ public:
         "Sending Subcomponent",
         SST::CoreTestSubComponent::SubCompSendRecvInterface
     )
+
+    SST_ELI_REGISTER_ALIAS("SubCompSender_alias")
 
     SST_ELI_DOCUMENT_PARAMS(
     )

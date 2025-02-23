@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -86,6 +86,9 @@ struct AnnotationInfo
     addOption({ longName, optional_argument, 0, shortName }, "[" argName "]", text, func, { __VA_ARGS__ });
 
 // Macros that include extended help
+#define DEF_FLAG_EH(longName, shortName, text, func, eh, ...) \
+    addOption({ longName, no_argument, 0, shortName }, "", text, func, { __VA_ARGS__ }, eh);
+
 #define DEF_ARG_EH(longName, shortName, argName, text, func, eh, ...) \
     addOption({ longName, required_argument, 0, shortName }, argName, text, func, { __VA_ARGS__ }, eh);
 
@@ -187,6 +190,8 @@ public:
     // Function to uniformly parse boolean values for command line
     // arguments
     static bool parseBoolean(const std::string& arg, bool& success, const std::string& option);
+
+    static uint32_t parseWallTimeToSeconds(const std::string& arg, bool& success, const std::string& option);
 
     virtual ~ConfigBase() {}
 

@@ -1,8 +1,8 @@
-# Copyright 2009-2024 NTESS. Under the terms
+# Copyright 2009-2025 NTESS. Under the terms
 # of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 #
-# Copyright (c) 2009-2024, NTESS
+# Copyright (c) 2009-2025, NTESS
 # All rights reserved.
 #
 # This file is part of the SST software package. For license
@@ -23,7 +23,7 @@ num_routers = x_size * y_size
         
 # Set up a map of links with accessor
 links = dict()
-def getLink(leftName, rightName):
+def getLink(leftName: str, rightName: str) -> sst.Link:
     name = "link_%s_%s"%(leftName, rightName)
     if name not in links:
         links[name] = sst.Link(name)

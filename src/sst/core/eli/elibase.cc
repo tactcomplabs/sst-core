@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -25,10 +25,12 @@ std::unique_ptr<LoadedLibraries::LibraryMap> LoadedLibraries::loaders_ {};
 static const std::vector<int> SST_ELI_COMPILED_VERSION = { 0, 9, 0 };
 
 bool
-LoadedLibraries::addLoader(const std::string& lib, const std::string& name, LibraryLoader* loader)
+LoadedLibraries::addLoader(
+    const std::string& lib, const std::string& name, const std::string& alias, LibraryLoader* loader)
 {
     if ( !loaders_ ) { loaders_ = std::unique_ptr<LibraryMap>(new LibraryMap); }
     (*loaders_)[lib][name].push_back(loader);
+    if ( !alias.empty() ) (*loaders_)[lib][alias].push_back(loader);
     return true;
 }
 

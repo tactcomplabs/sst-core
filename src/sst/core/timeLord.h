@@ -1,10 +1,10 @@
 // -*- c++ -*-
 
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -34,7 +34,7 @@ class UnitAlgebra;
 /**
     Class for creating and managing TimeConverter objects
  */
-class TimeLord : public SST::Core::Serialization::serializable
+class TimeLord
 {
     typedef std::map<SimTime_t, TimeConverter*>   TimeConverterMap_t;
     typedef std::map<std::string, TimeConverter*> StringToTCMap_t;
@@ -76,9 +76,6 @@ public:
      */
     SimTime_t getSimCycles(const std::string& timeString, const std::string& where);
 
-    void serialize_order(SST::Core::Serialization::serializer& ser) override;
-    ImplementSerializable(SST::TimeLord)
-
 private:
     friend class SST::Simulation;
     friend class SST::Simulation_impl;
@@ -101,7 +98,6 @@ private:
     bool                 initialized;
     std::recursive_mutex slock;
 
-    // Variables that need to be saved when serialized
     std::string        timeBaseString;
     TimeConverterMap_t tcMap;
     UnitAlgebra        timeBase;

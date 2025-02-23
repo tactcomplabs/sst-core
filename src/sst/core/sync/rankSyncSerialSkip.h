@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -20,14 +20,14 @@
 
 namespace SST {
 
-class SyncQueue;
+class RankSyncQueue;
 class TimeConverter;
 
 class RankSyncSerialSkip : public RankSync
 {
 public:
     /** Create a new Sync object which fires with a specified period */
-    RankSyncSerialSkip(RankInfo num_ranks, TimeConverter* minPartTC);
+    RankSyncSerialSkip(RankInfo num_ranks);
     RankSyncSerialSkip() {} // For serialization
     virtual ~RankSyncSerialSkip();
 
@@ -43,12 +43,16 @@ public:
     /** Prepare for the complete() stage */
     void prepareForComplete() override;
 
+    /** Set signals to exchange during sync */
+    void setSignals(int end, int usr, int alrm) override;
+    /** Return exchanged signals after sync */
+    bool getSignals(int& end, int& usr, int& alrm) override;
+
     SimTime_t getNextSyncTime() override { return myNextSyncTime; }
 
-    uint64_t getDataSize() const override;
+    void setRestartTime(SimTime_t time) override;
 
-    void serialize_order(SST::Core::Serialization::serializer& ser) override;
-    ImplementSerializable(SST::RankSyncSerialSkip)
+    uint64_t getDataSize() const override;
 
 private:
     static SimTime_t myNextSyncTime;
@@ -58,10 +62,10 @@ private:
 
     struct comm_pair : public SST::Core::Serialization::serializable
     {
-        SyncQueue* squeue; // SyncQueue
-        char*      rbuf;   // receive buffer
-        uint32_t   local_size;
-        uint32_t   remote_size;
+        RankSyncQueue* squeue; // RankSyncQueue
+        char*          rbuf;   // receive buffer
+        uint32_t       local_size;
+        uint32_t       remote_size;
 
         void serialize_order(SST::Core::Serialization::serializer& UNUSED(ser)) override {}
         ImplementSerializable(comm_pair)
@@ -78,6 +82,9 @@ private:
     double deserializeTime;
 
     Core::ThreadSafe::Spinlock lock;
+    static int                 sig_end_;
+    static int                 sig_usr_;
+    static int                 sig_alrm_;
 };
 
 } // namespace SST

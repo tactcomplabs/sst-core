@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -27,14 +27,14 @@ REENABLE_WARNING
 
 namespace SST {
 
-class SyncQueue;
+class RankSyncQueue;
 class TimeConverter;
 
 class RankSyncParallelSkip : public RankSync
 {
 public:
     /** Create a new Sync object which fires with a specified period */
-    RankSyncParallelSkip(RankInfo num_ranks, TimeConverter* minPartTC);
+    RankSyncParallelSkip(RankInfo num_ranks);
     RankSyncParallelSkip() {} // For serialization
     virtual ~RankSyncParallelSkip();
 
@@ -50,12 +50,16 @@ public:
     /** Prepare for complete() stage */
     void prepareForComplete() override;
 
+    /** Set signals to exchange during sync */
+    void setSignals(int end, int usr, int alrm) override;
+    /** Return exchanged signals after sync */
+    bool getSignals(int& end, int& usr, int& alrm) override;
+
     SimTime_t getNextSyncTime() override { return myNextSyncTime; }
 
-    uint64_t getDataSize() const override;
+    void setRestartTime(SimTime_t time) override;
 
-    void serialize_order(SST::Core::Serialization::serializer& ser) override;
-    ImplementSerializable(SST::RankSyncParallelSkip)
+    uint64_t getDataSize() const override;
 
 private:
     static SimTime_t myNextSyncTime;
@@ -66,10 +70,10 @@ private:
 
     struct comm_send_pair : public SST::Core::Serialization::serializable
     {
-        RankInfo   to_rank;
-        SyncQueue* squeue; // SyncQueue
-        char*      sbuf;
-        uint32_t   remote_size;
+        RankInfo       to_rank;
+        RankSyncQueue* squeue; // RankSyncQueue
+        char*          sbuf;
+        uint32_t       remote_size;
 
         void serialize_order(SST::Core::Serialization::serializer& ser) override
         {
@@ -133,6 +137,9 @@ private:
     Core::ThreadSafe::Barrier allDoneBarrier;
 
     Core::ThreadSafe::Spinlock lock;
+    static int                 sig_end_;
+    static int                 sig_usr_;
+    static int                 sig_alrm_;
 };
 
 } // namespace SST

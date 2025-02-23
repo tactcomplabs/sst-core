@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -18,8 +18,10 @@
 #include "sst/core/event.h"
 #include "sst/core/factory.h"
 #include "sst/core/oneshot.h"
+#include "sst/core/portModule.h"
 #include "sst/core/profile/componentProfileTool.h"
 #include "sst/core/serialization/serializable_base.h"
+#include "sst/core/serialization/serialize.h"
 #include "sst/core/sst_types.h"
 #include "sst/core/statapi/statbase.h"
 #include "sst/core/statapi/statengine.h"
@@ -45,6 +47,15 @@ class SubComponent;
 class SubComponentSlotInfo;
 class TimeConverter;
 class UnitAlgebra;
+
+
+namespace Core {
+namespace Serialization {
+namespace pvt {
+class SerializeBaseComponentHelper;
+} // namespace pvt
+} // namespace Serialization
+} // namespace Core
 
 /**
  * Main component object for the simulation.
@@ -135,15 +146,27 @@ public:
     /** Return the base simulation Output class instance */
     Output&     getSimulationOutput() const;
 
-    /** return the time since the simulation began in units specified by
-        the parameter.
-        @param tc TimeConverter specifying the units */
-    SimTime_t        getCurrentSimTime(TimeConverter* tc) const;
-    /** return the time since the simulation began in the default timebase */
+    /**
+       Return the simulated time since the simulation began in units specified by
+       the parameter.
+
+       @param tc TimeConverter specifying the units
+    */
+    SimTime_t getCurrentSimTime(TimeConverter* tc) const;
+
+    /**
+       Return the simulated time since the simulation began in the
+       default timebase
+    */
     inline SimTime_t getCurrentSimTime() const { return getCurrentSimTime(my_info->defaultTimeBase); }
-    /** return the time since the simulation began in timebase specified
-        @param base Timebase frequency in SI Units */
-    SimTime_t        getCurrentSimTime(const std::string& base) const;
+
+    /**
+       Return the simulated time since the simulation began in
+       timebase specified
+
+       @param base Timebase frequency in SI Units
+    */
+    SimTime_t getCurrentSimTime(const std::string& base) const;
 
     /** Utility function to return the time since the simulation began in nanoseconds */
     SimTime_t getCurrentSimTimeNano() const;
@@ -356,6 +379,8 @@ protected:
             return false;
         }
     }
+
+    void initiateInteractive(const std::string& msg);
 
 private:
     ImplementSerializable(SST::BaseComponent)
@@ -877,6 +902,9 @@ protected:
     std::vector<Profile::ComponentProfileTool*> getComponentProfileTools(const std::string& point);
 
 private:
+    friend class Core::Serialization::pvt::SerializeBaseComponentHelper;
+
+
     ComponentInfo*   my_info     = nullptr;
     Simulation_impl* sim_        = nullptr;
     bool             isExtension = false;
@@ -886,10 +914,11 @@ private:
     std::vector<Clock::HandlerBase*> clock_handlers;
 
     void  addSelfLink(const std::string& name);
-    Link* getLinkFromParentSharedPort(const std::string& port);
+    Link* getLinkFromParentSharedPort(const std::string& port, std::vector<ConfigPortModule>& port_modules);
 
     using StatNameMap = std::map<std::string, std::map<std::string, Statistics::StatisticBase*>>;
 
+    std::vector<PortModule*>                            portModules;
     std::map<StatisticId_t, Statistics::StatisticBase*> m_explicitlyEnabledSharedStats;
     std::map<StatisticId_t, StatNameMap>                m_explicitlyEnabledUniqueStats;
     StatNameMap                                         m_enabledAllStats;
@@ -1093,12 +1122,20 @@ namespace Serialization {
 
 namespace pvt {
 
-void size_basecomponent(serializable_base* s, serializer& ser);
+class SerializeBaseComponentHelper
+{
+public:
+    static void size_basecomponent(serializable_base* s, serializer& ser);
 
-void pack_basecomponent(serializable_base* s, serializer& ser);
+    static void pack_basecomponent(serializable_base* s, serializer& ser);
 
-void unpack_basecomponent(serializable_base*& s, serializer& ser);
+    static void unpack_basecomponent(serializable_base*& s, serializer& ser);
+
+    static void map_basecomponent(serializable_base*& s, serializer& ser, const char* name);
+};
+
 } // namespace pvt
+
 
 template <class T>
 class serialize_impl<T*, typename std::enable_if<std::is_base_of<SST::BaseComponent, T>::value>::type>
@@ -1110,16 +1147,25 @@ class serialize_impl<T*, typename std::enable_if<std::is_base_of<SST::BaseCompon
         serializable_base* sp = static_cast<serializable_base*>(s);
         switch ( ser.mode() ) {
         case serializer::SIZER:
-            pvt::size_basecomponent(sp, ser);
+            pvt::SerializeBaseComponentHelper::size_basecomponent(sp, ser);
             break;
         case serializer::PACK:
-            pvt::pack_basecomponent(sp, ser);
+            pvt::SerializeBaseComponentHelper::pack_basecomponent(sp, ser);
             break;
         case serializer::UNPACK:
-            pvt::unpack_basecomponent(sp, ser);
+            pvt::SerializeBaseComponentHelper::unpack_basecomponent(sp, ser);
+            break;
+        case serializer::MAP:
+            // Add your code here
             break;
         }
         s = static_cast<T*>(sp);
+    }
+
+    void operator()(T*& s, serializer& ser, const char* name)
+    {
+        serializable_base* sp = static_cast<serializable_base*>(s);
+        pvt::SerializeBaseComponentHelper::map_basecomponent(sp, ser, name);
     }
 };
 

@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -52,7 +52,10 @@ SyncProfileToolTime<T>::outputData(FILE* fp)
     fprintf(fp, "%s\n", name.c_str());
     fprintf(fp, "  SyncManager Count = %" PRIu64 "\n", syncmanager_count);
     fprintf(fp, "  Total SyncManager Time = %lfs\n", (float)syncmanager_time / 1000000000.0);
-    fprintf(fp, "  Average SyncManager Time = %" PRIu64 "ns\n", syncmanager_time / syncmanager_count);
+    if ( syncmanager_count == 0 ) { fprintf(fp, "  Average SyncManager Time = N/A\n"); }
+    else {
+        fprintf(fp, "  Average SyncManager Time = %" PRIu64 "ns\n", syncmanager_time / syncmanager_count);
+    }
 }
 
 

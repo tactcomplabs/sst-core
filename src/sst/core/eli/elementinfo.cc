@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -14,6 +14,10 @@
 #include "sst/core/eli/elementinfo.h"
 
 #include "sst/core/eli/elibase.h"
+
+#include <sstream>
+#include <string>
+#include <vector>
 
 namespace SST {
 
@@ -102,6 +106,7 @@ ProvidesStats::toString(std::ostream& os) const
 void
 ProvidesDefaultInfo::toString(std::ostream& os) const
 {
+    if ( !getAlias().empty() ) os << "      " << getName() << " is aliased as: " << getAlias() << std::endl;
     os << "      Description: " << getDescription() << std::endl;
     os << "      ELI version: " << getELIVersionString() << std::endl;
     os << "      Compiled on: " << getCompileDate() << ", using file: " << getCompileFile() << std::endl;
@@ -128,7 +133,7 @@ void
 ProvidesParams::init()
 {
     for ( auto& item : params_ ) {
-        allowedKeys.insert(item.name);
+        allowedKeys.push_back(item.name);
     }
 }
 

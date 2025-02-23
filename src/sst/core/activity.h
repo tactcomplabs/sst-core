@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -25,6 +25,7 @@
 #include <unordered_map>
 
 // Default Priority Settings
+#define INTERACTIVEPRIOIRTY    0
 #define THREADSYNCPRIORITY     20
 #define SYNCPRIORITY           25
 #define STOPACTIONPRIORITY     30
@@ -155,6 +156,9 @@ public:
     /** Returns the queue order associated with this activity */
     inline uint64_t getQueueOrder() const { return queue_order; }
 
+    virtual bool isEvent() { return false; }
+    virtual bool isAction() { return false; }
+
     /** Get a string represenation of the event.  The default version
      * will just use the name of the class, retrieved through the
      * cls_name() function inherited from the serialzable class, which
@@ -176,6 +180,16 @@ public:
     virtual void printTrackingInfo(const std::string& UNUSED(header), Output& UNUSED(out)) const {}
 #endif
 
+    /** Set a new Queue order */
+    void setQueueOrder(uint64_t order) { queue_order = order; }
+
+    virtual void copyAllDeliveryInfo(const Activity* act)
+    {
+        delivery_time  = act->delivery_time;
+        priority_order = act->priority_order;
+        queue_order    = act->queue_order;
+    }
+
 protected:
     /** Set the priority of the Activity */
     void setPriority(uint64_t priority) { priority_order = (priority_order & 0x00000000FFFFFFFFul) | (priority << 32); }
@@ -193,6 +207,7 @@ protected:
         return buf.str();
     }
 
+
     // Function used by derived classes to serialize data members.
     // This class is not serializable, because not all class that
     // inherit from it need to be serializable.
@@ -202,24 +217,20 @@ protected:
         ser& priority_order;
         ser& queue_order;
     }
-    ImplementVirtualSerializable(SST::Activity)
 
-
-        /** Set a new Queue order */
-        void setQueueOrder(uint64_t order)
-    {
-        queue_order = order;
-    }
+    ImplementVirtualSerializable(SST::Activity);
 
 private:
     // Data members
     SimTime_t delivery_time;
+
     // This will hold both the priority (high bits) and the link order
     // (low_bits)
-    uint64_t  priority_order;
+    uint64_t priority_order;
+
     // Used for TimeVortex implementations that don't naturally keep
     // the insertion order
-    uint64_t  queue_order;
+    uint64_t queue_order;
 };
 
 } // namespace SST

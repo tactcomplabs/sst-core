@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -31,8 +31,9 @@ ThreadSyncSimpleSkip::ThreadSyncSimpleSkip(int num_threads, int thread, Simulati
     sim(sim),
     totalWaitTime(0.0)
 {
+    RankInfo rank = sim->getRank();
     for ( int i = 0; i < num_threads; i++ ) {
-        queues.push_back(new ThreadSyncQueue());
+        queues.push_back(new ThreadSyncQueue(rank));
     }
 
     if ( sim->getRank().thread == 0 ) {
@@ -178,24 +179,25 @@ ThreadSyncSimpleSkip::getDataSize() const
 }
 
 void
-ThreadSyncSimpleSkip::serialize_order(SST::Core::Serialization::serializer& ser)
+ThreadSyncSimpleSkip::setSignals(int end, int usr, int alrm)
 {
-    ThreadSync::serialize_order(ser);
-    ser& my_max_period;
-    ser& num_threads;
-    ser& thread;
-    ser& localMinimumNextActivityTime;
-    ser& totalWaitTime;
-    ser& single_rank;
+    sig_end_  = end;
+    sig_usr_  = usr;
+    sig_alrm_ = alrm;
+}
 
-    // No need to serialize
-    // link_map - unused after construction
-    // sim - regenerate
-    // barrier - regenerate & guarantee empty during checkpoint
-    // lock - regenerate
-    // queues - empty
+bool
+ThreadSyncSimpleSkip::getSignals(int& end, int& usr, int& alrm)
+{
+    end  = sig_end_;
+    usr  = sig_usr_;
+    alrm = sig_alrm_;
+    return sig_end_ || sig_usr_ || sig_alrm_;
 }
 
 Core::ThreadSafe::Barrier ThreadSyncSimpleSkip::barrier[3];
+int                       ThreadSyncSimpleSkip::sig_end_(0);
+int                       ThreadSyncSimpleSkip::sig_usr_(0);
+int                       ThreadSyncSimpleSkip::sig_alrm_(0);
 
 } // namespace SST

@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -27,11 +27,20 @@ class BaseComponent;
 class ComponentInfoMap;
 class LinkMap;
 
+class ConfigPortModule;
 class ConfigComponent;
 class ConfigStatistic;
 
 class Simulation_impl;
 class TimeConverter;
+
+namespace Core {
+namespace Serialization {
+namespace pvt {
+class SerializeBaseComponentHelper;
+} // namespace pvt
+} // namespace Serialization
+} // namespace Core
 
 class ComponentInfo
 {
@@ -55,6 +64,7 @@ private:
     friend class Simulation_impl;
     friend class BaseComponent;
     friend class ComponentInfoMap;
+    friend class Core::Serialization::pvt::SerializeBaseComponentHelper;
 
     /**
        Component ID.
@@ -107,10 +117,11 @@ private:
 
     TimeConverter* defaultTimeBase;
 
-    std::map<StatisticId_t, ConfigStatistic>* statConfigs;
-    std::map<std::string, StatisticId_t>*     enabledStatNames;
-    bool                                      enabledAllStats;
-    const ConfigStatistic*                    allStatConfig;
+    std::map<std::string, std::vector<ConfigPortModule>>* portModules;
+    std::map<StatisticId_t, ConfigStatistic>*             statConfigs;
+    std::map<std::string, StatisticId_t>*                 enabledStatNames;
+    bool                                                  enabledAllStats;
+    const ConfigStatistic*                                allStatConfig;
 
     uint8_t statLoadLevel;
 
@@ -203,6 +214,12 @@ public:
             real_comp = real_comp->parent_info;
         return real_comp->getName();
     }
+
+    /**
+       Get the short name for this SubComponent (name not including
+       any parents, so just slot_name[index])
+     */
+    inline std::string getShortName() const { return name.substr(name.find_last_of(':') + 1); }
 
     inline const std::string& getSlotName() const { return slot_name; }
 

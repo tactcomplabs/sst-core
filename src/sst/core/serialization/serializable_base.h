@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -134,6 +134,7 @@ protected:
     static void serializable_abort(uint32_t line, const char* file, const char* func, const char* obj);
 };
 
+
 template <class T>
 class serializable_type
 {};
@@ -145,12 +146,12 @@ public:                                                                         
         ::SST::Core::Serialization::serializable_base::serializable_abort(__LINE__, __FILE__, __FUNCTION__, #obj); \
     }                                                                                                              \
     virtual const char* cls_name() const override { return #obj; }                                                 \
-    virtual uint32_t    cls_id() const override                                                                          \
+    virtual uint32_t    cls_id() const override                                                                    \
     {                                                                                                              \
         throw_exc();                                                                                               \
         return 0;                                                                                                  \
     }                                                                                                              \
-    virtual std::string serialization_name() const override                                                                \
+    virtual std::string serialization_name() const override                                                        \
     {                                                                                                              \
         throw_exc();                                                                                               \
         return "";                                                                                                 \
@@ -279,10 +280,6 @@ const uint32_t serializable_builder_impl<T>::cls_id_ =
 #define SerializableName(obj) #obj
 
 #define DeclareSerializable(obj)
-
-// Serialization macros for checkpoint/debug serialization
-#define SST_SER(obj)        ser& obj;
-#define SST_SER_AS_PTR(obj) ser | obj;
 
 //#include "sst/core/serialization/serialize_serializable_base.h"
 

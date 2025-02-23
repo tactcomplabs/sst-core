@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -29,6 +29,7 @@ ComponentInfo::ComponentInfo(ComponentId_t id, const std::string& name) :
     component(nullptr),
     params(nullptr),
     defaultTimeBase(nullptr),
+    portModules(nullptr),
     statConfigs(nullptr),
     enabledStatNames(nullptr),
     enabledAllStats(false),
@@ -49,6 +50,7 @@ ComponentInfo::ComponentInfo() :
     component(nullptr),
     params(nullptr),
     defaultTimeBase(nullptr),
+    portModules(nullptr),
     statConfigs(nullptr),
     enabledStatNames(nullptr),
     enabledAllStats(false),
@@ -89,6 +91,7 @@ ComponentInfo::ComponentInfo(
     component(nullptr),
     params(/*new Params()*/ nullptr),
     defaultTimeBase(nullptr),
+    portModules(nullptr),
     statConfigs(nullptr),
     enabledStatNames(nullptr),
     enabledAllStats(false),
@@ -113,6 +116,7 @@ ComponentInfo::ComponentInfo(
     component(nullptr),
     params(&ccomp->params),
     defaultTimeBase(nullptr),
+    portModules(&ccomp->portModules),
     statConfigs(&ccomp->statistics),
     enabledStatNames(&ccomp->enabledStatNames),
     enabledAllStats(ccomp->enabledAllStats),
@@ -157,6 +161,7 @@ ComponentInfo::ComponentInfo(ComponentInfo&& o) :
     subComponents(std::move(o.subComponents)),
     params(o.params),
     defaultTimeBase(o.defaultTimeBase),
+    portModules(o.portModules),
     statConfigs(o.statConfigs),
     allStatConfig(o.allStatConfig),
     statLoadLevel(o.statLoadLevel),
@@ -267,6 +272,9 @@ ComponentInfo::serialize_order(SST::Core::Serialization::serializer& ser)
         }
         break;
     }
+    case SST::Core::Serialization::serializer::MAP:
+        // Add your code here
+        break;
     }
 
     // Only the parent Component will call serialize_comp directly.

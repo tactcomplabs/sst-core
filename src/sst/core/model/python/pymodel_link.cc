@@ -1,10 +1,10 @@
 // -*- c++ -*-
 
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -192,8 +192,9 @@ PyTypeObject PyModel_LinkType = {
     0,                          /* tp_version_tag */
     nullptr,                    /* tp_finalize */
     SST_TP_VECTORCALL           /* Python3.8+ */
-        SST_TP_PRINT_DEP        /* Python3.8 only */
-            SST_TP_WATCHED      /* Python3.12+ */
+    SST_TP_PRINT_DEP            /* Python3.8 only */
+    SST_TP_WATCHED              /* Python3.12+ */
+    SST_TP_VERSIONS_USED        /* Python3.13+ only */
 };
 #if PY_MAJOR_VERSION == 3
 #if PY_MINOR_VERSION == 8

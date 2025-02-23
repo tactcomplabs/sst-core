@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -14,6 +14,7 @@
 
 #include "sst/core/params.h"
 
+#include "sst/core/output.h"
 #include "sst/core/unitAlgebra.h"
 
 #include <map>
@@ -223,9 +224,13 @@ Params::contains(const key_type& k) const
 }
 
 void
-Params::pushAllowedKeys(const KeySet_t& keys)
+Params::pushAllowedKeys(const std::vector<std::string>& keys)
 {
-    allowedKeys.push_back(keys);
+    KeySet_t key_set;
+    for ( auto x : keys ) {
+        key_set.insert(x);
+    }
+    allowedKeys.push_back(key_set);
 }
 
 void
@@ -283,6 +288,9 @@ Params::serialize_order(SST::Core::Serialization::serializer& ser)
         ser& globals;
         for ( auto x : globals )
             data.push_back(&global_params[x]);
+        break;
+    case SST::Core::Serialization::serializer::MAP:
+        // This function not called in mapping mode
         break;
     }
 }

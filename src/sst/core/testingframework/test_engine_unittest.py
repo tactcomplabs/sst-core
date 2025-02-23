@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2009-2024 NTESS. Under the terms
+# Copyright 2009-2025 NTESS. Under the terms
 # of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 #
-# Copyright (c) 2009-2024, NTESS
+# Copyright (c) 2009-2025, NTESS
 # All rights reserved.
 #
 # This file is part of the SST software package. For license
@@ -20,11 +20,19 @@ import unittest
 import traceback
 import threading
 import time
-from datetime import datetime
+import datetime
+from typing import Callable, Dict, List, Optional, TextIO, Tuple, Any
+
+if sys.version_info.minor >= 11:
+    def get_current_time():
+        return datetime.datetime.now(datetime.UTC)
+else:
+    def get_current_time():
+        return datetime.datetime.utcnow()
 
 ################################################################################
 
-def check_module_conditional_import(module_name):
+def check_module_conditional_import(module_name: str) -> bool:
     """ Test to see if we can import a module
 
         See: https://stackoverflow.com/questions/14050281/how-to-check-if-a-python-module-exists-without-importing-it
@@ -78,7 +86,7 @@ from test_engine_junit import JUnitTestCase
 
 ################################################################################
 
-def verify_concurrent_test_engine_available():
+def verify_concurrent_test_engine_available() -> None:
     """ Check to see if we can load testtools if the user wants to run
         in concurrent mode.
 
@@ -148,7 +156,7 @@ class SSTTextTestRunner(unittest.TextTestRunner):
             Returns:
                 True if all tests passing with no errors, false otherwise
         """
-        return run_results.wasSuccessful and \
+        return run_results.wasSuccessful() and \
         len(run_results.failures) == 0 and \
         len(run_results.errors) == 0 and \
         len(run_results.unexpectedSuccesses) == 0 and \
@@ -324,7 +332,7 @@ class SSTTextTestResult(unittest.TestResult):
         else:
             self._testcase_name = "FailedTest"
             self._testsuite_name = "FailedTest"
-        timestamp = datetime.utcnow().strftime("%Y_%m%d_%H:%M:%S.%f utc")
+        timestamp = get_current_time().strftime("%Y_%m%d_%H:%M:%S.%f utc")
         self._junit_test_case = JUnitTestCase(self._test_name,
                                               self._testcase_name,
                                               timestamp=timestamp)
@@ -452,7 +460,7 @@ class SSTTextTestResult(unittest.TestResult):
 
 ###
 
-    def printErrors(self):
+    def printErrors(self) -> None:
         if self.dots or self.showAll:
             self.stream.writeln()
         log("=" * 70)
@@ -505,7 +513,7 @@ class SSTTextTestResult(unittest.TestResult):
 ####
 
     def _is_test_of_type_ssttestcase(self, test):
-        """ Detirmine if this is is within a valid SSTTestCase object by
+        """ Determine if this is is within a valid SSTTestCase object by
             checking if a unique SSTTestCase function exists
             return: True if this is a test within a valid SSTTestCase object
         """
@@ -661,59 +669,59 @@ class SSTTestSuiteResultData:
     """ Support class to hold result data for a specific testsuite
         Results are stored as lists of test names
     """
-    def __init__(self):
-        self._tests_passing = []
-        self._tests_failing = []
-        self._tests_errored = []
-        self._tests_skiped = []
-        self._tests_expectedfailed = []
-        self._tests_unexpectedsuccess = []
+    def __init__(self) -> None:
+        self._tests_passing: List[SSTTestCase] = []
+        self._tests_failing: List[SSTTestCase] = []
+        self._tests_errored: List[SSTTestCase] = []
+        self._tests_skipped: List[SSTTestCase] = []
+        self._tests_expectedfailed: List[SSTTestCase] = []
+        self._tests_unexpectedsuccess: List[SSTTestCase] = []
 
-    def add_success(self, test):
+    def add_success(self, test: SSTTestCase) -> None:
         """ Add a test to the success record"""
         self._tests_passing.append(test)
 
-    def add_failure(self, test):
+    def add_failure(self, test: SSTTestCase) -> None:
         """ Add a test to the failure record"""
         self._tests_failing.append(test)
 
-    def add_error(self, test):
+    def add_error(self, test: SSTTestCase) -> None:
         """ Add a test to the error record"""
         self._tests_errored.append(test)
 
-    def add_skip(self, test):
+    def add_skip(self, test: SSTTestCase) -> None:
         """ Add a test to the skip record"""
-        self._tests_skiped.append(test)
+        self._tests_skipped.append(test)
 
-    def add_expected_failure(self, test):
+    def add_expected_failure(self, test: SSTTestCase) -> None:
         """ Add a test to the expected failure record"""
         self._tests_expectedfailed.append(test)
 
-    def add_unexpected_success(self, test):
+    def add_unexpected_success(self, test: SSTTestCase) -> None:
         """ Add a test to the unexpected success record"""
         self._tests_unexpectedsuccess.append(test)
 
-    def get_passing(self):
+    def get_passing(self) -> List[SSTTestCase]:
         """ Return the tests passing list"""
         return self._tests_passing
 
-    def get_failed(self):
+    def get_failed(self) -> List[SSTTestCase]:
         """ Return the tests failed list"""
         return self._tests_failing
 
-    def get_errored(self):
+    def get_errored(self) -> List[SSTTestCase]:
         """ Return the tests errored list"""
         return self._tests_errored
 
-    def get_skiped(self):
+    def get_skipped(self) -> List[SSTTestCase]:
         """ Return the tests skipped list"""
-        return self._tests_skiped
+        return self._tests_skipped
 
-    def get_expectedfailed(self):
+    def get_expectedfailed(self) -> List[SSTTestCase]:
         """ Return the expected failed list"""
         return self._tests_expectedfailed
 
-    def get_unexpectedsuccess(self):
+    def get_unexpectedsuccess(self) -> List[SSTTestCase]:
         """ Return the tests unexpected success list"""
         return self._tests_unexpectedsuccess
 
@@ -722,34 +730,34 @@ class SSTTestSuiteResultData:
 class SSTTestSuitesResultsDict:
     """ Support class handle of dict of result data for all testsuites
     """
-    def __init__(self):
-        self.testsuitesresultsdict = {}
+    def __init__(self) -> None:
+        self.testsuitesresultsdict: Dict[str, SSTTestSuiteResultData] = {}
 
-    def add_success(self, test):
+    def add_success(self, test: SSTTestCase) -> None:
         """ Add a testsuite and test to the success record"""
         self._get_testresult_from_testmodulecase(test).add_success(test)
 
-    def add_failure(self, test):
+    def add_failure(self, test: SSTTestCase) -> None:
         """ Add a testsuite and test to the failure record"""
         self._get_testresult_from_testmodulecase(test).add_failure(test)
 
-    def add_error(self, test):
+    def add_error(self, test: SSTTestCase) -> None:
         """ Add a testsuite and test to the error record"""
         self._get_testresult_from_testmodulecase(test).add_error(test)
 
-    def add_skip(self, test):
+    def add_skip(self, test: SSTTestCase) -> None:
         """ Add a testsuite and test to the skip record"""
         self._get_testresult_from_testmodulecase(test).add_skip(test)
 
-    def add_expected_failure(self, test):
+    def add_expected_failure(self, test: SSTTestCase) -> None:
         """ Add a testsuite and test to the expected failure record"""
         self._get_testresult_from_testmodulecase(test).add_expected_failure(test)
 
-    def add_unexpected_success(self, test):
+    def add_unexpected_success(self, test: SSTTestCase) -> None:
         """ Add a testsuite and test to the unexpected success record"""
         self._get_testresult_from_testmodulecase(test).add_unexpected_success(test)
 
-    def log_all_results(self):
+    def log_all_results(self) -> None:
         """ Log all result catagories by testsuite  """
         # Log the data by key
         for tmtc_name in self.testsuitesresultsdict:
@@ -760,14 +768,14 @@ class SSTTestSuitesResultsDict:
                 log(" - FAILED  : {0}".format(testname))
             for testname in self.testsuitesresultsdict[tmtc_name].get_errored():
                 log(" - ERROR   : {0}".format(testname))
-            for testname in self.testsuitesresultsdict[tmtc_name].get_skiped():
+            for testname in self.testsuitesresultsdict[tmtc_name].get_skipped():
                 log(" - SKIPPED : {0}".format(testname))
             for testname in self.testsuitesresultsdict[tmtc_name].get_expectedfailed():
                 log(" - EXPECTED FAILED    : {0}".format(testname))
             for testname in self.testsuitesresultsdict[tmtc_name].get_unexpectedsuccess():
                 log(" - UNEXPECTED SUCCESS : {0}".format(testname))
 
-    def log_fail_error_skip_unexpeced_results(self):
+    def log_fail_error_skip_unexpeced_results(self) -> None:
         """ Log non-success result catagories by testsuite  """
         # Log the data by key
         for tmtc_name in self.testsuitesresultsdict:
@@ -788,18 +796,18 @@ class SSTTestSuitesResultsDict:
                 for testname in self.testsuitesresultsdict[tmtc_name].get_unexpectedsuccess():
                     log(" - UNEXPECTED SUCCESS : {0}".format(testname))
 
-    def _get_testresult_from_testmodulecase(self, test):
+    def _get_testresult_from_testmodulecase(self, test: SSTTestCase) -> SSTTestSuiteResultData:
         tm_tc = self._get_test_module_test_case_name(test)
         if tm_tc not in self.testsuitesresultsdict.keys():
             self.testsuitesresultsdict[tm_tc] = SSTTestSuiteResultData()
         return self.testsuitesresultsdict[tm_tc]
 
-    def _get_test_module_test_case_name(self, test):
+    def _get_test_module_test_case_name(self, test: SSTTestCase) -> str:
         return "{0}.{1}".format(self._get_test_module_name(test),
                                 self._get_test_case_name(test))
 
-    def _get_test_case_name(self, test):
+    def _get_test_case_name(self, test: SSTTestCase) -> str:
         return strqual(test.__class__)
 
-    def _get_test_module_name(self, test):
+    def _get_test_module_name(self, test: SSTTestCase) -> str:
         return strclass(test.__class__)

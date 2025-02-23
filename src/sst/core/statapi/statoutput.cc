@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -239,9 +239,11 @@ StatisticFieldsOutput::getFieldTypeShortName(fieldType_t type)
 void
 StatisticFieldsOutput::registerStatistic(StatisticBase* stat)
 {
+    this->lock();
     startRegisterFields(stat);
     stat->registerOutputFields(this);
     stopRegisterFields();
+    this->unlock();
 }
 
 // Start / Stop of register

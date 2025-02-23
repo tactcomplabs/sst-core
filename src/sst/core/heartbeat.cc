@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -34,15 +34,26 @@ SimulatorHeartbeat::SimulatorHeartbeat(
     rank(this_rank),
     m_period(period)
 {
-    sim->insertActivity(period->getFactor(), this);
+    SimTime_t next =
+        (m_period->getFactor() * (sim->getCurrentSimCycle() / m_period->getFactor())) + m_period->getFactor();
+
+    sim->insertActivity(next, this);
+
     if ( (0 == this_rank) ) { lastTime = sst_get_cpu_time(); }
-    // if( (0 == this_rank) ) {
-    //     sim->insertActivity( period->getFactor(), this );
-    //     lastTime = sst_get_cpu_time();
-    // }
 }
 
 SimulatorHeartbeat::~SimulatorHeartbeat() {}
+
+void
+SimulatorHeartbeat::schedule()
+{
+    Simulation_impl* sim = Simulation_impl::getSimulation();
+    SimTime_t        next =
+        (m_period->getFactor() * (sim->getCurrentSimCycle() / m_period->getFactor())) + m_period->getFactor();
+    sim->insertActivity(next, this);
+
+    if ( (0 == rank) ) { lastTime = sst_get_cpu_time(); }
+}
 
 void
 SimulatorHeartbeat::execute(void)

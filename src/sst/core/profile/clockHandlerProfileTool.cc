@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -14,6 +14,7 @@
 #include "sst/core/profile/clockHandlerProfileTool.h"
 
 #include "sst/core/output.h"
+#include "sst/core/params.h"
 #include "sst/core/sst_types.h"
 
 #include <chrono>
@@ -22,7 +23,7 @@ namespace SST {
 namespace Profile {
 
 
-ClockHandlerProfileTool::ClockHandlerProfileTool(const std::string& name, Params& params) : HandlerProfileToolAPI(name)
+ClockHandlerProfileTool::ClockHandlerProfileTool(const std::string& name, Params& params) : ProfileTool(name)
 {
     std::string level = params.find<std::string>("level", "type");
     if ( level == "global" )
@@ -40,7 +41,7 @@ ClockHandlerProfileTool::ClockHandlerProfileTool(const std::string& name, Params
 }
 
 std::string
-ClockHandlerProfileTool::getKeyForHandler(const HandlerMetaData& mdata)
+ClockHandlerProfileTool::getKeyForHandler(const AttachPointMetaData& mdata)
 {
     const ClockHandlerMetaData& data = dynamic_cast<const ClockHandlerMetaData&>(mdata);
 
@@ -70,13 +71,13 @@ ClockHandlerProfileToolCount::ClockHandlerProfileToolCount(const std::string& na
 {}
 
 uintptr_t
-ClockHandlerProfileToolCount::registerHandler(const HandlerMetaData& mdata)
+ClockHandlerProfileToolCount::registerHandler(const AttachPointMetaData& mdata)
 {
     return reinterpret_cast<uintptr_t>(&counts_[getKeyForHandler(mdata)]);
 }
 
 void
-ClockHandlerProfileToolCount::handlerStart(uintptr_t key)
+ClockHandlerProfileToolCount::beforeHandler(uintptr_t key, const Cycle_t& UNUSED(cycle))
 {
     (*reinterpret_cast<uint64_t*>(key))++;
 }
@@ -100,7 +101,7 @@ ClockHandlerProfileToolTime<T>::ClockHandlerProfileToolTime(const std::string& n
 
 template <typename T>
 uintptr_t
-ClockHandlerProfileToolTime<T>::registerHandler(const HandlerMetaData& mdata)
+ClockHandlerProfileToolTime<T>::registerHandler(const AttachPointMetaData& mdata)
 {
     return reinterpret_cast<uintptr_t>(&times_[getKeyForHandler(mdata)]);
 }

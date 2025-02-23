@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -29,6 +29,7 @@ REENABLE_WARNING
 #endif
 
 #include "sst/core/activity.h"
+#include "sst/core/checkpointAction.h"
 #include "sst/core/config.h"
 #include "sst/core/configGraph.h"
 #include "sst/core/cputimer.h"
@@ -42,6 +43,7 @@ REENABLE_WARNING
 #include "sst/core/model/sstmodel.h"
 #include "sst/core/objectComms.h"
 #include "sst/core/rankInfo.h"
+#include "sst/core/realtime.h"
 #include "sst/core/simulation_impl.h"
 #include "sst/core/statapi/statengine.h"
 #include "sst/core/stringize.h"
@@ -69,6 +71,7 @@ using namespace SST::Core;
 using namespace SST::Partition;
 using namespace std;
 using namespace SST;
+
 
 static SST::Output g_output;
 
@@ -118,45 +121,6 @@ force_rank_sequential_stop(bool enable, const RankInfo& myRank, const RankInfo& 
     }
     MPI_Barrier(MPI_COMM_WORLD);
 #endif
-}
-
-static void
-SimulationSigHandler(int sig)
-{
-    Simulation_impl::setSignal(sig);
-    if ( sig == SIGINT || sig == SIGTERM ) {
-        signal(sig, SIG_DFL); // Restore default handler
-    }
-}
-
-static void
-setupSignals(uint32_t threadRank)
-{
-    if ( 0 == threadRank ) {
-        if ( SIG_ERR == signal(SIGUSR1, SimulationSigHandler) ) {
-            g_output.fatal(CALL_INFO, 1, "Installation of SIGUSR1 signal handler failed.\n");
-        }
-        if ( SIG_ERR == signal(SIGUSR2, SimulationSigHandler) ) {
-            g_output.fatal(CALL_INFO, 1, "Installation of SIGUSR2 signal handler failed\n");
-        }
-        if ( SIG_ERR == signal(SIGINT, SimulationSigHandler) ) {
-            g_output.fatal(CALL_INFO, 1, "Installation of SIGINT signal handler failed\n");
-        }
-        if ( SIG_ERR == signal(SIGALRM, SimulationSigHandler) ) {
-            g_output.fatal(CALL_INFO, 1, "Installation of SIGALRM signal handler failed\n");
-        }
-        if ( SIG_ERR == signal(SIGTERM, SimulationSigHandler) ) {
-            g_output.fatal(CALL_INFO, 1, "Installation of SIGTERM signal handler failed\n");
-        }
-
-        g_output.verbose(CALL_INFO, 1, 0, "Signal handler registration is completed\n");
-    }
-    else {
-        /* Other threads don't want to receive the signal */
-        sigset_t maskset;
-        sigfillset(&maskset);
-        pthread_sigmask(SIG_BLOCK, &maskset, nullptr);
-    }
 }
 
 static void
@@ -477,16 +441,31 @@ start_simulation(uint32_t tid, SimThreadInfo_t& info, Core::ThreadSafe::Barrier&
     Core::MemPoolAccessor::initializeLocalData(tid);
     info.myRank.thread = tid;
 
-    if ( tid ) {
-        /* already did Thread Rank 0 in main() */
-        setupSignals(tid);
-    }
+    bool restart = info.config->load_from_checkpoint();
 
     ////// Create Simulation Objects //////
-    SST::Simulation_impl* sim       = Simulation_impl::createSimulation(info.config, info.myRank, info.world_size);
+    SST::Simulation_impl* sim = Simulation_impl::createSimulation(info.config, info.myRank, info.world_size, restart);
     double                start_run = 0.0;
 
-    bool restart = info.config->load_from_checkpoint();
+    // Setup the real time actions (all of these have to be defined on
+    // the command-line or SDL file, they will not be checkpointed and
+    // restored
+    sim->setupSimActions(info.config);
+
+    // Thread zero needs to initialize the checkpoint data structures
+    // if any checkpointing options were turned on.  This will return
+    // an empty string if checkpointing was not enabled.
+
+    if ( tid == 0 ) {
+        sim->checkpoint_directory_ = Checkpointing::initializeCheckpointInfrastructure(
+            info.config, sim->real_time_->canInitiateCheckpoint(), info.myRank.rank);
+
+        if ( sim->checkpoint_directory_ != "" ) {
+            // Write out any data structures needed for all checkpoints
+        }
+    }
+    // Wait for all checkpointing files to be initialzed
+    barrier.wait();
 
     if ( !restart ) {
         double start_build = sst_get_cpu_time();
@@ -562,20 +541,7 @@ start_simulation(uint32_t tid, SimThreadInfo_t& info, Core::ThreadSafe::Barrier&
                 g_output.verbose(
                     CALL_INFO, 1, 0, "# Start time: %04u/%02u/%02u at: %02u:%02u:%02u\n", (now->tm_year + 1900),
                     (now->tm_mon + 1), now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec);
-
-                if ( info.config->exit_after() > 0 ) {
-                    time_t     stop_time = the_time + info.config->exit_after();
-                    struct tm* end       = localtime(&stop_time);
-                    g_output.verbose(
-                        CALL_INFO, 1, 0, "# Will end by: %04u/%02u/%02u at: %02u:%02u:%02u\n", (end->tm_year + 1900),
-                        (end->tm_mon + 1), end->tm_mday, end->tm_hour, end->tm_min, end->tm_sec);
-
-                    /* Set the alarm */
-                    alarm(info.config->exit_after());
-                }
             }
-            // g_output.output("info.config.stopAtCycle = %s\n",info.config->stopAtCycle.c_str());
-            sim->setStopAtCycle(info.config);
 
             if ( tid == 0 && info.world_size.rank > 1 ) {
                 // If we are a MPI_parallel job, need to makes sure that all used
@@ -603,6 +569,7 @@ start_simulation(uint32_t tid, SimThreadInfo_t& info, Core::ThreadSafe::Barrier&
 
                 Comms::broadcast(lib_names, 0);
                 Factory::getFactory()->loadUnloadedLibraries(lib_names);
+
 #endif
             }
             barrier.wait();
@@ -620,11 +587,23 @@ start_simulation(uint32_t tid, SimThreadInfo_t& info, Core::ThreadSafe::Barrier&
 
             sim->prepare_for_run();
         }
-    }
+    } // end if !restart
     else {
+        double start_build = sst_get_cpu_time();
+
         // Finish parsing checkpoint for restart
         sim->restart(info.config);
+
+        barrier.wait();
+
+        if ( info.myRank.thread == 0 ) { sim->exchangeLinkInfo(); }
+
+        barrier.wait();
+
+        start_run       = sst_get_cpu_time();
+        info.build_time = start_run - start_build;
     }
+
     /* Run Simulation */
     if ( info.config->runMode() == SimulationRunMode::RUN || info.config->runMode() == SimulationRunMode::BOTH ) {
         sim->run();
@@ -704,6 +683,7 @@ start_simulation(uint32_t tid, SimThreadInfo_t& info, Core::ThreadSafe::Barrier&
     delete sim;
 }
 
+
 int
 main(int argc, char* argv[])
 {
@@ -743,12 +723,10 @@ main(int argc, char* argv[])
     // If restarting, update config from checkpoint
     uint32_t cpt_num_threads, cpt_num_ranks;
     if ( restart ) {
-        size_t size;
-        char*  buffer;
+        // Need to open the registry file
+        if ( cfg.checkConfigFile() == false ) { return -1; /* checkConfigFile provides error message */ }
 
-        SST::Core::Serialization::serializer ser;
-        ser.enable_pointer_tracking();
-        std::ifstream fs(cfg.configFile(), std::ios::binary);
+        std::ifstream fs(cfg.configFile());
         if ( !fs.is_open() ) {
             if ( fs.bad() ) {
                 fprintf(stderr, "Unable to open checkpoint file [%s]: badbit set\n", cfg.configFile().c_str());
@@ -762,12 +740,55 @@ main(int argc, char* argv[])
             return -1;
         }
 
-        fs.read(reinterpret_cast<char*>(&size), sizeof(size));
-        buffer = new char[size];
-        fs.read(buffer, size);
+        std::string line;
 
-        std::string                     cpt_lib_path, cpt_timebase, cpt_output_directory;
-        std::string                     cpt_output_core_prefix, cpt_debug_file, cpt_prefix;
+        // Look for the line that has the global data file
+        std::string globals_filename;
+        std::string search_str("** (globals): ");
+        while ( std::getline(fs, line) ) {
+            // Look for lines starting with "** (globals):", then get the filename.
+            size_t pos = line.find(search_str);
+            if ( pos == 0 ) {
+                // Get the file name
+                globals_filename = line.substr(search_str.length());
+                break;
+            }
+        }
+        fs.close();
+
+        // Need to open the globals file
+        std::ifstream fs_globals(globals_filename);
+        if ( !fs_globals.is_open() ) {
+            if ( fs_globals.bad() ) {
+                fprintf(stderr, "Unable to open checkpoint globals file [%s]: badbit set\n", globals_filename.c_str());
+                return -1;
+            }
+            if ( fs_globals.fail() ) {
+                fprintf(
+                    stderr, "Unable to open checkpoint globals file [%s]: %s\n", globals_filename.c_str(),
+                    strerror(errno));
+                return -1;
+            }
+            fprintf(stderr, "Unable to open checkpoint globals file [%s]: unknown error\n", globals_filename.c_str());
+            return -1;
+        }
+
+        size_t size;
+        char*  buffer;
+
+        SST::Core::Serialization::serializer ser;
+        ser.enable_pointer_tracking();
+
+        fs_globals.read(reinterpret_cast<char*>(&size), sizeof(size));
+        buffer = new char[size];
+        fs_globals.read(buffer, size);
+
+        std::string                     cpt_lib_path;
+        std::string                     cpt_timebase;
+        std::string                     cpt_output_directory;
+        std::string                     cpt_output_core_prefix;
+        std::string                     cpt_debug_file;
+        std::string                     cpt_prefix;
         int                             cpt_output_verbose = 0;
         std::map<std::string, uint32_t> cpt_params_key_map;
         std::vector<std::string>        cpt_params_key_map_reverse;
@@ -787,7 +808,7 @@ main(int argc, char* argv[])
         ser& cpt_params_key_map_reverse;
         ser& cpt_params_next_key_id;
 
-        fs.close();
+        fs_globals.close();
         delete[] buffer;
 
         // KG these provide override support on restart ( being worked on )
@@ -815,14 +836,14 @@ main(int argc, char* argv[])
         Params::nextKeyID     = cpt_params_next_key_id;
     }
 
-    // Check to see if the config file exists
-    cfg.checkConfigFile();
-
     // If we are doing a parallel load with a file per rank, add the
     // rank number to the file name before the extension
     if ( cfg.parallel_load() && cfg.parallel_load_mode_multi() && world_size.rank != 1 ) {
         addRankToFileName(cfg.configFile_, myRank.rank);
     }
+
+    // Check to see if the config file exists
+    if ( cfg.checkConfigFile() == false ) { return -1; /* checkConfigFile provides error message */ }
 
     // Create the factory.  This may be needed to load an external model definition
     Factory* factory = new Factory(cfg.getLibPath());
@@ -1049,8 +1070,8 @@ main(int argc, char* argv[])
     } // end if ( !restart )
 
     if ( cfg.enable_sig_handling() ) {
-        g_output.verbose(CALL_INFO, 1, 0, "Signal handlers will be registered for USR1, USR2, INT and TERM...\n");
-        setupSignals(0);
+        g_output.verbose(CALL_INFO, 1, 0, "Signal handlers will be registered for USR1, USR2, INT, ALRM, and TERM\n");
+        RealTimeManager::installSignalHandlers();
     }
     else {
         // Print out to say disabled?
@@ -1064,6 +1085,7 @@ main(int argc, char* argv[])
     Simulation_impl::factory    = factory;
     Simulation_impl::sim_output = g_output;
     Simulation_impl::resizeBarriers(world_size.thread);
+    CheckpointAction::barrier.resize(world_size.thread);
 #ifdef USE_MEMPOOL
     MemPoolAccessor::initializeGlobalData(world_size.thread, cfg.cache_align_mempools());
 #endif
@@ -1081,6 +1103,11 @@ main(int argc, char* argv[])
 
     double end_serial_build = sst_get_cpu_time();
 
+    /* Block signals for all threads */
+    sigset_t maskset;
+    sigfillset(&maskset);
+    pthread_sigmask(SIG_BLOCK, &maskset, nullptr);
+
     try {
         Output::setThreadID(std::this_thread::get_id(), 0);
         for ( uint32_t i = 1; i < world_size.thread; i++ ) {
@@ -1088,6 +1115,8 @@ main(int argc, char* argv[])
             Output::setThreadID(threads[i].get_id(), i);
         }
 
+        /* Unblock signals on thread 0 */
+        pthread_sigmask(SIG_UNBLOCK, &maskset, NULL);
         start_simulation(0, threadInfo[0], mainBarrier);
         for ( uint32_t i = 1; i < world_size.thread; i++ ) {
             threads[i].join();

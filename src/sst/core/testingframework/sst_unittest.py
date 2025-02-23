@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2009-2024 NTESS. Under the terms
+# Copyright 2009-2025 NTESS. Under the terms
 # of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 #
-# Copyright (c) 2009-2024, NTESS
+# Copyright (c) 2009-2025, NTESS
 # All rights reserved.
 #
 # This file is part of the SST software package. For license
@@ -26,7 +26,10 @@ import sys
 import os
 import unittest
 import threading
+import signal
 import time
+import multiprocessing
+from typing import Optional
 
 import test_engine_globals
 from sst_unittest_support import *
@@ -38,6 +41,11 @@ from test_engine_junit import JUnitTestSuite
 from test_engine_junit import junit_to_xml_report_file
 #from test_engine_junit import junit_to_xml_report_string
 
+if not sys.warnoptions:
+    import warnings
+    warnings.simplefilter("once") # Change the filter in this process
+    os.environ["PYTHONWARNINGS"] = "once" # Also affect subprocesses
+
 class SSTTestCase(unittest.TestCase):
     """ This class is main SSTTestCase class for the SST Testing Frameworks
 
@@ -48,21 +56,20 @@ class SSTTestCase(unittest.TestCase):
         basic resource for how to develop tests for this frameworks.
     """
 
-    def __init__(self, methodName):
+    def __init__(self, methodName: str) -> None:
         # NOTE: __init__ is called at startup for all tests before any
         #       setUpModules(), setUpClass(), setUp() and the like are called.
-        super(SSTTestCase, self).__init__(methodName)
+        super().__init__(methodName)
         self.testname = methodName
-        parent_module_path = os.path.dirname(sys.modules[self.__class__.__module__].__file__)
+        parent_module_path: str = os.path.dirname(sys.modules[self.__class__.__module__].__file__)  # type: ignore [assignment,type-var]
         self._testsuite_dirpath = parent_module_path
-        #log_forced("SSTTestCase: __init__() - {0}".format(self.testname))
         self.initializeClass(self.testname)
         self._start_test_time = time.time()
         self._stop_test_time = time.time()
 
 ###
 
-    def initializeClass(self, testname):
+    def initializeClass(self, testname: str) -> None:
         """ The method is called by the Frameworks immediately before class is
         initialized.
 
@@ -80,10 +87,13 @@ class SSTTestCase(unittest.TestCase):
         """
         # Placeholder method for overridden method in derived class
         #log_forced("\nSSTTestCase: initializeClass() - {0}".format(testname))
+        from warnings import warn
+        warn("initializeClass() is deprecated and will be removed in SST 15.",
+             DeprecationWarning, stacklevel=2)
 
 ###
 
-    def setUp(self):
+    def setUp(self) -> None:
         """ The method is called by the Frameworks immediately before a test is run
 
         **NOTICE**:
@@ -106,7 +116,7 @@ class SSTTestCase(unittest.TestCase):
 
 ###
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         """ The method is called by the Frameworks immediately after a test finishes
 
         **NOTICE**:
@@ -127,7 +137,7 @@ class SSTTestCase(unittest.TestCase):
 ###
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         """ This method is called by the Frameworks immediately before the TestCase starts
 
         **NOTICE**:
@@ -145,7 +155,7 @@ class SSTTestCase(unittest.TestCase):
 ###
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
         """ This method is called by the Frameworks immediately after a TestCase finishes
 
         **NOTICE**:
@@ -162,7 +172,7 @@ class SSTTestCase(unittest.TestCase):
 
 ###
 
-    def get_testsuite_name(self):
+    def get_testsuite_name(self) -> str:
         """ Return the testsuite (module) name
 
         Returns:
@@ -172,7 +182,7 @@ class SSTTestCase(unittest.TestCase):
 
 ###
 
-    def get_testcase_name(self):
+    def get_testcase_name(self) -> str:
         """ Return the testcase name
 
         Returns:
@@ -181,17 +191,17 @@ class SSTTestCase(unittest.TestCase):
         return "{0}".format(strqual(self.__class__))
 ###
 
-    def get_testsuite_dir(self):
+    def get_testsuite_dir(self) -> str:
         """ Return the directory path of the testsuite that is being run
 
         Returns:
-            (str)The path of the testsite directory
+            (str) The path of the testsite directory
         """
         return self._testsuite_dirpath
 
 ###
 
-    def get_test_output_run_dir(self):
+    def get_test_output_run_dir(self) -> str:
         """ Return the path of the test output run directory
 
         Returns:
@@ -201,7 +211,7 @@ class SSTTestCase(unittest.TestCase):
 
 ###
 
-    def get_test_output_tmp_dir(self):
+    def get_test_output_tmp_dir(self) -> str:
         """ Return the path of the test tmp directory
 
         Returns:
@@ -211,7 +221,7 @@ class SSTTestCase(unittest.TestCase):
 
 ###
 
-    def get_test_runtime_sec(self):
+    def get_test_runtime_sec(self) -> float:
         """ Return the current runtime (walltime) of the test
 
         Returns:
@@ -225,9 +235,23 @@ class SSTTestCase(unittest.TestCase):
 ### Method to run an SST simulation
 ################################################################################
 
-    def run_sst(self, sdl_file, out_file, err_file=None, set_cwd=None, mpi_out_files="",
-                other_args="", num_ranks=None, num_threads=None, global_args=None,
-                timeout_sec=120, expected_rc=0, check_sdl_file=True):
+    def run_sst(
+        self,
+        sdl_file: str,
+        out_file: str,
+        err_file: Optional[str] = None,
+        set_cwd: Optional[str] = None,
+        mpi_out_files: str = "",
+        other_args: str = "",
+        num_ranks: Optional[int] = None,
+        num_threads: Optional[int] = None,
+        global_args: Optional[str] = None,
+        timeout_sec: int = 120,
+        expected_rc: int = 0,
+        check_sdl_file: bool = True,
+        send_signal: int = signal.NSIG,
+        signal_sec: int = 3
+    ) -> str:
         """ Launch sst with with the command line and send output to the
             output file.  The SST execution will be monitored for result errors and
             timeouts.  On an error or timeout, a SSTTestCase.assert() will be generated
@@ -237,10 +261,10 @@ class SSTTestCase(unittest.TestCase):
                 sdl_file (str): The FilePath to the test SDL (python) file.
                 out_file (str): The FilePath to the finalized output file.
                 err_file (str): The FilePath to the finalized error file.
-                                Default = same directory as the output file.
+                                Default = same file as the output file.
                 mpi_out_files (str): The FilePath to the mpi run output files.
-                                     These will be merged into the out_file at
-                                     the end of a multi-rank run.
+                                     These will be merged into the out_file 
+                                     at the end of a multi-rank run.
                 other_args (str): Any other arguments used in the SST cmd
                                    that the caller wishes to use.
                 num_ranks (int): The number of ranks to run SST with.
@@ -249,7 +273,8 @@ class SSTTestCase(unittest.TestCase):
                 timeout_sec (int): Allowed runtime in seconds
                 expected_rc (int): The expected return code from the SST run
                 check_sdl_file (bool): If True, will check to make sure sdl file exists
-
+                send_signal (signal): If not signal.NSIG, this signal will be sent to the SST process after signal_sec seconds
+                signal_sec  (int): The number of seconds to wait before sending a signal to SST
             Returns:
                 (str) The command string used to launch sst
         """
@@ -277,8 +302,7 @@ class SSTTestCase(unittest.TestCase):
             check_param_type("num_threads", num_threads, int)
         if global_args is not None:
             check_param_type("global_args", global_args, str)
-        if not (isinstance(timeout_sec, (int, float)) and not isinstance(timeout_sec, bool)):
-            raise ValueError("ERROR: Timeout_sec must be a postive int or a float")
+        check_param_type("timeout_sec", timeout_sec, int)
         if expected_rc is not None:
             check_param_type("expected_rc", expected_rc, int)
 
@@ -294,7 +318,7 @@ class SSTTestCase(unittest.TestCase):
             mpiout_filename = mpi_out_files
 
         # Get the path to sst binary application
-        sst_app_path = sstsimulator_conf_get_value_str('SSTCore', 'bindir', default="UNDEFINED")
+        sst_app_path = sstsimulator_conf_get_value('SSTCore', 'bindir', str, default="UNDEFINED")
         err_str = "Path to SST {0}; does not exist...".format(sst_app_path)
         self.assertTrue(os.path.isdir(sst_app_path), err_str)
 
@@ -313,23 +337,23 @@ class SSTTestCase(unittest.TestCase):
                                                  sdl_file)
 
         # Update the os launch command if we are running multi-rank
-        num_cores = host_os_get_num_cores_on_system()
+        num_cores = multiprocessing.cpu_count()
 
         # Perform any multi-rank checks/setup
         mpi_avail = False
         numa_param = ""
         if num_ranks > 1:
             # Check to see if mpirun is available
-            rtn = os.system("which mpirun > /dev/null 2>&1")
-            if rtn == 0:
+            rtn_mpirun = os.system("which mpirun > /dev/null 2>&1")
+            if rtn_mpirun == 0:
                 mpi_avail = True
 
             numa_param = "-map-by numa:PE={0}".format(num_threads)
 
-            oscmd = "mpirun -np {0} {1} -output-filename {2} {3}".format(num_ranks,
-                                                                         numa_param,
-                                                                         mpiout_filename,
-                                                                         oscmd)
+            oscmd = "mpirun -np {0} {1} --output-filename {2} {3}".format(num_ranks,
+                                                                          numa_param,
+                                                                          mpiout_filename,
+                                                                          oscmd)
 
         # Identify the working directory that we are launching SST from
         final_wd = os.getcwd()
@@ -348,9 +372,10 @@ class SSTTestCase(unittest.TestCase):
         # Launch SST
         rtn = OSCommand(oscmd, output_file_path = out_file,
                         error_file_path = err_file,
-                        set_cwd = set_cwd).run(timeout_sec=timeout_sec)
+                        set_cwd = set_cwd).run(timeout_sec=timeout_sec, send_signal=send_signal, signal_sec=signal_sec)
         if num_ranks > 1:
-            testing_merge_mpi_files("{0}*".format(mpiout_filename), mpiout_filename, out_file)
+            testing_merge_mpi_files("{0}*".format(mpiout_filename), mpiout_filename, out_file, errorfilepath=err_file)
+
 
         # Look for runtime error conditions
         err_str = "SST Timed-Out ({0} secs) while running {1}".format(timeout_sec, oscmd)
@@ -366,7 +391,7 @@ class SSTTestCase(unittest.TestCase):
 ### Module level support
 ################################################################################
 
-def setUpModule():
+def setUpModule() -> None:
     """ Perform setup functions before the testing Module loads.
 
         This function is called by the Frameworks before tests in any TestCase
@@ -389,7 +414,7 @@ def setUpModule():
 
 ###
 
-def tearDownModule():
+def tearDownModule() -> None:
     """ Perform teardown functions immediately after a testing Module finishes.
 
         This function is called by the Frameworks after all tests in all TestCases
@@ -421,7 +446,7 @@ def tearDownModule():
 
 ###################
 
-def setUpModuleConcurrent(test):
+def setUpModuleConcurrent(test: SSTTestCase) -> None:
     """ Perform setup functions before the testing Module loads.
 
         This function is called by the Frameworks before tests in any TestCase
@@ -449,7 +474,7 @@ def setUpModuleConcurrent(test):
 
 ###
 
-def tearDownModuleConcurrent(test):
+def tearDownModuleConcurrent(test: SSTTestCase) -> None:
     """ Perform teardown functions immediately after a testing Module finishes.
 
         This function is called by the Frameworks after all tests in all TestCases

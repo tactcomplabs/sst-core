@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2009-2024 NTESS. Under the terms
+# Copyright 2009-2025 NTESS. Under the terms
 # of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 #
-# Copyright (c) 2009-2024, NTESS
+# Copyright (c) 2009-2025, NTESS
 # All rights reserved.
 #
 # This file is part of the SST software package. For license
@@ -13,38 +13,19 @@
 
 import os
 import filecmp
+import subprocess
 
 from sst_unittest import *
 from sst_unittest_support import *
 
-################################################################################
-# Code to support a single instance module initialize, must be called setUp method
 
-module_init = 0
-module_sema = threading.Semaphore()
+have_h5 = sst_core_config_include_file_get_value(define="HAVE_HDF5", type=int, default=0, disable_warning=True) == 1
 
-def initializeTestModule_SingleInstance(class_inst):
-    global module_init
-    global module_sema
-
-    module_sema.acquire()
-    if module_init != 1:
-        # Put your single instance Init Code Here
-        module_init = 1
-    module_sema.release()
-
-################################################################################
 
 class testcase_StatisticComponent(SSTTestCase):
 
-    def initializeClass(self, testName):
-        super(type(self), self).initializeClass(testName)
-        # Put test based setup code here. it is called before testing starts
-        # NOTE: This method is called once for every test
-
     def setUp(self):
         super(type(self), self).setUp()
-        initializeTestModule_SingleInstance(self)
         # Put test based setup code here. it is called once before every test
 
     def tearDown(self):
@@ -73,8 +54,16 @@ class testcase_StatisticComponent(SSTTestCase):
         ref_group_stat_file_txt = "{0}/refFiles/test_StatisticsComponent_{1}_group_stats.txt".format(testsuitedir, testtype)
         out_group_stat_file_txt = "{0}/test_StatisticsComponent_{1}_group_stats.txt".format(outdir, testtype)
 
+        # Enable HDF5 test if available
+        options = ""
+        if have_h5:
+            options = "--model-options=\"hdf5\""
+            ref_group_stat_file_h5 = "{0}/refFiles/test_StatisticsComponent_{1}_group_stats.h5".format(testsuitedir, testtype)
+            out_group_stat_file_h5 = "{0}/test_StatisticsComponent_{1}_group_stats.h5".format(outdir, testtype)
+            reffile = "{0}/refFiles/test_StatisticsComponent_{1}_h5.out".format(testsuitedir, testtype)
+        
         # Perform the test
-        self.run_sst(sdlfile, outfile)
+        self.run_sst(sdlfile, outfile, other_args=options)
 
         # Combine the stat output files into a single file
         combine_per_rank_files(out_group_stat_file_txt)
@@ -91,3 +80,11 @@ class testcase_StatisticComponent(SSTTestCase):
 
         cmp_result = testing_compare_filtered_diff(testtype, out_group_stat_file_txt, ref_group_stat_file_txt, True)
         self.assertTrue(cmp_result, "Output/Compare file {0} does not match Reference File {1}".format(out_group_stat_file_txt, ref_group_stat_file_txt))
+
+        # Generate raw H5 output
+        if have_h5:
+            try:
+                subprocess.run(["h5diff",ref_group_stat_file_h5,out_group_stat_file_h5],check=True)
+            except subprocess.CalledProcessError as h5exc:
+                self.assertTrue(False, "Output/Compare file {0} does not match Reference File {1}. H5diff returned {2} {3}".format(ref_group_stat_file_h5, out_group_stat_file_h5,h5exc.returncode, h5exc.output))
+

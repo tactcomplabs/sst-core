@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -24,7 +24,6 @@
 #include "sst/core/eli/simpleInfo.h"
 #include "sst/core/eli/statsInfo.h"
 #include "sst/core/eli/subcompSlotInfo.h"
-#include "sst/core/params.h"
 #include "sst/core/sst_types.h"
 #include "sst/core/warnmacros.h"
 
@@ -36,6 +35,7 @@ class Component;
 class Module;
 class SubComponent;
 class BaseComponent;
+class RealTimeAction;
 namespace Partition {
 class SSTPartitioner;
 }
@@ -156,11 +156,26 @@ public:
 
     bool hasInfo(const std::string& name) const { return infos_.find(name) != infos_.end(); }
 
-    int numEntries() const { return infos_.size(); }
+    int numEntries(bool exclude_aliases = false) const
+    {
+        if ( !exclude_aliases ) return infos_.size();
+        int count = 0;
+        for ( auto x : infos_ ) {
+            if ( x.first != x.second->getAlias() ) ++count;
+        }
+        return count;
+    }
 
     const std::map<std::string, BaseInfo*>& getMap() const { return infos_; }
 
-    void readdInfo(const std::string& name, BaseInfo* info) { infos_[name] = info; }
+    void readdInfo(const std::string& name, BaseInfo* info)
+    {
+        infos_[name] = info;
+
+        // Add the alias
+        const std::string& alias = info->getAlias();
+        if ( !alias.empty() ) infos_[alias] = info;
+    }
 
     bool addInfo(const std::string& elem, BaseInfo* info)
     {
@@ -249,7 +264,7 @@ void
 InfoLibrary<Base>::addLoader(const std::string& elemlib, const std::string& elem, BaseInfo* info)
 {
     auto loader = new InfoLoader<Base, BaseInfo>(elemlib, elem, info);
-    LoadedLibraries::addLoader(elemlib, elem, loader);
+    LoadedLibraries::addLoader(elemlib, elem, info->getAlias(), loader);
 }
 
 template <class Base>
@@ -266,6 +281,7 @@ struct ElementsInfo
         return Base::template addDerivedInfo<T>(T::ELI_getLibrary(), T::ELI_getName());
     }
 };
+
 template <class Base, class T>
 const bool InstantiateBuilderInfo<Base, T>::loaded = ElementsInfo<Base>::template add<T>();
 
@@ -333,8 +349,7 @@ SST_ELI_getTertiaryNumberFromVersion(SST_ELI_element_version_extraction ver)
 
 #define SST_ELI_DECLARE_INFO(...)                                                                      \
     using BuilderInfo = ::SST::ELI::BuilderInfoImpl<__VA_ARGS__, SST::ELI::ProvidesDefaultInfo, void>; \
-    template <class BuilderImpl>                                                                       \
-    static bool addInfo(const std::string& elemlib, const std::string& elem, BuilderImpl* info)        \
+    static bool addInfo(const std::string& elemlib, const std::string& elem, BuilderInfo* info)        \
     {                                                                                                  \
         return ::SST::ELI::InfoDatabase::getLibrary<__LocalEliBase>(elemlib)->addInfo(elem, info);     \
     }                                                                                                  \

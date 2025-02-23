@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -47,6 +47,9 @@ public:
 
     coreTestComponentBase(ComponentId_t id) : SST::Component(id) {}
     ~coreTestComponentBase() {}
+    coreTestComponentBase() : SST::Component() {}
+    void serialize_order(SST::Core::Serialization::serializer& ser) override { SST::Component::serialize_order(ser); }
+    ImplementSerializable(SST::CoreTestComponent::coreTestComponentBase)
 };
 
 class coreTestComponentBase2 : public coreTestComponentBase
@@ -69,6 +72,14 @@ public:
 
     coreTestComponentBase2(ComponentId_t id) : coreTestComponentBase(id) {}
     ~coreTestComponentBase2() {}
+
+    coreTestComponentBase2() : coreTestComponentBase() {}
+
+    void serialize_order(SST::Core::Serialization::serializer& ser) override
+    {
+        SST::CoreTestComponent::coreTestComponentBase::serialize_order(ser);
+    }
+    ImplementSerializable(SST::CoreTestComponent::coreTestComponentBase2)
 };
 
 class coreTestComponent : public coreTestComponentBase2
@@ -105,11 +116,14 @@ public:
     coreTestComponent(SST::ComponentId_t id, SST::Params& params);
     ~coreTestComponent();
 
-    void setup() {}
-    void finish() { printf("Component Finished.\n"); }
+    void setup() override {}
+    void finish() override { printf("Component Finished.\n"); }
+
+    void serialize_order(SST::Core::Serialization::serializer& ser) override;
+    ImplementSerializable(SST::CoreTestComponent::coreTestComponent)
+    coreTestComponent(); // for serialization only
 
 private:
-    coreTestComponent();                         // for serialization only
     coreTestComponent(const coreTestComponent&); // do not implement
     void operator=(const coreTestComponent&);    // do not implement
 

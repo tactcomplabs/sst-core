@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -63,6 +63,7 @@ SubComponentLoader::SubComponentLoader(ComponentId_t id, Params& params) : Compo
 bool
 SubComponentLoader::tick(Cycle_t cyc)
 {
+    count++;
     for ( auto sub : subComps ) {
         sub->clock(cyc);
     }

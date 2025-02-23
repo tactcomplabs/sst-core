@@ -1,0 +1,22 @@
+[tool.mypy]
+cache_dir = "build/.mypy_cache"
+explicit_package_bases = true
+mypy_path = "$MYPY_CONFIG_FILE_DIR/src/sst/core/testingframework"
+# This should be 3.6 but is not supported with the newest versions of mypy.
+python_version = "3.8"
+
+strict = true
+
+exclude = [
+    '^scripts/',
+    '^tests/',
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "blessings",
+    "sst",
+    "testtools",
+    "testtools.testsuite",
+]
+ignore_missing_imports = true

@@ -157,6 +157,7 @@ StatementMacros:
   - Q_UNUSED
   - QT_REQUIRE_VERSION
   - ImplementSerializable
+  - NotSerializable
 TabWidth:        8
 UseCRLF:         false
 UseTab:          Never
@@ -194,6 +195,8 @@ WhitespaceSensitiveMacros:
   - SST_ELI_REGISTER_SUBCOMPONENT
   - SST_ELI_REGISTER_SUBCOMPONENT_DERIVED
   - SST_ELI_REGISTER_SUBCOMPONENT_DERIVED_API
+  - SST_ELI_REGISTER_REALTIME_ACTION
+  - SST_ELI_REGISTER_PORTMODULE
   - STRINGIZE
   - PP_STRINGIZE
   - BOOST_PP_STRINGIZE
@@ -201,5 +204,9 @@ WhitespaceSensitiveMacros:
   - CF_SWIFT_NAME
   - SST_SER
   - SST_SER_AS_PTR
+  - SST_TP_VECTORCALL
+  - SST_TP_PRINT_DEP
+  - SST_TP_WATCHED
+  - SST_TP_VERSIONS_USED
 ...
 

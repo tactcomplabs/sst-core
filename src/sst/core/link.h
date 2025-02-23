@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -13,6 +13,7 @@
 #define SST_CORE_LINK_H
 
 #include "sst/core/event.h"
+#include "sst/core/rankInfo.h"
 #include "sst/core/serialization/serialize_impl_fwd.h"
 #include "sst/core/sst_types.h"
 #include "sst/core/timeConverter.h"
@@ -28,7 +29,6 @@ class LinkPair;
 class Simulation_impl;
 
 class UnitAlgebra;
-class LinkSendProfileToolList;
 
 namespace Profile {
 class EventHandlerProfileTool;
@@ -43,6 +43,7 @@ class SST::Core::Serialization::serialize_impl<Link*>
     friend class serialize;
     // Function implemented in link.cc
     void operator()(Link*& s, SST::Core::Serialization::serializer& ser);
+    void operator()(Link*& s, SST::Core::Serialization::serializer& ser, const char* name);
 };
 
 
@@ -55,6 +56,64 @@ class alignas(64) Link
     friend class SST::Core::Serialization::serialize_impl<Link*>;
 
 public:
+    /**
+       Attach point for inspecting, modifying or dropping events
+       sent on the Link.
+
+       NOTE: Using the Link::AttachPoint will noticeably affect the
+       performance of sending events on Links and it is recommended
+       that, if possible, Event::HandlerBase::AttachPoint or
+       Event::HandlerBase::InterceptPoint be used instead.
+     */
+    class AttachPoint
+    {
+    public:
+        /**
+           Function that will be called when an attach point is
+           registered with the tool implementing the attach point.
+           The metadata passed in will be dependent on what type of
+           tool this is attached to.  The uintptr_t returned from this
+           function will be passed into the eventSent() function.
+
+           @param mdata Metadata to be passed into the tool
+
+           @return Opaque key that will be passed back into
+           eventSent() to identify the source of the call
+         */
+        virtual uintptr_t registerLinkAttachTool(const AttachPointMetaData& mdata) = 0;
+
+        /**
+           Function that will be called when an event is sent on a
+           link with registered attach points.  If ev is set to
+           nullptr, then the event will not be delivered and the tool
+           should delete the original event.
+
+           @param key Opaque key returned from registerLinkAttachTool()
+         */
+        virtual void eventSent(uintptr_t key, Event*& ev) = 0;
+
+        /**
+           Function that will be called to handle the key returned
+           from registerLinkAttachTool, if the AttachPoint tool is
+           serializable.  This is needed because the key is opaque to
+           the Link, so it doesn't know how to handle it during
+           serialization.  During SIZE and PACK phases of
+           serialization, the tool needs to store out any information
+           that will be needed to recreate data that is reliant on the
+           key.  On UNPACK, the function needs to recreate any state
+           and reinitialize the passed in key reference to the proper
+           state to continue to make valid calls to eventSent().
+
+           Since not all tools will be serializable, there is a
+           default, empty implementation.
+
+           @param ser Serializer to use for serialization
+
+           @param key Key that would be passed into the eventSent() function.
+         */
+        virtual void serializeEventAttachPointKey(SST::Core::Serialization::serializer& ser, uintptr_t& key);
+    };
+
     friend class LinkPair;
     friend class RankSync;
     friend class ThreadSync;
@@ -280,10 +339,15 @@ private:
     void finalizeConfiguration();
     void prepareForComplete();
 
-    void addProfileTool(SST::Profile::EventHandlerProfileTool* tool, const EventHandlerMetaData& mdata);
+    std::string
+    createUniqueGlobalLinkName(RankInfo local_rank, uintptr_t local_ptr, RankInfo remote_rank, uintptr_t remote_ptr);
 
 
-    LinkSendProfileToolList* profile_tools;
+    void attachTool(AttachPoint* tool, const AttachPointMetaData& mdata);
+
+
+    using ToolList = std::vector<std::pair<AttachPoint*, uintptr_t>>;
+    ToolList* attached_tools;
 
 
 #ifdef __SST_DEBUG_EVENT_TRACKING__

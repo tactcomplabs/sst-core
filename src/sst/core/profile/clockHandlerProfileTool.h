@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -14,6 +14,7 @@
 
 #include "sst/core/clock.h"
 #include "sst/core/eli/elementinfo.h"
+#include "sst/core/profile/profiletool.h"
 #include "sst/core/sst_types.h"
 #include "sst/core/ssthandler.h"
 #include "sst/core/warnmacros.h"
@@ -26,10 +27,10 @@ namespace SST {
 namespace Profile {
 
 
-class ClockHandlerProfileTool : public HandlerProfileToolAPI
+class ClockHandlerProfileTool : public ProfileTool, public Clock::HandlerBase::AttachPoint
 {
 public:
-    SST_ELI_REGISTER_PROFILETOOL_DERIVED_API(SST::Profile::ClockHandlerProfileTool, SST::HandlerProfileToolAPI, Params&)
+    SST_ELI_REGISTER_PROFILETOOL_DERIVED_API(SST::Profile::ClockHandlerProfileTool, SST::Profile::ProfileTool, Params&)
 
     SST_ELI_DOCUMENT_PARAMS(
         { "level", "Level at which to track profile (global, type, component, subcomponent)", "type" },
@@ -39,8 +40,13 @@ public:
 
     ClockHandlerProfileTool(const std::string& name, Params& params);
 
+    // Default implementations of attach point functions for profile
+    // tools that don't use them
+    void beforeHandler(uintptr_t UNUSED(key), const Cycle_t& UNUSED(cycle)) override {}
+    void afterHandler(uintptr_t UNUSED(key), const bool& UNUSED(remove)) override {}
+
 protected:
-    std::string getKeyForHandler(const HandlerMetaData& mdata);
+    std::string getKeyForHandler(const AttachPointMetaData& mdata);
 
     Profile_Level profile_level_;
 };
@@ -66,9 +72,9 @@ public:
 
     virtual ~ClockHandlerProfileToolCount() {}
 
-    uintptr_t registerHandler(const HandlerMetaData& mdata) override;
+    uintptr_t registerHandler(const AttachPointMetaData& mdata) override;
 
-    void handlerStart(uintptr_t key) override;
+    void beforeHandler(uintptr_t key, const Cycle_t& cycle) override;
 
     void outputData(FILE* fp) override;
 
@@ -96,11 +102,11 @@ public:
 
     virtual ~ClockHandlerProfileToolTime() {}
 
-    uintptr_t registerHandler(const HandlerMetaData& mdata) override;
+    uintptr_t registerHandler(const AttachPointMetaData& mdata) override;
 
-    void handlerStart(uintptr_t UNUSED(key)) override { start_time_ = T::now(); }
+    void beforeHandler(uintptr_t UNUSED(key), const Cycle_t& UNUSED(cycle)) override { start_time_ = T::now(); }
 
-    void handlerEnd(uintptr_t key) override
+    void afterHandler(uintptr_t key, const bool& UNUSED(remove)) override
     {
         auto          total_time = T::now() - start_time_;
         clock_data_t* entry      = reinterpret_cast<clock_data_t*>(key);

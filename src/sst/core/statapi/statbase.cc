@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -231,8 +231,17 @@ StatisticBase::serialize_order(SST::Core::Serialization::serializer& ser)
     ser& m_currentCollectionCount;
     ser& m_outputCollectionCount;
     ser& m_collectionCountLimit;
-    ser& m_statDataType; // TODO: Need to store type name instead & lookup ID on return -> may differ if custom types
-                         // exist
+
+    if ( ser.mode() != SST::Core::Serialization::serializer::UNPACK ) {
+        std::string name(StatisticFieldInfo::getFieldTypeShortName(m_statDataType));
+        ser&        name;
+    }
+    else {
+        std::string name;
+        ser&        name;
+        m_statDataType = StatisticFieldTypeBase::getField(name.c_str());
+    }
+
     ser& m_statEnabled;
     ser& m_outputEnabled;
     ser& m_resetCountOnOutput;
@@ -243,6 +252,7 @@ StatisticBase::serialize_order(SST::Core::Serialization::serializer& ser)
     ser& m_savedOutputEnabled;
     // ser& m_group; // This will get re-created on restart
 }
+
 SST_ELI_INSTANTIATE_STATISTIC(AccumulatorStatistic, int32_t);
 SST_ELI_INSTANTIATE_STATISTIC(AccumulatorStatistic, uint32_t);
 SST_ELI_INSTANTIATE_STATISTIC(AccumulatorStatistic, int64_t);

@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2009-2024 NTESS. Under the terms
+# Copyright 2009-2025 NTESS. Under the terms
 # of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 #
-# Copyright (c) 2009-2024, NTESS
+# Copyright (c) 2009-2025, NTESS
 # All rights reserved.
 #
 # This file is part of the SST software package. For license
@@ -22,11 +22,14 @@ import unittest
 import argparse
 import shutil
 import configparser
+import multiprocessing
+from typing import Any, Dict, List, Union
 
 import test_engine_globals
 from sst_unittest import *
 from sst_unittest_support import *
 from test_engine_unittest import *
+from test_engine_support import OSCommand
 
 ################################################################################
 
@@ -103,12 +106,12 @@ MODE_TEST_SST_CORE = 1
 
 ################################################################################
 
-class TestEngine():
+class TestEngine:
     """ This is the main Test Engine, it will init arguments, parsed params,
         create output directories, and then Discover and Run the tests.
     """
 
-    def __init__(self, sst_core_bin_dir, test_mode):
+    def __init__(self, sst_core_bin_dir: str, test_mode: int) -> None:
         """ Initialize the TestEngine object, and parse the user arguments.
 
             Args:
@@ -119,10 +122,10 @@ class TestEngine():
         self._fail_fast = False
         self._keep_output_dir = False
         self._list_discovered_testsuites_mode = False
-        self._list_of_searchable_testsuite_paths = []
-        self._list_of_specific_testnames = []
-        self._testsuite_types_list = []
-        self._testsuite_wildcards_list = []
+        self._list_of_searchable_testsuite_paths: List[str] = []
+        self._list_of_specific_testnames: List[str] = []
+        self._testsuite_types_list: List[str] = []
+        self._testsuite_wildcards_list: List[str] = []
         self._sst_core_bin_dir = sst_core_bin_dir
         self._test_mode = test_mode
         self._sst_full_test_suite = unittest.TestSuite()
@@ -138,7 +141,7 @@ class TestEngine():
 
 ####
 
-    def discover_and_run_tests(self):
+    def discover_and_run_tests(self) -> int:
         """ Create the output directories, then discover the tests, and then
             run them using pythons unittest module
 
@@ -182,17 +185,17 @@ class TestEngine():
             sst_tests_results = test_runner.run(self._sst_full_test_suite)
 
             if not test_runner.did_tests_pass(sst_tests_results):
-                exit(1)
-            exit(0)
+                return 1
+            return 0
 
         # Handlers of unittest.TestRunner exceptions
         except KeyboardInterrupt:
             log_fatal("TESTING TERMINATED DUE TO KEYBOARD INTERRUPT...")
-        exit(2)
+        return 2
 
 ####
 
-    def _build_tests_list_helper(self, suite):
+    def _build_tests_list_helper(self, suite: SSTTestSuite) -> List[Any]:
         """
             A helper function to split the tests for the ConcurrentTestSuite into
             some number of concurrently executing sub-suites. _build_tests_list_helper
@@ -203,13 +206,13 @@ class TestEngine():
             Args:
                 suite (SSTTestSuite): The suites to be split up.
         """
-        tests = list(iterate_tests(suite))
+        tests = list(iterate_tests(suite))  # type: ignore [name-defined]
         return tests
 
 ################################################################################
 ################################################################################
 
-    def _parse_arguments(self):
+    def _parse_arguments(self) -> None:
         """ Parse the cmd line arguments."""
         # Build a parameter parser, adjust its help based upon the test type
         helpdesc = HELP_DESC.format(self._test_type_str)
@@ -296,7 +299,7 @@ class TestEngine():
 
 ####
 
-    def _decode_parsed_arguments(self, args, parser):
+    def _decode_parsed_arguments(self, args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
         """ Decode the parsed arguments into their class or global variables.
 
             Args:
@@ -357,7 +360,7 @@ class TestEngine():
 
 ####
 
-    def _display_startup_info(self):
+    def _display_startup_info(self) -> None:
         """ Display the Test Engine Startup Information"""
 
         ver = sys.version_info
@@ -368,7 +371,7 @@ class TestEngine():
         sstcoreversion = rtn.output()
         sstcoreversion = sstcoreversion.replace("SST-Core Version ", "").rstrip()
 
-        num_cores = host_os_get_num_cores_on_system()
+        num_cores = multiprocessing.cpu_count()
 
         if test_engine_globals.TESTENGINE_CONCURRENTMODE:
             concurrent_txt = "[CONCURRENTLY ({0} Testing Threads)]".\
@@ -394,7 +397,7 @@ class TestEngine():
         # Check to see if we are using up all the cores on the system
         # in concurrent mode, warn user of possible failures
         if test_engine_globals.TESTENGINE_CONCURRENTMODE:
-            num_cores_avail = host_os_get_num_cores_on_system()
+            num_cores_avail = multiprocessing.cpu_count()
             threads_used = test_engine_globals.TESTENGINE_THREADLIMIT
             ranks_used = test_engine_globals.TESTENGINE_SSTRUN_NUMRANKS
             cores_used = threads_used * ranks_used
@@ -437,7 +440,7 @@ class TestEngine():
 
 ####
 
-    def _create_all_output_directories(self):
+    def _create_all_output_directories(self) -> None:
         """ Create the output directories if needed"""
         top_dir = test_engine_globals.TESTOUTPUT_TOPDIRPATH
         run_dir = test_engine_globals.TESTOUTPUT_RUNDIRPATH
@@ -458,7 +461,7 @@ class TestEngine():
 
 ####
 
-    def _discover_testsuites(self):
+    def _discover_testsuites(self) -> None:
         """ Figure out the list of paths we are searching for testsuites.  The
             user may have given us a list via the cmd line, so that takes priority
         """
@@ -495,7 +498,7 @@ class TestEngine():
 
 ####
 
-    def _add_testsuites_from_identifed_paths(self):
+    def _add_testsuites_from_identifed_paths(self) -> None:
         """ Look at all the searchable testsuite paths in the list.  If its
             a file, try to add that testsuite directly.  If its a directory;
             add all testsuites that match the identifed testsuite types.
@@ -535,7 +538,7 @@ class TestEngine():
 
 ####
 
-    def _create_core_config_parser(self):
+    def _create_core_config_parser(self) -> configparser.RawConfigParser:
         """ Create an Core Configurtion (INI format) parser.  This will allow
             us to search the Core configuration looking for test file paths.
 
@@ -565,7 +568,7 @@ class TestEngine():
 
 ###
 
-    def _build_core_config_include_defs_dict(self):
+    def _build_core_config_include_defs_dict(self) -> Dict[str, str]:
         """ Create a dictionary of settings from the sst_config.h.
             This will allow us to search the includes that the core provides.
 
@@ -588,7 +591,7 @@ class TestEngine():
 
 ###
 
-    def _build_elem_config_include_defs_dict(self):
+    def _build_elem_config_include_defs_dict(self) -> Dict[str, str]:
         """ Create a dictionary of settings from the sst_element_config.h.
             This will allow us to search the includes that the elements provides.
             Note: The Frameworks is runnable even if elements are not built or
@@ -598,8 +601,9 @@ class TestEngine():
                 A dict object of defines from the sst_element_config.h file.
         """
         # ID the path to the sst element configuration file
-        build_root = sstsimulator_conf_get_value_str("SST_ELEMENT_LIBRARY",
+        build_root = sstsimulator_conf_get_value("SST_ELEMENT_LIBRARY",
                                                     "SST_ELEMENT_LIBRARY_BUILDDIR",
+                                                    str,
                                                     "undefined")
         # If the element root is not found, then elements have not yet been registerd
         if build_root == "undefined":
@@ -623,7 +627,7 @@ class TestEngine():
 
 ###
 
-    def _read_config_include_defs_dict(self, conf_include_path):
+    def _read_config_include_defs_dict(self, conf_include_path: str) -> Dict[str, str]:
         # Read in the file line by line and discard any lines
         # that do not start with "#define "
         rtn_dict = {}
@@ -646,7 +650,7 @@ class TestEngine():
 
 ###
 
-    def _build_list_of_testsuite_dirs(self):
+    def _build_list_of_testsuite_dirs(self) -> List[str]:
         """ Using a config file parser, build a list of Test Suite Dirs.
 
             Note: The discovery method of Test Suites is different
@@ -694,7 +698,7 @@ class TestEngine():
 
 ####
 
-    def _create_output_dir(self, out_dir):
+    def _create_output_dir(self, out_dir: str) -> bool:
         """ Look to see if an output dir exists.  If not, try to create it
             :param: out_dir = The path to the output directory.
 
@@ -718,7 +722,13 @@ class TestEngine():
 
 ####
 
-    def _dump_testsuite_list(self, suite, log_normal=False, show_suites=False, iterlevel=0):
+    def _dump_testsuite_list(
+        self,
+        suite: Union[unittest.TestSuite, unittest.TestCase],
+        log_normal: bool = False,
+        show_suites: bool = False,
+        iterlevel: int = 0,
+    ) -> None:
         """ Recursively log all tests in a TestSuite.
 
             Args:
@@ -742,7 +752,10 @@ class TestEngine():
 
 ####
 
-    def _prune_unwanted_tests(self, suite):
+    def _prune_unwanted_tests(
+        self,
+        suite: Union[unittest.TestSuite, unittest.TestCase],
+    ) -> unittest.TestSuite:
         """ Recursively remove any tests that dont match the name
 
             Args:

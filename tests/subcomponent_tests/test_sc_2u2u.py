@@ -1,8 +1,8 @@
-# Copyright 2009-2024 NTESS. Under the terms
+# Copyright 2009-2025 NTESS. Under the terms
 # of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 #
-# Copyright (c) 2009-2024, NTESS
+# Copyright (c) 2009-2025, NTESS
 # All rights reserved.
 #
 # This file is part of the SST software package. For license
@@ -13,6 +13,7 @@ import sys
 
 # Define SST core options
 sst.setProgramOption("stop-at", "10us")
+sst.setProgramOption("partitioner", "self")
 
 verbose = 0
 if len(sys.argv) > 1:
@@ -20,7 +21,7 @@ if len(sys.argv) > 1:
     
 # Set up senders using slots and user subcomponents
 loader0 = sst.Component("Loader0", "coreTestElement.SubComponentLoader")
-loader0.addParam("clock", "1.5GHz")
+loader0.addParam("clock", "0.15GHz")
 loader0.addParam("verbose", verbose)
 loader0.enableAllStatistics()
 
@@ -38,12 +39,12 @@ sub0_0_1.enableAllStatistics()
 
 sub0_1 = loader0.setSubComponent("mySubComp", "coreTestElement.SubCompSlot",1)
 
-sub0_1_0 = sub0_1.setSubComponent("mySubCompSlot","coreTestElement.SubCompSender",0);
+sub0_1_0 = sub0_1.setSubComponent("mySubCompSlot","coreTestElement.SubCompSender_alias",0);
 sub0_1_0.addParam("sendCount", 15)
 sub0_1_0.addParam("verbose", verbose)
 sub0_1_0.enableAllStatistics()
 
-sub0_1_1 = sub0_1.setSubComponent("mySubCompSlot","coreTestElement.SubCompSender",1);
+sub0_1_1 = sub0_1.setSubComponent("mySubCompSlot","coreTestElement.SubCompSender_alias",1);
 sub0_1_1.addParam("sendCount", 15)
 sub0_1_1.addParam("verbose", verbose)
 sub0_1_1.enableAllStatistics()
@@ -88,5 +89,16 @@ link1_0.connect((sub0_1_0, "sendPort", "5ns"), (sub1_1_0, "recvPort", "5ns"))
 link1_1 = sst.Link("myLink1_1")
 link1_1.connect((sub0_1_1, "sendPort", "5ns"), (sub1_1_1, "recvPort", "5ns"))
 
+# Do the paritioning
+num_ranks = sst.getMPIRankCount()
+num_threads = sst.getThreadCount()
+
+loader0.setRank(0,0)
+if num_ranks >= 2:
+    loader1.setRank(1,0)
+elif num_threads > 1:
+    loader1.setRank(0,1)
+else:
+    loader1.setRank(0,0)
 
 sst.setStatisticLoadLevel(1)

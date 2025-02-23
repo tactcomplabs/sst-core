@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -13,7 +13,6 @@
 #define SST_CORE_ELI_PARAMS_INFO_H
 
 #include "sst/core/eli/elibase.h"
-#include "sst/core/params.h"
 
 #include <string>
 #include <vector>
@@ -62,7 +61,7 @@ public:
         }
     }
 
-    const Params::KeySet_t& getParamNames() const { return allowedKeys; }
+    const std::vector<std::string>& getParamNames() const { return allowedKeys; }
 
 protected:
     template <class T>
@@ -74,7 +73,7 @@ protected:
 private:
     void init();
 
-    Params::KeySet_t              allowedKeys;
+    std::vector<std::string>      allowedKeys;
     std::vector<ElementInfoParam> params_;
 };
 

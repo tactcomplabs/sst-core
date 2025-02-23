@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -85,22 +85,27 @@ ThreadSyncDirectSkip::getDataSize() const
 }
 
 void
-ThreadSyncDirectSkip::serialize_order(SST::Core::Serialization::serializer& ser)
+ThreadSyncDirectSkip::setSignals(int end, int usr, int alrm)
 {
-    ThreadSync::serialize_order(ser);
-    ser& my_max_period;
-    ser& num_threads;
-    ser& thread;
-    ser& localMinimumNextActivityTime;
-    ser& totalWaitTime;
-    ser& single_rank;
+    sig_end_  = end;
+    sig_usr_  = usr;
+    sig_alrm_ = alrm;
+}
 
-    // No need to serialize
-    // sim
-    // barrier
+bool
+ThreadSyncDirectSkip::getSignals(int& end, int& usr, int& alrm)
+{
+    end  = sig_end_;
+    usr  = sig_usr_;
+    alrm = sig_alrm_;
+    return sig_end_ || sig_usr_ || sig_alrm_;
 }
 
 
 Core::ThreadSafe::Barrier ThreadSyncDirectSkip::barrier[3];
+int                       ThreadSyncDirectSkip::sig_end_(0);
+int                       ThreadSyncDirectSkip::sig_usr_(0);
+int                       ThreadSyncDirectSkip::sig_alrm_(0);
+
 
 } // namespace SST

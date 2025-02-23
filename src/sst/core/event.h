@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -119,6 +119,16 @@ public:
 
 #endif
 
+    bool isEvent() final { return true; }
+
+    void copyAllDeliveryInfo(const Activity* act) final
+    {
+        Activity::copyAllDeliveryInfo(act);
+        const Event* ev = static_cast<const Event*>(act);
+        delivery_info   = ev->delivery_info;
+    }
+
+
     void serialize_order(SST::Core::Serialization::serializer& ser) override
     {
         Activity::serialize_order(ser);
@@ -215,7 +225,7 @@ private:
     ImplementSerializable(SST::EmptyEvent)
 };
 
-class EventHandlerMetaData : public HandlerMetaData
+class EventHandlerMetaData : public AttachPointMetaData
 {
 public:
     const ComponentId_t comp_id;

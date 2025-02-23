@@ -8,15 +8,19 @@ EXTRA_DIST += \
     tests/testsuite_default_Links.py \
     tests/testsuite_default_MemPoolTest.py \
     tests/testsuite_default_Module.py \
+    tests/testsuite_default_Output.py \
     tests/testsuite_default_ParamComponent.py \
     tests/testsuite_default_PerfComponent.py \
+    tests/testsuite_default_profiling.py \
     tests/testsuite_default_RNGComponent.py \
+    tests/testsuite_default_RealTime.py \
     tests/testsuite_default_SharedObject.py \
     tests/testsuite_default_Serialization.py \
     tests/testsuite_default_SubComponent.py \
     tests/testsuite_default_UnitAlgebra.py \
     tests/testsuite_default_config_input_output.py \
     tests/testsuite_default_partitioner.py \
+    tests/testsuite_default_PortModule.py \
     tests/testsuite_testengine_testing.py \
     tests/test_Checkpoint.py \
     tests/test_Component.py \
@@ -29,9 +33,9 @@ EXTRA_DIST += \
     tests/test_LookupTable.py \
     tests/test_LookupTable2.py \
     tests/test_MessageMesh.py \
+    tests/test_Output.py \
     tests/test_ParamComponent.py \
     tests/test_ParallelLoad.py \
-    tests/test_RNGComponent.py \
     tests/test_RNGComponent_mersenne.py \
     tests/test_RNGComponent_marsaglia.py \
     tests/test_RNGComponent_xorshift.py \
@@ -43,6 +47,8 @@ EXTRA_DIST += \
     tests/test_MemPool_overflow.py \
     tests/test_MemPool_undeleted_items.py \
     tests/test_Module.py \
+    tests/test_PortModule.py \
+    tests/test_RealTime.py \
     tests/test_SubComponent.py \
     tests/test_SubComponent_2.py \
     tests/test_UnitAlgebra.py \
@@ -55,7 +61,19 @@ EXTRA_DIST += \
     tests/refFiles/test_DistribComponent_expon.out \
     tests/refFiles/test_DistribComponent_gaussian.out \
     tests/refFiles/test_LookupTableComponent.out \
+    tests/refFiles/test_Output_TraceFunction.out \
+    tests/refFiles/test_Output_TraceFunction_IndentMarker.out \
     tests/refFiles/test_ParamComponent.out \
+    tests/refFiles/test_PortModule_drop.out \
+    tests/refFiles/test_PortModule_modify.out \
+    tests/refFiles/test_PortModule_pass.out \
+    tests/refFiles/test_PortModule_replace.out \
+    tests/refFiles/test_PortModule_randomdrop_recv.out \
+    tests/refFiles/test_PortModule_randomdrop_send.out \
+    tests/refFiles/test_Profiling_event_global.out \
+    tests/refFiles/test_Profiling_event_type.out \
+    tests/refFiles/test_Profiling_event_component.out \
+    tests/refFiles/test_Profiling_event_subcomponent.out \
     tests/refFiles/test_MessageGeneratorComponent.out \
     tests/refFiles/test_MemPool_overflow.out \
     tests/refFiles/test_MemPool_undeleted_items.out \
@@ -63,7 +81,9 @@ EXTRA_DIST += \
     tests/refFiles/test_RNGComponent_mersenne.out \
     tests/refFiles/test_RNGComponent_xorshift.out \
     tests/refFiles/test_StatisticsComponent_basic.out \
+    tests/refFiles/test_StatisticsComponent_basic_h5.out \
     tests/refFiles/test_StatisticsComponent_basic_group_stats.csv \
+    tests/refFiles/test_StatisticsComponent_basic_group_stats.h5 \
     tests/refFiles/test_StatisticsComponent_basic_group_stats.txt \
     tests/refFiles/test_Links_basic.out \
     tests/refFiles/test_Links_dangling.out \

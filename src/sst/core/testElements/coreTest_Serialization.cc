@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -35,17 +35,48 @@ namespace CoreTestSerialization {
 
 
 template <typename T>
-bool
-checkSimpleSerializeDeserialize(T data)
+struct checkSimpleSerializeDeserialize
 {
-    auto buffer = SST::Comms::serialize(data);
-    T    result;
-    SST::Comms::deserialize(buffer, result);
-    DISABLE_WARN_MAYBE_UNINITIALIZED
-    bool ret = data == result;
-    REENABLE_WARNING
-    return ret;
+    static bool check(T data)
+    {
+        auto buffer = SST::Comms::serialize(data);
+        T    result;
+        SST::Comms::deserialize(buffer, result);
+        DISABLE_WARN_MAYBE_UNINITIALIZED
+        bool ret = data == result;
+        REENABLE_WARNING
+        return ret;
+    }
 };
+
+template <typename T>
+struct checkSimpleSerializeDeserialize<T*>
+{
+    static bool check(T data)
+    {
+        T*   input  = &data;
+        auto buffer = SST::Comms::serialize(input);
+        T*   result;
+        SST::Comms::deserialize(buffer, result);
+        DISABLE_WARN_MAYBE_UNINITIALIZED
+        bool ret = data == *result;
+        REENABLE_WARNING
+        return ret;
+    }
+
+    static bool check_nullptr()
+    {
+        T*   input  = nullptr;
+        auto buffer = SST::Comms::serialize(input);
+        T*   result;
+        SST::Comms::deserialize(buffer, result);
+        DISABLE_WARN_MAYBE_UNINITIALIZED
+        bool ret = result == nullptr;
+        REENABLE_WARNING
+        return ret;
+    }
+};
+
 
 template <typename T>
 bool
@@ -130,7 +161,7 @@ public:
     int  getValue() { return value; }
     void setValue(int val) { value = val; }
 
-    void serialize_order(SST::Core::Serialization::serializer& ser) override { ser& value; }
+    void serialize_order(SST::Core::Serialization::serializer& ser) override { SST_SER(value); }
 
     ImplementSerializable(SST::CoreTestSerialization::pointed_to_class);
 };
@@ -152,8 +183,8 @@ public:
 
     void serialize_order(SST::Core::Serialization::serializer& ser) override
     {
-        ser& value;
-        ser& pointed_to;
+        SST_SER(value);
+        SST_SER(pointed_to);
     }
 
     ImplementSerializable(SST::CoreTestSerialization::shell);
@@ -220,7 +251,7 @@ struct HandlerTest : public SST::Core::Serialization::serializable
     HandlerTest(int in) : value(in) {}
     HandlerTest() {}
 
-    void serialize_order(SST::Core::Serialization::serializer& ser) override { ser& value; }
+    void serialize_order(SST::Core::Serialization::serializer& ser) override { SST_SER(value); }
     ImplementSerializable(HandlerTest)
 };
 
@@ -249,8 +280,8 @@ struct RecursiveSerializationTest : public SST::Core::Serialization::serializabl
 
     void serialize_order(SST::Core::Serialization::serializer& ser) override
     {
-        ser& value;
-        ser& handler;
+        SST_SER(value);
+        SST_SER(handler);
     }
 
     ImplementSerializable(RecursiveSerializationTest)
@@ -275,42 +306,113 @@ coreTestSerialization::coreTestSerialization(ComponentId_t id, Params& params) :
         // Simple Data Types
         // int8, int16, int32, int64, uint8, uint16, uint32, uint64, float, double, pair<int, int>, string
 
-        passed = checkSimpleSerializeDeserialize<int8_t>(rng->generateNextInt32());
+        passed = checkSimpleSerializeDeserialize<int8_t>::check(rng->generateNextInt32());
         if ( !passed ) out.output("ERROR: int8_t did not serialize/deserialize properly\n");
 
-        passed = checkSimpleSerializeDeserialize<int16_t>(rng->generateNextInt32());
+        passed = checkSimpleSerializeDeserialize<int16_t>::check(rng->generateNextInt32());
         if ( !passed ) out.output("ERROR: int16_t did not serialize/deserialize properly\n");
 
-        passed = checkSimpleSerializeDeserialize<int32_t>(rng->generateNextInt32());
+        passed = checkSimpleSerializeDeserialize<int32_t>::check(rng->generateNextInt32());
         if ( !passed ) out.output("ERROR: int32_t did not serialize/deserialize properly\n");
 
-        passed = checkSimpleSerializeDeserialize<int64_t>(rng->generateNextInt64());
+        passed = checkSimpleSerializeDeserialize<int64_t>::check(rng->generateNextInt64());
         if ( !passed ) out.output("ERROR: int64_t did not serialize/deserialize properly\n");
 
-        passed = checkSimpleSerializeDeserialize<uint8_t>(rng->generateNextUInt32());
+        passed = checkSimpleSerializeDeserialize<uint8_t>::check(rng->generateNextUInt32());
         if ( !passed ) out.output("ERROR: uint8_t did not serialize/deserialize properly\n");
 
-        passed = checkSimpleSerializeDeserialize<uint16_t>(rng->generateNextUInt32());
+        passed = checkSimpleSerializeDeserialize<uint16_t>::check(rng->generateNextUInt32());
         if ( !passed ) out.output("ERROR: uint16_t did not serialize/deserialize properly\n");
 
-        passed = checkSimpleSerializeDeserialize<uint32_t>(rng->generateNextUInt32());
+        passed = checkSimpleSerializeDeserialize<uint32_t>::check(rng->generateNextUInt32());
         if ( !passed ) out.output("ERROR: uint32_t did not serialize/deserialize properly\n");
 
-        passed = checkSimpleSerializeDeserialize<uint64_t>(rng->generateNextUInt64());
+        passed = checkSimpleSerializeDeserialize<uint64_t>::check(rng->generateNextUInt64());
         if ( !passed ) out.output("ERROR: uint64_t did not serialize/deserialize properly\n");
 
-        passed = checkSimpleSerializeDeserialize<float>(rng->nextUniform() * 1000);
+        passed = checkSimpleSerializeDeserialize<float>::check(rng->nextUniform() * 1000);
         if ( !passed ) out.output("ERROR: float did not serialize/deserialize properly\n");
 
-        passed = checkSimpleSerializeDeserialize<double>(rng->nextUniform() * 1000000);
+        passed = checkSimpleSerializeDeserialize<double>::check(rng->nextUniform() * 1000000);
         if ( !passed ) out.output("ERROR: double did not serialize/deserialize properly\n");
 
-        passed = checkSimpleSerializeDeserialize<std::string>("test string");
+        passed = checkSimpleSerializeDeserialize<std::string>::check("test string");
         if ( !passed ) out.output("ERROR: string did not serialize/deserialize properly\n");
 
-        passed = checkSimpleSerializeDeserialize(
+        passed = checkSimpleSerializeDeserialize<std::pair<int32_t, int32_t>>::check(
             std::make_pair<int32_t, int32_t>(rng->generateNextInt32(), rng->generateNextInt32()));
         if ( !passed ) out.output("ERROR: pair<int32_t,int32_t> did not serialize/deserialize properly\n");
+    }
+    else if ( test == "pod_ptr" ) {
+        // Test pointers to POD (plain old data) types
+
+        // Simple Data Types
+        // int8, int16, int32, int64, uint8, uint16, uint32, uint64, float, double, string
+        passed = checkSimpleSerializeDeserialize<int8_t*>::check(rng->generateNextInt32());
+        if ( !passed ) out.output("ERROR: int8_t* did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<int8_t*>::check_nullptr();
+        if ( !passed ) out.output("ERROR: int8_t* nullptr did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<int16_t*>::check(rng->generateNextInt32());
+        if ( !passed ) out.output("ERROR: int16_t* did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<int16_t*>::check_nullptr();
+        if ( !passed ) out.output("ERROR: int16_t* nullptr did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<int32_t*>::check(rng->generateNextInt32());
+        if ( !passed ) out.output("ERROR: int32_t* did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<int32_t*>::check_nullptr();
+        if ( !passed ) out.output("ERROR: int32_t* nullptr did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<int64_t*>::check(rng->generateNextInt64());
+        if ( !passed ) out.output("ERROR: int64_t* did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<int64_t*>::check_nullptr();
+        if ( !passed ) out.output("ERROR: int64_t* nullptr did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<uint8_t*>::check(rng->generateNextUInt32());
+        if ( !passed ) out.output("ERROR: uint8_t* did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<uint8_t*>::check_nullptr();
+        if ( !passed ) out.output("ERROR: uint8_t* nullptr did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<uint16_t*>::check(rng->generateNextUInt32());
+        if ( !passed ) out.output("ERROR: uint16_t* did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<uint16_t*>::check_nullptr();
+        if ( !passed ) out.output("ERROR: uint16_t* nullptr did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<uint32_t*>::check(rng->generateNextUInt32());
+        if ( !passed ) out.output("ERROR: uint32_t* did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<uint32_t*>::check_nullptr();
+        if ( !passed ) out.output("ERROR: uint32_t* nullptr did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<uint64_t*>::check(rng->generateNextUInt64());
+        if ( !passed ) out.output("ERROR: uint64_t* did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<uint64_t*>::check_nullptr();
+        if ( !passed ) out.output("ERROR: uint64_t* nullptr did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<float*>::check(rng->nextUniform() * 1000);
+        if ( !passed ) out.output("ERROR: float* did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<float*>::check_nullptr();
+        if ( !passed ) out.output("ERROR: float* nullptr did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<double*>::check(rng->nextUniform() * 1000000);
+        if ( !passed ) out.output("ERROR: double* did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<double*>::check_nullptr();
+        if ( !passed ) out.output("ERROR: double* nullptr did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<std::string*>::check("test string");
+        if ( !passed ) out.output("ERROR: string* did not serialize/deserialize properly\n");
+
+        passed = checkSimpleSerializeDeserialize<std::string*>::check_nullptr();
+        if ( !passed ) out.output("ERROR: string* nullptr did not serialize/deserialize properly\n");
     }
     else if ( test == "ordered_containers" ) {
         // Ordered Containers
@@ -418,19 +520,19 @@ coreTestSerialization::coreTestSerialization(ComponentId_t id, Params& params) :
 
         // Get the size
         ser.start_sizing();
-        ser&   vec;
+        SST_SER(vec);
         size_t size = ser.size();
 
         char* buffer = new char[size];
 
         // Serialize
         ser.start_packing(buffer, size);
-        ser& vec;
+        SST_SER(vec);
 
         // Deserialize
         std::vector<shell*> vec_out;
         ser.start_unpacking(buffer, size);
-        ser& vec_out;
+        SST_SER(vec_out);
 
         // Now check the results
 
@@ -514,15 +616,15 @@ coreTestSerialization::coreTestSerialization(ComponentId_t id, Params& params) :
 
         // Going to serialize t1, but not t2.  It should get automatically
         // serialized when the handlers pointing to it are serialized.
-        ser& t1;
-        ser& h000;
-        ser& h001;
-        ser& h010;
-        ser& h011;
-        ser& h100;
-        ser& h101;
-        ser& h110;
-        ser& h111;
+        SST_SER(t1);
+        SST_SER(h000);
+        SST_SER(h001);
+        SST_SER(h010);
+        SST_SER(h011);
+        SST_SER(h100);
+        SST_SER(h101);
+        SST_SER(h110);
+        SST_SER(h111);
 
 
         size_t size   = ser.size();
@@ -531,15 +633,15 @@ coreTestSerialization::coreTestSerialization(ComponentId_t id, Params& params) :
         // Serialize
         ser.start_packing(buffer, size);
 
-        ser& t1;
-        ser& h000;
-        ser& h001;
-        ser& h010;
-        ser& h011;
-        ser& h100;
-        ser& h101;
-        ser& h110;
-        ser& h111;
+        SST_SER(t1);
+        SST_SER(h000);
+        SST_SER(h001);
+        SST_SER(h010);
+        SST_SER(h011);
+        SST_SER(h100);
+        SST_SER(h101);
+        SST_SER(h110);
+        SST_SER(h111);
 
         // Delete the original objects
         delete t1;
@@ -567,15 +669,15 @@ coreTestSerialization::coreTestSerialization(ComponentId_t id, Params& params) :
 
         ser.start_unpacking(buffer, size);
 
-        ser& t1_out;
-        ser& h000_out;
-        ser& h001_out;
-        ser& h010_out;
-        ser& h011_out;
-        ser& h100_out;
-        ser& h101_out;
-        ser& h110_out;
-        ser& h111_out;
+        SST_SER(t1_out);
+        SST_SER(h000_out);
+        SST_SER(h001_out);
+        SST_SER(h010_out);
+        SST_SER(h011_out);
+        SST_SER(h100_out);
+        SST_SER(h101_out);
+        SST_SER(h110_out);
+        SST_SER(h111_out);
 
         std::cout << "Internal value for t1: " << t1_out->value << std::endl;
         std::cout << std::endl;
@@ -616,7 +718,7 @@ coreTestSerialization::coreTestSerialization(ComponentId_t id, Params& params) :
         (*rst->handler)(17);
 
         ser.start_sizing();
-        ser& rst;
+        SST_SER(rst);
 
         size   = ser.size();
         buffer = new char[size + 10];
@@ -624,11 +726,11 @@ coreTestSerialization::coreTestSerialization(ComponentId_t id, Params& params) :
         // Serialize
         ser.start_packing(buffer, size);
 
-        ser& rst;
+        SST_SER(rst);
 
         RecursiveSerializationTest* rst_out;
         ser.start_unpacking(buffer, size);
-        ser& rst_out;
+        SST_SER(rst_out);
 
         (*rst_out->handler)(17);
     }
@@ -648,7 +750,7 @@ coreTestSerialization::coreTestSerialization(ComponentId_t id, Params& params) :
 
         // // Get the size
         ser.start_sizing();
-        ser | info;
+        SST_SER_AS_PTR(info);
 
 
         size_t size   = ser.size();
@@ -656,12 +758,12 @@ coreTestSerialization::coreTestSerialization(ComponentId_t id, Params& params) :
 
         // Serialize
         ser.start_packing(buffer, size);
-        ser | info;
+        SST_SER_AS_PTR(info);
 
         ComponentInfo info2;
 
         ser.start_unpacking(buffer, size);
-        ser | info2;
+        SST_SER_AS_PTR(info2);
 
         info2.test_printComponentInfoHierarchy();
     }

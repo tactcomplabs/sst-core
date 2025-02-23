@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -32,6 +32,7 @@
 #include <dlfcn.h>
 #include <getopt.h>
 #include <list>
+#include <string>
 #include <sys/stat.h>
 
 using namespace std;
@@ -88,6 +89,7 @@ retry:
     owner->LinkEndChild(comment);
 }
 
+namespace impl {
 /** Trim whitespace from strings */
 inline std::string
 trim(std::string s)
@@ -96,6 +98,7 @@ trim(std::string s)
     s.erase(s.find_last_not_of(" \t\n\r\f\v") + 1);
     return s;
 }
+} // namespace impl
 
 class OverallOutputter
 {
@@ -216,6 +219,7 @@ parseInput(std::string input)
                 "- Help : Displays this help message\n"
                 "- List {element.subelement} : Displays element libraries and component information\n"
                 "- Find {field} {search string} : Displays all components with the given search string in its field\n\n"
+                "- Quit : Exits the program\n\n"
                 "To see more detailed instructions, type in a command without additional parameters.\n\n";
         }
         else if ( command == "list" ) {
@@ -259,6 +263,9 @@ parseInput(std::string input)
                    "find compiledate Oct 17\n"
                    "find CATEGORY UNCATEGORIZED\n"
                    "find parameters rng";
+        }
+        else if ( command == "quit" ) {
+            return command;
         }
         else {
             text = getErrorText(command);
@@ -896,7 +903,7 @@ SSTLibraryInfo::filterSearch(std::stringstream& outputStream, std::string tag, s
                 std::string        temp;
                 std::istringstream stream(mapTag);
                 std::getline(stream, temp, '(');
-                std::string infoTag = trim(temp);
+                std::string infoTag = impl::trim(temp);
 
                 // Search for correct tag
                 if ( infoTag == tag ) {
@@ -1009,18 +1016,23 @@ SSTLibraryInfo::outputHumanReadable(std::ostream& os, bool printAll)
     if ( lib ) {
         // Only print if there is something of that type in the library
         if ( lib->numEntries() != 0 ) {
-            os << BaseType::ELI_baseName() << "s (" << lib->numEntries() << " total)\n";
+            os << BaseType::ELI_baseName() << "s (" << lib->numEntries(true) << " total)\n";
             int idx = 0;
             // lib->getMap returns a map<string, BaseInfo*>.  BaseInfo is
             // actually a Base::BuilderInfo and the implementation is in
             // BuildInfoImpl
             for ( auto& pair : lib->getMap() ) {
-                bool print = printAll || shouldPrintElement(getLibraryName(), pair.first);
+                // Need to skip aliases, unless it was specifically
+                // called out (this will be the case if printAll is
+                // false, but shouldPrintElement() is true)
+                bool is_alias = (pair.second->getAlias() == pair.first);
+                bool print = (!is_alias && printAll) || (!printAll && shouldPrintElement(getLibraryName(), pair.first));
+
                 if ( print ) {
                     os << "   " << BaseType::ELI_baseName() << " " << idx << ": " << pair.first << "\n";
                     if ( g_configuration.doVerbose() ) pair.second->toString(os);
                 }
-                ++idx;
+                if ( print ) ++idx;
                 if ( print ) os << std::endl;
             }
         }
@@ -1059,9 +1071,11 @@ SSTLibraryInfo::outputXML(TiXmlElement* XMLLibraryElement)
         for ( auto& pair : lib->getMap() ) {
             TiXmlElement* XMLElement = new TiXmlElement(BaseType::ELI_baseName());
             XMLElement->SetAttribute("Index", idx);
-            pair.second->outputXML(XMLElement);
-            XMLLibraryElement->LinkEndChild(XMLElement);
-            idx++;
+            if ( pair.first != pair.second->getAlias() ) {
+                pair.second->outputXML(XMLElement);
+                XMLLibraryElement->LinkEndChild(XMLElement);
+                idx++;
+            }
         }
     }
     else {
@@ -1118,8 +1132,10 @@ InteractiveWindow::getInput()
             if ( input != "" ) {
                 g_prevInput.push_front(input);
                 output = parseInput(input);
-                setInfoText(output);
 
+                if ( output == "quit" ) { break; }
+
+                setInfoText(output);
                 g_window.draw();
                 g_window.printInfo();
                 input    = "";
@@ -1188,6 +1204,7 @@ InteractiveWindow::getInput()
         // Make sure the cursor resets to the correct place
         g_window.resetCursor(input.size() + 1);
     }
+    endwin();
 }
 
 void

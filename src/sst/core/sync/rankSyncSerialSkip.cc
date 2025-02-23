@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -51,10 +51,7 @@ namespace SST {
 // Static Data Members
 SimTime_t RankSyncSerialSkip::myNextSyncTime = 0;
 
-RankSyncSerialSkip::RankSyncSerialSkip(RankInfo num_ranks, TimeConverter* UNUSED(minPartTC)) :
-    RankSync(num_ranks),
-    mpiWaitTime(0.0),
-    deserializeTime(0.0)
+RankSyncSerialSkip::RankSyncSerialSkip(RankInfo num_ranks) : RankSync(num_ranks), mpiWaitTime(0.0), deserializeTime(0.0)
 {
     max_period     = Simulation_impl::getSimulation()->getMinPartTC();
     myNextSyncTime = max_period->getFactor();
@@ -79,9 +76,9 @@ RankSyncSerialSkip::registerLink(
 {
     std::lock_guard<Core::ThreadSafe::Spinlock> slock(lock);
 
-    SyncQueue* queue;
+    RankSyncQueue* queue;
     if ( comm_map.count(to_rank.rank) == 0 ) {
-        queue = comm_map[to_rank.rank].squeue = new SyncQueue();
+        queue = comm_map[to_rank.rank].squeue = new RankSyncQueue(to_rank);
         comm_map[to_rank.rank].rbuf           = new char[4096];
         comm_map[to_rank.rank].local_size     = 4096;
         comm_map[to_rank.rank].remote_size    = 4096;
@@ -98,12 +95,35 @@ RankSyncSerialSkip::registerLink(
 }
 
 void
+RankSyncSerialSkip::setRestartTime(SimTime_t time)
+{
+    if ( Simulation_impl::getSimulation()->getRank().thread == 0 ) { myNextSyncTime = time; }
+}
+
+void
 RankSyncSerialSkip::finalizeLinkConfigurations()
 {}
 
 void
 RankSyncSerialSkip::prepareForComplete()
 {}
+
+void
+RankSyncSerialSkip::setSignals(int end, int usr, int alrm)
+{
+    sig_end_  = end;
+    sig_usr_  = usr;
+    sig_alrm_ = alrm;
+}
+
+bool
+RankSyncSerialSkip::getSignals(int& end, int& usr, int& alrm)
+{
+    end  = sig_end_;
+    usr  = sig_usr_;
+    alrm = sig_alrm_;
+    return sig_end_ || sig_usr_ || sig_alrm_;
+}
 
 uint64_t
 RankSyncSerialSkip::getDataSize() const
@@ -125,7 +145,6 @@ void
 RankSyncSerialSkip::exchange(void)
 {
 #ifdef SST_CONFIG_HAVE_MPI
-
     // Maximum number of outstanding requests is 3 times the number
     // of ranks I communicate with (1 recv, 2 sends per rank)
     MPI_Request sreqs[2 * comm_map.size()];
@@ -146,15 +165,15 @@ RankSyncSerialSkip::exchange(void)
         SST_EVENT_PROFILE_STOP
 
         // Cast to Header so we can get/fill in data
-        SyncQueue::Header* hdr = reinterpret_cast<SyncQueue::Header*>(send_buffer);
+        RankSyncQueue::Header* hdr = reinterpret_cast<RankSyncQueue::Header*>(send_buffer);
         // Simulation_impl::getSimulation()->getSimulationOutput().output("Data size = %d\n", hdr->buffer_size);
-        int                tag = 1;
+        int                    tag = 1;
         // Check to see if remote queue is big enough for data
         if ( i->second.remote_size < hdr->buffer_size ) {
             // not big enough, send message that will tell remote side to get larger buffer
             hdr->mode = 1;
             MPI_Isend(
-                send_buffer, sizeof(SyncQueue::Header), MPI_BYTE, i->first /*dest*/, tag, MPI_COMM_WORLD,
+                send_buffer, sizeof(RankSyncQueue::Header), MPI_BYTE, i->first /*dest*/, tag, MPI_COMM_WORLD,
                 &sreqs[sreq_count++]);
             i->second.remote_size = hdr->buffer_size;
             tag                   = 2;
@@ -180,9 +199,9 @@ RankSyncSerialSkip::exchange(void)
         // Get the buffer and deserialize all the events
         char* buffer = i->second.rbuf;
 
-        SyncQueue::Header* hdr  = reinterpret_cast<SyncQueue::Header*>(buffer);
-        unsigned int       size = hdr->buffer_size;
-        int                mode = hdr->mode;
+        RankSyncQueue::Header* hdr  = reinterpret_cast<RankSyncQueue::Header*>(buffer);
+        unsigned int           size = hdr->buffer_size;
+        int                    mode = hdr->mode;
 
         if ( mode == 1 ) {
             // May need to resize the buffer
@@ -198,7 +217,7 @@ RankSyncSerialSkip::exchange(void)
         auto deserialStart = SST::Core::Profile::now();
 
         SST::Core::Serialization::serializer ser;
-        ser.start_unpacking(&buffer[sizeof(SyncQueue::Header)], size - sizeof(SyncQueue::Header));
+        ser.start_unpacking(&buffer[sizeof(RankSyncQueue::Header)], size - sizeof(RankSyncQueue::Header));
 
         std::vector<Activity*> activities;
         activities.clear();
@@ -216,7 +235,7 @@ RankSyncSerialSkip::exchange(void)
         activities.clear();
     }
 
-    // Clear the SyncQueues used to send the data after all the sends have completed
+    // Clear the RankSyncQueues used to send the data after all the sends have completed
     waitStart = SST::Core::Profile::now();
     MPI_Waitall(sreq_count, sreqs, MPI_STATUSES_IGNORE);
     mpiWaitTime += SST::Core::Profile::getElapsed(waitStart);
@@ -239,6 +258,14 @@ RankSyncSerialSkip::exchange(void)
     MPI_Allreduce(&input, &min_time, 1, MPI_UINT64_T, MPI_MIN, MPI_COMM_WORLD);
 
     myNextSyncTime = min_time + max_period->getFactor();
+
+    int32_t local_signals[3]  = { sig_end_, sig_usr_, sig_alrm_ };
+    int32_t global_signals[3] = { 0, 0, 0 };
+    MPI_Allreduce(&local_signals, &global_signals, 3, MPI_INT32_T, MPI_MAX, MPI_COMM_WORLD);
+
+    sig_end_  = global_signals[0];
+    sig_usr_  = global_signals[1];
+    sig_alrm_ = global_signals[2];
 #endif
 }
 
@@ -258,16 +285,16 @@ RankSyncSerialSkip::exchangeLinkUntimedData(int UNUSED_WO_MPI(thread), std::atom
 
         // Do all the sends
         // Get the buffer from the syncQueue
-        char*              send_buffer = i->second.squeue->getData();
+        char*                  send_buffer = i->second.squeue->getData();
         // Cast to Header so we can get/fill in data
-        SyncQueue::Header* hdr         = reinterpret_cast<SyncQueue::Header*>(send_buffer);
-        int                tag         = 1;
+        RankSyncQueue::Header* hdr         = reinterpret_cast<RankSyncQueue::Header*>(send_buffer);
+        int                    tag         = 1;
         // Check to see if remote queue is big enough for data
         if ( i->second.remote_size < hdr->buffer_size ) {
             // not big enough, send message that will tell remote side to get larger buffer
             hdr->mode = 1;
             MPI_Isend(
-                send_buffer, sizeof(SyncQueue::Header), MPI_BYTE, i->first /*dest*/, tag, MPI_COMM_WORLD,
+                send_buffer, sizeof(RankSyncQueue::Header), MPI_BYTE, i->first /*dest*/, tag, MPI_COMM_WORLD,
                 &sreqs[sreq_count++]);
             i->second.remote_size = hdr->buffer_size;
             tag                   = 2;
@@ -290,9 +317,9 @@ RankSyncSerialSkip::exchangeLinkUntimedData(int UNUSED_WO_MPI(thread), std::atom
         // Get the buffer and deserialize all the events
         char* buffer = i->second.rbuf;
 
-        SyncQueue::Header* hdr  = reinterpret_cast<SyncQueue::Header*>(buffer);
-        unsigned int       size = hdr->buffer_size;
-        int                mode = hdr->mode;
+        RankSyncQueue::Header* hdr  = reinterpret_cast<RankSyncQueue::Header*>(buffer);
+        unsigned int           size = hdr->buffer_size;
+        int                    mode = hdr->mode;
 
         if ( mode == 1 ) {
             // May need to resize the buffer
@@ -306,7 +333,7 @@ RankSyncSerialSkip::exchangeLinkUntimedData(int UNUSED_WO_MPI(thread), std::atom
         }
 
         SST::Core::Serialization::serializer ser;
-        ser.start_unpacking(&buffer[sizeof(SyncQueue::Header)], size - sizeof(SyncQueue::Header));
+        ser.start_unpacking(&buffer[sizeof(RankSyncQueue::Header)], size - sizeof(RankSyncQueue::Header));
 
         std::vector<Activity*> activities;
         ser&                   activities;
@@ -317,7 +344,7 @@ RankSyncSerialSkip::exchangeLinkUntimedData(int UNUSED_WO_MPI(thread), std::atom
         }
     }
 
-    // Clear the SyncQueues used to send the data after all the sends have completed
+    // Clear the RankSyncQueues used to send the data after all the sends have completed
     MPI_Waitall(sreq_count, sreqs, MPI_STATUSES_IGNORE);
 
     for ( comm_map_t::iterator i = comm_map.begin(); i != comm_map.end(); ++i ) {
@@ -333,15 +360,8 @@ RankSyncSerialSkip::exchangeLinkUntimedData(int UNUSED_WO_MPI(thread), std::atom
 #endif
 }
 
-void
-RankSyncSerialSkip::serialize_order(SST::Core::Serialization::serializer& ser)
-{
-    RankSync::serialize_order(ser);
-    // TODO Do we need to keep anything from comm_map? Certainly don't need the struct
-    // ser& comm_map;
-    ser& mpiWaitTime;
-    ser& deserializeTime;
-}
-
+int RankSyncSerialSkip::sig_end_(0);
+int RankSyncSerialSkip::sig_usr_(0);
+int RankSyncSerialSkip::sig_alrm_(0);
 
 } // namespace SST

@@ -1,10 +1,10 @@
 // -*- c++ -*-
 
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -216,6 +216,27 @@ compAddLink(PyObject* self, PyObject* args)
     gModel->addLink(id, link->name, port, lat, link->no_cut);
 
     Py_XDECREF(lstr);
+
+    return SST_ConvertToPythonLong(0);
+}
+
+static PyObject*
+compAddPortModule(PyObject* self, PyObject* args)
+{
+    ConfigComponent* c = getComp(self);
+    if ( nullptr == c ) return nullptr;
+    PyErr_Clear();
+    // we can have 2 or 3 arguments
+    // mandatory port
+    // mandatory type
+    // optional parameters
+
+    char*     port = nullptr;
+    char*     type = nullptr;
+    PyObject* py_params;
+    if ( !PyArg_ParseTuple(args, "ss|O", &port, &type, &py_params) ) return nullptr;
+    auto params = pythonToCppParams(py_params);
+    c->addPortModule(port, type, params);
 
     return SST_ConvertToPythonLong(0);
 }
@@ -539,6 +560,7 @@ static PyMethodDef componentMethods[] = {
     { "setRank", compSetRank, METH_VARARGS, "Sets which rank on which this component should sit" },
     { "setWeight", compSetWeight, METH_O, "Sets the weight of the component" },
     { "addLink", compAddLink, METH_VARARGS, "Connects this component to a Link" },
+    { "addPortModule", compAddPortModule, METH_VARARGS, "Connect Port Module to this component" },
     { "getFullName", compGetFullName, METH_NOARGS, "Returns the full name of the component." },
     { "getType", compGetType, METH_NOARGS, "Returns the type of the component." },
     { "setStatisticLoadLevel", compSetStatisticLoadLevel, METH_VARARGS,
@@ -613,8 +635,9 @@ PyTypeObject PyModel_ComponentType = {
     0,                               /* tp_version_tag */
     nullptr,                         /* tp_finalize */
     SST_TP_VECTORCALL                /* Python3.8+ */
-        SST_TP_PRINT_DEP             /* Python3.8 only */
-            SST_TP_WATCHED           /* Python3.12+ only */
+    SST_TP_PRINT_DEP                 /* Python3.8 only */
+    SST_TP_WATCHED                   /* Python3.12+ only */
+    SST_TP_VERSIONS_USED             /* Python3.13+ only */
 };
 #if PY_MAJOR_VERSION == 3
 #if PY_MINOR_VERSION == 8
@@ -724,8 +747,9 @@ PyTypeObject PyModel_SubComponentType = {
     0,                                  /* tp_version_tag */
     nullptr,                            /* tp_finalize */
     SST_TP_VECTORCALL                   /* Python3.8+ */
-        SST_TP_PRINT_DEP                /* Python3.8 only */
-            SST_TP_WATCHED              /* Python3.12+ */
+    SST_TP_PRINT_DEP                    /* Python3.8 only */
+    SST_TP_WATCHED                      /* Python3.12+ */
+    SST_TP_VERSIONS_USED                /* Python3.13+ only */
 };
 #if PY_MAJOR_VERSION == 3
 #if PY_MINOR_VERSION == 8

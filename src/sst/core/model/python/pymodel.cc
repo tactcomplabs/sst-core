@@ -1,10 +1,10 @@
 // -*- c++ -*-
 
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -19,6 +19,7 @@
 #include "sst/core/configGraph.h"
 #include "sst/core/cputimer.h"
 #include "sst/core/factory.h"
+#include "sst/core/from_string.h"
 #include "sst/core/memuse.h"
 #include "sst/core/model/element_python.h"
 #include "sst/core/model/python/pymacros.h"
@@ -136,8 +137,9 @@ static PyTypeObject ModuleLoaderType = {
     0,                              /* tp_version_tag */
     nullptr,                        /* tp_finalize */
     SST_TP_VECTORCALL               /* Python3.8+ */
-        SST_TP_PRINT_DEP            /* Python3.8 only */
-            SST_TP_WATCHED          /* Python3.12+ */
+    SST_TP_PRINT_DEP                /* Python3.8 only */
+    SST_TP_WATCHED                  /* Python3.12+ */
+    SST_TP_VERSIONS_USED            /* Python3.13+ */
 };
 #if PY_MAJOR_VERSION == 3
 #if PY_MINOR_VERSION == 8
@@ -335,7 +337,13 @@ getProgramOptions(PyObject* UNUSED(self), PyObject* UNUSED(args))
         dict, SST_ConvertToPythonString("partitioner"), SST_ConvertToPythonString(cfg->partitioner().c_str()));
     PyDict_SetItem(
         dict, SST_ConvertToPythonString("heartbeat-period"),
-        SST_ConvertToPythonString(cfg->heartbeat_period().c_str()));
+        SST_ConvertToPythonString(cfg->heartbeat_sim_period().c_str()));
+    PyDict_SetItem(
+        dict, SST_ConvertToPythonString("heartbeat-sim-period"),
+        SST_ConvertToPythonString(cfg->heartbeat_sim_period().c_str()));
+    PyDict_SetItem(
+        dict, SST_ConvertToPythonString("heartbeat-wall-period"),
+        SST_ConvertToPythonLong(cfg->heartbeat_wall_period()));
     PyDict_SetItem(
         dict, SST_ConvertToPythonString("output-directory"),
         SST_ConvertToPythonString(cfg->output_directory().c_str()));
@@ -390,8 +398,14 @@ getProgramOptions(PyObject* UNUSED(self), PyObject* UNUSED(args))
 
     // Advanced options - checkpointing
     PyDict_SetItem(
+        dict, SST_ConvertToPythonString("checkpoint-sim-period"),
+        SST_ConvertToPythonString(cfg->checkpoint_sim_period().c_str()));
+    PyDict_SetItem(
         dict, SST_ConvertToPythonString("checkpoint-period"),
-        SST_ConvertToPythonString(cfg->checkpoint_period().c_str()));
+        SST_ConvertToPythonString(cfg->checkpoint_sim_period().c_str()));
+    PyDict_SetItem(
+        dict, SST_ConvertToPythonString("checkpoint-wall-period"),
+        SST_ConvertToPythonLong(cfg->checkpoint_wall_period()));
     PyDict_SetItem(
         dict, SST_ConvertToPythonString("checkpoint-prefix"),
         SST_ConvertToPythonString(cfg->checkpoint_prefix().c_str()));
@@ -1050,7 +1064,7 @@ PyInit_sst(void)
 
 void
 SSTPythonModelDefinition::initModel(
-    const std::string& script_file, int verbosity, Config* UNUSED(config), int argc, char** argv)
+    const std::string& script_file, int verbosity, Config* config, int argc, char** argv)
 {
     output = new Output("SSTPythonModel: ", verbosity, 0, SST::Output::STDOUT);
 
@@ -1130,6 +1144,28 @@ SSTPythonModelDefinition::initModel(
     // // For 3.11 and on, we need to append the current working
     // // directory to the path
     PyRun_SimpleString("sys.meta_path.append(sst.ModuleLoader())\n");
+#endif
+
+
+    // Check to see if we need to import the coverage module (only works in Python >=3.9
+#if PY_MINOR_VERSION >= 9
+    if ( config->enablePythonCoverage() ) { enablePythonCoverage = true; }
+    else {
+        const char* envConfigCoverage = getenv("SST_CONFIG_PYTHON_COVERAGE");
+        if ( nullptr != envConfigCoverage ) {
+            std::string value(envConfigCoverage);
+            try {
+                enablePythonCoverage = SST::Core::from_string<bool>(value);
+            }
+            catch ( std::invalid_argument& e ) {
+                output->fatal(
+                    CALL_INFO, 1,
+                    "ERROR: Invalid format for SST_CONFIG_PYTHON_COVERAGE. Valid boolean pairs are true/false, t/f, "
+                    "yes/no, y/n, on/off, or 1/0\n");
+                enablePythonCoverage = false;
+            }
+        }
+    }
 #endif
 }
 
@@ -1223,8 +1259,29 @@ SSTPythonModelDefinition::createConfigGraph()
 {
     output->verbose(CALL_INFO, 1, 0, "Creating config graph for SST using Python model...\n");
 
+#if PY_MINOR_VERSION >= 9
+    if ( enablePythonCoverage ) {
+        // Create coverage object with a name unlikely to be used in the user script
+        int startcoverageReturn = PyRun_SimpleString("import coverage\n"
+                                                     "zzzSSTPythonCoverageModule = coverage.Coverage()\n"
+                                                     "zzzSSTPythonCoverageModule.start()\n");
+        if ( nullptr != PyErr_Occurred() ) {
+            // Print the Python error and then let SST exit as a fatal-stop.
+            output->fatal(
+                CALL_INFO, 1,
+                "ERROR: Error occurred starting test coverage of the SST model script. Reported error:\n");
+            PyErr_Print();
+        }
+        if ( -1 == startcoverageReturn ) {
+            output->fatal(CALL_INFO, 1, "Execution of starting test coverage failed\n%s", loadErrors.c_str());
+        }
+    }
+#endif
+
+    // Open the input script
     FILE* fp = fopen(scriptName.c_str(), "r");
     if ( !fp ) { output->fatal(CALL_INFO, 1, "Unable to open python script %s\n", scriptName.c_str()); }
+    PyErr_Clear();
     int createReturn = PyRun_AnyFileEx(fp, scriptName.c_str(), 1);
 
     if ( nullptr != PyErr_Occurred() ) {
@@ -1243,6 +1300,24 @@ SSTPythonModelDefinition::createConfigGraph()
         output->fatal(CALL_INFO, 1, "Error occured handling the creation of the component graph in Python.\n");
     }
 
+#if PY_MINOR_VERSION >= 9
+    // If coverage was enabled, stop the module and output the results
+    if ( enablePythonCoverage ) {
+        PyErr_Clear();
+        int stopcoverageReturn = PyRun_SimpleString("zzzSSTPythonCoverageModule.stop()\n"
+                                                    "zzzSSTPythonCoverageModule.save()\n");
+
+        if ( nullptr != PyErr_Occurred() ) {
+            // Print the Python error and then let SST exit as a fatal-stop.
+            output->fatal(
+                CALL_INFO, 1, "ERROR: Error occurred stopping coverage of the SST model script. Reported error:\n");
+            PyErr_Print();
+        }
+        if ( -1 == stopcoverageReturn ) {
+            output->fatal(CALL_INFO, 1, "Execution of stopping coverage failed\n%s", loadErrors.c_str());
+        }
+    }
+#endif
     return graph;
 }
 

@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -13,6 +13,7 @@
 #define SST_CORE_FACTORY_H
 
 #include "sst/core/eli/elementinfo.h"
+#include "sst/core/output.h"
 #include "sst/core/params.h"
 #include "sst/core/sst_types.h"
 #include "sst/core/sstpart.h"
@@ -53,9 +54,9 @@ public:
 
     /** Get a list of allowed param keys for a given component type.
      * @param type - Name of component in lib.name format
-     * @return True if this is a valid portname
+     * @return Allowed parameter names
      */
-    const Params::KeySet_t& getParamNames(const std::string& type);
+    const std::vector<std::string>& getParamNames(const std::string& type);
 
     /** Attempt to create a new Component instantiation
      * @param id - The unique ID of the component instantiation

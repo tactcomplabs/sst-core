@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -18,8 +18,10 @@
 #include "sst/core/factory.h"
 #include "sst/core/link.h"
 #include "sst/core/linkMap.h"
+#include "sst/core/portModule.h"
 #include "sst/core/profile/clockHandlerProfileTool.h"
 #include "sst/core/profile/eventHandlerProfileTool.h"
+#include "sst/core/serialization/serialize.h"
 #include "sst/core/simulation_impl.h"
 #include "sst/core/statapi/statoutput.h"
 #include "sst/core/stringize.h"
@@ -87,6 +89,11 @@ BaseComponent::~BaseComponent()
                 "Warning:  BaseComponent destructor failed to remove ComponentInfo from parent.\n");
         }
     }
+
+    // Delete any portModules
+    for ( auto port : portModules ) {
+        delete port;
+    }
 }
 
 void
@@ -105,8 +112,7 @@ BaseComponent::setDefaultTimeBaseForLinks(TimeConverter* tc)
 void
 BaseComponent::pushValidParams(Params& params, const std::string& type)
 {
-    const Params::KeySet_t& keyset = Factory::getFactory()->getParamNames(type);
-    params.pushAllowedKeys(keyset);
+    params.pushAllowedKeys(Factory::getFactory()->getParamNames(type));
 }
 
 void
@@ -129,7 +135,7 @@ BaseComponent::registerClock_impl(TimeConverter* tc, Clock::HandlerBase* handler
     for ( auto* tool : tools ) {
         ClockHandlerMetaData mdata(my_info->getID(), getName(), getType());
         // Add the receive profiler to the handler
-        handler->addProfileTool(tool, mdata);
+        handler->attachTool(tool, mdata);
     }
 
     // if regAll is true set tc as the default for the component and
@@ -221,7 +227,7 @@ BaseComponent::isPortConnected(const std::string& name) const
 // child and remove it from my linkmap.  The child will insert it into
 // their link map.
 Link*
-BaseComponent::getLinkFromParentSharedPort(const std::string& port)
+BaseComponent::getLinkFromParentSharedPort(const std::string& port, std::vector<ConfigPortModule>& port_modules)
 {
     LinkMap* myLinks = my_info->getLinkMap();
 
@@ -237,6 +243,16 @@ BaseComponent::getLinkFromParentSharedPort(const std::string& port)
             // it from my link map and return it to the child.
             if ( !tmp->isConfigured() ) {
                 myLinks->removeLink(port);
+                // Need to see if there are any associated PortModules
+                if ( my_info->portModules != nullptr ) {
+                    auto it = my_info->portModules->find(port);
+                    if ( it != my_info->portModules->end() ) {
+                        // Found PortModules, swap them into
+                        // port_modules and remove from my map
+                        port_modules.swap(it->second);
+                        my_info->portModules->erase(it);
+                    }
+                }
                 return tmp;
             }
         }
@@ -246,7 +262,9 @@ BaseComponent::getLinkFromParentSharedPort(const std::string& port)
     // parent shared with me and if so, call
     // getLinkFromParentSharedPort on them
 
-    if ( my_info->sharesPorts() ) { return my_info->parent_info->component->getLinkFromParentSharedPort(port); }
+    if ( my_info->sharesPorts() ) {
+        return my_info->parent_info->component->getLinkFromParentSharedPort(port, port_modules);
+    }
     else {
         return nullptr;
     }
@@ -266,7 +284,8 @@ BaseComponent::configureLink(const std::string& name, TimeConverter* time_base, 
     // with parents if sharing is turned on
     if ( nullptr == tmp ) {
         if ( my_info->sharesPorts() ) {
-            tmp = my_info->parent_info->component->getLinkFromParentSharedPort(name);
+            std::vector<ConfigPortModule> port_modules;
+            tmp = my_info->parent_info->component->getLinkFromParentSharedPort(name, port_modules);
             // If I got a link from my parent, I need to put it in my
             // link map
             if ( nullptr != tmp ) {
@@ -277,6 +296,15 @@ BaseComponent::configureLink(const std::string& name, TimeConverter* time_base, 
                 myLinks->insertLink(name, tmp);
                 // Need to set the link's defaultTimeBase to nullptr
                 tmp->setDefaultTimeBase(nullptr);
+
+                // Need to see if I got any port_modules, if so, need
+                // to add them to my_info->portModules
+                if ( port_modules.size() > 0 ) {
+                    if ( nullptr == my_info->portModules ) {
+                        my_info->portModules = new std::map<std::string, std::vector<ConfigPortModule>>();
+                    }
+                    (*my_info->portModules)[name].swap(port_modules);
+                }
             }
         }
     }
@@ -295,12 +323,35 @@ BaseComponent::configureLink(const std::string& name, TimeConverter* time_base, 
                 EventHandlerMetaData mdata(my_info->getID(), getName(), getType(), name);
 
                 // Add the receive profiler to the handler
-                if ( tool->profileReceives() ) handler->addProfileTool(tool, mdata);
+                if ( tool->profileReceives() ) handler->attachTool(tool, mdata);
 
                 // Add the send profiler to the link
-                if ( tool->profileSends() ) tmp->addProfileTool(tool, mdata);
+                if ( tool->profileSends() ) tmp->attachTool(tool, mdata);
             }
         }
+
+        // Check for PortModules
+        if ( my_info->portModules != nullptr ) {
+            auto it = my_info->portModules->find(name);
+            if ( it != my_info->portModules->end() ) {
+                EventHandlerMetaData mdata(my_info->getID(), getName(), getType(), name);
+                for ( auto& portModule : it->second ) {
+                    auto* pm = Factory::getFactory()->CreateWithParams<PortModule>(
+                        portModule.type, portModule.params, portModule.params);
+                    pm->setComponent(this);
+                    if ( pm->installOnSend() ) tmp->attachTool(pm, mdata);
+                    if ( pm->installOnReceive() ) {
+                        if ( handler )
+                            handler->attachInterceptTool(pm, mdata);
+                        else
+                            fatal(
+                                CALL_INFO_LONG, 1, "ERROR: Trying to install a receive PortModule on a Polling Link\n");
+                    }
+                    portModules.push_back(pm);
+                }
+            }
+        }
+
         if ( nullptr != time_base )
             tmp->setDefaultTimeBase(time_base);
         else
@@ -789,12 +840,12 @@ void
 BaseComponent::configureAllowedStatParams(SST::Params& params)
 {
     // Identify what keys are Allowed in the parameters
-    Params::KeySet_t allowedKeySet;
-    allowedKeySet.insert("type");
-    allowedKeySet.insert("rate");
-    allowedKeySet.insert("startat");
-    allowedKeySet.insert("stopat");
-    allowedKeySet.insert("resetOnRead");
+    std::vector<std::string> allowedKeySet;
+    allowedKeySet.push_back("type");
+    allowedKeySet.push_back("rate");
+    allowedKeySet.push_back("startat");
+    allowedKeySet.push_back("stopat");
+    allowedKeySet.push_back("resetOnOutput");
     params.pushAllowedKeys(allowedKeySet);
 }
 
@@ -815,6 +866,14 @@ BaseComponent::getComponentProfileTools(const std::string& point)
 {
     return sim_->getProfileTool<Profile::ComponentProfileTool>(point);
 }
+
+void
+BaseComponent::initiateInteractive(const std::string& msg)
+{
+    sim_->enter_interactive_ = true;
+    sim_->interactive_msg_   = msg;
+}
+
 
 void
 BaseComponent::serialize_order(SST::Core::Serialization::serializer& ser)
@@ -853,6 +912,10 @@ BaseComponent::serialize_order(SST::Core::Serialization::serializer& ser)
         }
         break;
     }
+    case SST::Core::Serialization::serializer::MAP:
+        // All variables for BaseComponent are mapped in the
+        // SerializeBaseComponentHelper class. Nothing to do here.
+        break;
     }
 }
 
@@ -863,7 +926,7 @@ namespace pvt {
 static const long null_ptr_id = -1;
 
 void
-size_basecomponent(serializable_base* s, serializer& ser)
+SerializeBaseComponentHelper::size_basecomponent(serializable_base* s, serializer& ser)
 {
     long dummy = 0;
     ser.size(dummy);
@@ -871,7 +934,7 @@ size_basecomponent(serializable_base* s, serializer& ser)
 }
 
 void
-pack_basecomponent(serializable_base* s, serializer& ser)
+SerializeBaseComponentHelper::pack_basecomponent(serializable_base* s, serializer& ser)
 {
     if ( s ) {
         long cls_id = s->cls_id();
@@ -885,7 +948,7 @@ pack_basecomponent(serializable_base* s, serializer& ser)
 }
 
 void
-unpack_basecomponent(serializable_base*& s, serializer& ser)
+SerializeBaseComponentHelper::unpack_basecomponent(serializable_base*& s, serializer& ser)
 {
     long cls_id;
     ser.unpack(cls_id);
@@ -895,6 +958,43 @@ unpack_basecomponent(serializable_base*& s, serializer& ser)
         ser.report_new_pointer(reinterpret_cast<uintptr_t>(s));
         s->serialize_order(ser);
     }
+}
+
+void
+SerializeBaseComponentHelper::map_basecomponent(serializable_base*& s, serializer& ser, const char* name)
+{
+    if ( nullptr == s ) return;
+
+    BaseComponent*  comp    = static_cast<BaseComponent*>(s);
+    ObjectMapClass* obj_map = new ObjectMapClass(s, s->cls_name());
+    ser.report_object_map(obj_map);
+    ser.mapper().map_hierarchy_start(name, obj_map);
+
+    // Put in any subcomponents first
+    for ( auto it = comp->my_info->subComponents.begin(); it != comp->my_info->subComponents.end(); ++it ) {
+        std::string name_str = it->second.getShortName();
+        if ( name_str == "" ) {
+            // This is an anonymous subcomponent, create a name based
+            // on slotname and slotnum
+            name_str += it->second.getSlotName() + "[" + std::to_string(it->second.getSlotNum()) + "]";
+        }
+        // sst_map_object(ser, it->second.component, it->second.getShortName().c_str());
+        sst_map_object(ser, it->second.component, name_str.c_str());
+        it->second.serialize_comp(ser);
+    }
+
+    // Put in ComponentInfo data
+    ObjectMap* my_info_dir = new ObjectMapHierarchyOnly();
+    ser.mapper().map_hierarchy_start("my_info", my_info_dir);
+    ser.mapper().setNextObjectReadOnly();
+    sst_map_object(ser, const_cast<ComponentId_t&>(comp->my_info->id), "id");
+    ser.mapper().setNextObjectReadOnly();
+    sst_map_object(ser, const_cast<std::string&>(comp->my_info->type), "type");
+    sst_map_object(ser, comp->my_info->defaultTimeBase, "defaultTimeBase");
+    ser.mapper().map_hierarchy_end(); // for my_info_dir
+
+    s->serialize_order(ser);
+    ser.mapper().map_hierarchy_end(); // obj_map
 }
 
 } // namespace pvt

@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -145,12 +145,12 @@ Factory::isPortNameValid(const std::string& type, const std::string& port_name)
     return false;
 }
 
-const Params::KeySet_t&
+const std::vector<std::string>&
 Factory::getParamNames(const std::string& type)
 {
     // This is only needed so we can return something in the error
     // case.  It is never used.
-    static Params::KeySet_t empty_keyset;
+    static std::vector<std::string> empty_keyset;
 
     std::string elemlib, elem;
     std::tie(elemlib, elem) = parseLoadName(type);

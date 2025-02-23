@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -49,10 +49,10 @@ coreTestComponent::coreTestComponent(ComponentId_t id, Params& params) : coreTes
     primaryComponentDoNotEndSim();
 
     // configure out links
-    N = configureLink("Nlink", new Event::Handler<coreTestComponent>(this, &coreTestComponent::handleEvent));
-    S = configureLink("Slink", new Event::Handler<coreTestComponent>(this, &coreTestComponent::handleEvent));
-    E = configureLink("Elink", new Event::Handler<coreTestComponent>(this, &coreTestComponent::handleEvent));
-    W = configureLink("Wlink", new Event::Handler<coreTestComponent>(this, &coreTestComponent::handleEvent));
+    N = configureLink("Nlink", new Event::Handler2<coreTestComponent, &coreTestComponent::handleEvent>(this));
+    S = configureLink("Slink", new Event::Handler2<coreTestComponent, &coreTestComponent::handleEvent>(this));
+    E = configureLink("Elink", new Event::Handler2<coreTestComponent, &coreTestComponent::handleEvent>(this));
+    W = configureLink("Wlink", new Event::Handler2<coreTestComponent, &coreTestComponent::handleEvent>(this));
 
     countN = registerStatistic<int>("N");
     countS = registerStatistic<int>("S");
@@ -65,7 +65,7 @@ coreTestComponent::coreTestComponent(ComponentId_t id, Params& params) : coreTes
     assert(W);
 
     // set our clock
-    registerClock(clockFrequency, new Clock::Handler<coreTestComponent>(this, &coreTestComponent::clockTic));
+    registerClock(clockFrequency, new Clock::Handler2<coreTestComponent, &coreTestComponent::clockTic>(this));
 }
 
 coreTestComponent::~coreTestComponent()
@@ -73,7 +73,7 @@ coreTestComponent::~coreTestComponent()
     delete rng;
 }
 
-coreTestComponent::coreTestComponent() : coreTestComponentBase2(-1)
+coreTestComponent::coreTestComponent() : coreTestComponentBase2()
 {
     // for serialization only
 }
@@ -156,6 +156,27 @@ bool coreTestComponent::clockTic(Cycle_t)
 
     // return false so we keep going
     return false;
+}
+
+void
+coreTestComponent::serialize_order(SST::Core::Serialization::serializer& ser)
+{
+    SST::CoreTestComponent::coreTestComponentBase2::serialize_order(ser);
+    SST_SER(workPerCycle)
+    SST_SER(commFreq)
+    SST_SER(commSize)
+    SST_SER(neighbor)
+
+    SST_SER(rng)
+    SST_SER(N)
+    SST_SER(S)
+    SST_SER(E)
+    SST_SER(W)
+
+    SST_SER(countN)
+    SST_SER(countS)
+    SST_SER(countE)
+    SST_SER(countW)
 }
 
 // Element Libarary / Serialization stuff

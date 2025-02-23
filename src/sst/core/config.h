@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -16,6 +16,8 @@
 #include "sst/core/serialization/serializable.h"
 #include "sst/core/sst_types.h"
 
+// Pull in the patchlevel for Python so we can check Python version
+#include <patchlevel.h>
 #include <string>
 
 /* Forward declare for Friendship */
@@ -127,14 +129,19 @@ public:
     uint32_t exit_after() const { return exit_after_; }
 
     /**
-       Partitioner to use for parallel simualations
+       Partitioner to use for parallel simulations
     */
     const std::string& partitioner() const { return partitioner_; }
 
     /**
        Simulation period at which to print out a "heartbeat" message
     */
-    const std::string& heartbeat_period() const { return heartbeat_period_; }
+    const std::string& heartbeat_sim_period() const { return heartbeat_sim_period_; }
+
+    /**
+       Wall-clock period at which to print out a "heartbeat" message
+    */
+    uint32_t heartbeat_wall_period() const { return heartbeat_wall_period_; }
 
     /**
        The directory to be used for writting output files
@@ -227,9 +234,13 @@ public:
     }
 
     /**
-       Simulation period at which to create a checkpoint
-    */
-    const std::string& checkpoint_period() const { return checkpoint_period_; }
+     * Interval at which to create a checkpoint in wall time
+     */
+    uint32_t           checkpoint_wall_period() const { return checkpoint_wall_period_; }
+    /**
+     * Interval at which to create a checkpoint in simulated time
+     */
+    const std::string& checkpoint_sim_period() const { return checkpoint_sim_period_; }
 
     /**
      * Returns whether the simulation will begin from a checkpoint (true) or not (false).
@@ -281,6 +292,14 @@ public:
        const std::string& addLibPath() const { return addLibPath_; }
     */
 
+
+#if PY_MINOR_VERSION >= 9
+    /**
+       Controls whether the Python coverage object will be loaded
+     */
+    bool enablePythonCoverage() const { return enable_python_coverage_; }
+#endif
+
     // Advanced options - Profiling
 
     /**
@@ -319,6 +338,16 @@ public:
         }
         return "UNKNOWN";
     }
+
+    /**
+       Get the InteractiveAction to use for interactive mode
+     */
+    std::string interactive_console() const { return interactive_console_; }
+
+    /**
+       Get the time to start interactive mode
+    */
+    std::string interactive_start_time() const { return interactive_start_time_; }
 
 
 #ifdef USE_MEMPOOL
@@ -360,10 +389,28 @@ public:
     */
     bool enable_sig_handling() const { return enable_sig_handling_; }
 
+    /**
+     * SIGUSR1 handler
+     */
+    const std::string& sigusr1() const { return sigusr1_; }
+
+    /**
+     * SIGUSR2 handler
+     */
+    const std::string& sigusr2() const { return sigusr2_; }
+
+    /**
+     * SIGALRM handler(s)
+     */
+    const std::string& sigalrm() const { return sigalrm_; }
+
     // This option is used by the SST wrapper found in
     // bootshare.{h,cc} and is never actually accessed once sst.x
     // executes.
 
+
+    /** Get whether or not any of the checkpoint options were turned on */
+    bool canInitiateCheckpoint();
 
     /** Print to stdout the current configuration */
     void print();
@@ -377,7 +424,8 @@ public:
         ser& stop_at_;
         ser& exit_after_;
         ser& partitioner_;
-        ser& heartbeat_period_;
+        ser& heartbeat_wall_period_;
+        ser& heartbeat_sim_period_;
         ser& output_directory_;
         ser& output_core_prefix_;
 
@@ -401,18 +449,27 @@ public:
         ser& debugFile_;
         ser& libpath_;
         ser& addlibpath_;
+#if PY_MINOR_VERSION >= 9
+        ser& enable_python_coverage_;
+#endif
         ser& enabled_profiling_;
         ser& profiling_output_;
         ser& runMode_;
+        ser& interactive_console_;
+        ser& interactive_start_time_;
 #ifdef USE_MEMPOOL
         ser& event_dump_file_;
 #endif
         ser& load_from_checkpoint_;
-        ser& checkpoint_period_;
+        ser& checkpoint_wall_period_;
+        ser& checkpoint_sim_period_;
         ser& checkpoint_prefix_;
 
-        ser& print_env_;
         ser& enable_sig_handling_;
+        ser& sigusr1_;
+        ser& sigusr2_;
+        ser& sigalrm_;
+        ser& print_env_;
         ser& no_env_config_;
     }
     ImplementSerializable(SST::Config);
@@ -456,17 +513,18 @@ private:
     // Basic options
     // uint32_t    verbose_; ** in ConfigShared
     // Num threads held in RankInfo.thread
-    uint32_t    num_ranks_;          /*!< Number of ranks in the simulation */
-    uint32_t    num_threads_;        /*!< Number of threads requested */
-    std::string configFile_;         /*!< Graph generation file */
-    std::string model_options_;      /*!< Options to pass to Python Model generator */
-    bool        print_timing_;       /*!< Print SST timing information */
-    std::string stop_at_;            /*!< When to stop the simulation */
-    uint32_t    exit_after_;         /*!< When (wall-time) to stop the simulation */
-    std::string partitioner_;        /*!< Partitioner to use */
-    std::string heartbeat_period_;   /*!< Sets the heartbeat period for the simulation */
-    std::string output_directory_;   /*!< Output directory to dump all files to */
-    std::string output_core_prefix_; /*!< Set the SST::Output prefix for the core */
+    uint32_t    num_ranks_;             /*!< Number of ranks in the simulation */
+    uint32_t    num_threads_;           /*!< Number of threads requested */
+    std::string configFile_;            /*!< Graph generation file */
+    std::string model_options_;         /*!< Options to pass to Python Model generator */
+    bool        print_timing_;          /*!< Print SST timing information */
+    std::string stop_at_;               /*!< When to stop the simulation */
+    uint32_t    exit_after_;            /*!< When (wall-time) to stop the simulation */
+    std::string partitioner_;           /*!< Partitioner to use */
+    std::string heartbeat_sim_period_;  /*!< Sets the heartbeat (simulated time) period for the simulation */
+    uint32_t    heartbeat_wall_period_; /*!< Sets the heartbeat (wall-clock time) period for the simulation */
+    std::string output_directory_;      /*!< Output directory to dump all files to */
+    std::string output_core_prefix_;    /*!< Set the SST::Output prefix for the core */
 
     // Configuration output
     std::string output_config_graph_; /*!< File to dump configuration graph */
@@ -491,28 +549,37 @@ private:
     std::string debugFile_; /*!< File to which debug information should be written */
     // std::string libpath_;  ** in ConfigShared
     // std::string addLibPath_; ** in ConfigShared
+#if PY_MINOR_VERSION >= 9
+    bool enable_python_coverage_; /*!< Enable the Python coverage module */
+#endif
 
     // Advanced options - profiling
     std::string enabled_profiling_; /*!< Enabled default profiling points */
     std::string profiling_output_;  /*!< Location to write profiling data */
 
     // Advanced options - debug
-    SimulationRunMode runMode_; /*!< Run Mode (Init, Both, Run-only) */
+    SimulationRunMode runMode_;                /*!< Run Mode (Init, Both, Run-only) */
+    std::string       interactive_console_;    /*!< Action to use for interactive mode */
+    std::string       interactive_start_time_; /*!< Time to drop into interactive mode */
 #ifdef USE_MEMPOOL
     std::string event_dump_file_; /*!< File to dump undeleted events to  */
 #endif
     bool rank_seq_startup_; /*!< Run simulation initialization phases one rank at a time */
 
     // Advanced options - checkpoint
-    bool        load_from_checkpoint_; /*!< If true, load from checkpoint instead of config file */
-    std::string checkpoint_period_;    /*!< Simulated time interval to generate checkpoints at */
-    std::string checkpoint_prefix_;    /*!< Prefix for checkpoint filename and checkpoint directory */
+    bool        load_from_checkpoint_;  /*!< If true, load from checkpoint instead of config file */
+    std::string checkpoint_sim_period_; /*!< Interval to generate checkpoints at in terms of the simulated clock */
+    uint32_t
+        checkpoint_wall_period_;    /*!< Interval to generate checkpoints at in terms of wall-clock measured seconds */
+    std::string checkpoint_prefix_; /*!< Prefix for checkpoint filename and checkpoint directory */
     std::string checkpoint_directory_; /*!< Directory to write checkpoints to */
 
-    bool       gen_checkpoint_schema_ = false;
-
-    // Advanced options - envrionment
-    bool enable_sig_handling_; /*!< Enable signal handling */
+    // Advanced options - environment
+    bool        gen_checkpoint_schema_ = false;
+    bool        enable_sig_handling_; /*!< Enable signal handling */
+    std::string sigusr1_;             /*!< RealTimeAction to call on a SIGUSR1 */
+    std::string sigusr2_;             /*!< RealTimeAction to call on a SIGUSR2 */
+    std::string sigalrm_;             /*!< RealTimeAction(s) to call on a SIGALRM */
     // bool print_env_;  ** in ConfigShared
     // bool no_env_config_; ** in ConfigShared
 };

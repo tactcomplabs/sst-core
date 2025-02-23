@@ -1,8 +1,8 @@
-// Copyright 2009-2024 NTESS. Under the terms
+// Copyright 2009-2025 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2024, NTESS
+// Copyright (c) 2009-2025, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -45,7 +45,7 @@ public:
     // Initialize the global mempool data structures
     static void initializeGlobalData(int num_threads, bool cache_align = false);
 
-    // Initialize the per thread mempool ata structures
+    // Initialize the per thread mempool data structures
     static void initializeLocalData(int thread);
 
     static void printUndeletedMemPoolItems(const std::string& header, Output& out);
