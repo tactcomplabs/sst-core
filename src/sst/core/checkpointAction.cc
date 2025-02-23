@@ -123,11 +123,14 @@ CheckpointAction::createCheckpoint(Simulation_impl* sim)
     barrier.wait();
     if ( rank_.thread == 0 ) checkpoint_id++;
 
+    std::string checkpoint_root =
+        directory + "/" + basename + "_" + std::to_string(rank_.rank) + "_" + std::to_string(rank_.thread);
+
     std::string filename =
-        directory + "/" + basename + "_" + std::to_string(rank_.rank) + "_" + std::to_string(rank_.thread) + ".bin";
+        checkpoint_root + ".bin";
 
     // Write out the checkpoints for the partitions
-    sim->checkpoint(filename);
+    sim->checkpoint(checkpoint_root);
 
     // Write out the registry.  Rank 0 thread 0 will write the global
     // state and its registry, then each thread will take a turn

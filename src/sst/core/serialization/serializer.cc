@@ -99,19 +99,22 @@ serializer::string(std::string& str)
     }
 }
 
-serialize_schema::serialize_schema(const std::string& file_root) { 
-    std::string schema_filename  = file_root + ".json";
+serialize_schema::serialize_schema(const std::string& schema_filename) { 
     sfs = std::ofstream(schema_filename, std::ios::out);
     sfs << "{ ";
     sfs << q << "checkpoint_def" << q << " : [\n";
  }
 
-serialize_schema::~serialize_schema() {   
+
+void serialize_schema::close() {
     if (sfs.is_open()) {
         sfs << "]}\n";
         sfs.flush();
         sfs.close();
     }
+}
+serialize_schema::~serialize_schema() {   
+    this->close();
 }
 
 void

@@ -43,6 +43,7 @@ class serialize_schema {
 public:
     serialize_schema(const std::string& schema_filename);
     ~serialize_schema();
+    void close();
     void update(std::string name, size_t pos, size_t hash_code, size_t sz, std::string type_name);
     void write_segment( std::string name, size_t size, bool inc_size=true);
     void write_types();
@@ -124,7 +125,7 @@ public:
     SERIALIZE_MODE
     mode() const { return mode_; }
     void set_mode(SERIALIZE_MODE mode) { mode_ = mode; }
-
+    // TODO keep schema object alive and just reset members
     void enable_schema(const std::string& fileroot) {  
         assert(!schema_); 
         schema_ = new serialize_schema(fileroot); 

@@ -1500,8 +1500,8 @@ Simulation_impl::checkpoint_write_globals(
     SST::Core::Serialization::serializer ser;
     ser.enable_pointer_tracking();
     
-    if (checkpoint_id==0 && gen_checkpoint_schema)
-        ser.enable_schema(checkpoint_root);
+    if (gen_checkpoint_schema)
+        ser.enable_schema(checkpoint_root + "_globals.json");
 
     checkpoint_id++;
 
@@ -1555,6 +1555,12 @@ Simulation_impl::checkpoint_write_globals(
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(buffer, size);
     SER_SEG_DONE("config_options",size);
+    // close global schema
+    if (ser.schema()) {
+        ser.schema()->write_types();
+        ser.schema()->close();
+        ser.disable_schema();
+    }
     fs.close();
 
     std::ofstream fs_reg(registry_filename, std::ios::out);
@@ -1612,8 +1618,9 @@ Simulation_impl::checkpoint_append_registry(const std::string& registry_name, co
 }
 
 void
-Simulation_impl::checkpoint(const std::string& checkpoint_filename)
+Simulation_impl::checkpoint(const std::string& checkpoint_root)
 {
+    std::string checkpoint_filename = checkpoint_root + ".bin";
     std::ofstream fs(checkpoint_filename, std::ios::out | std::ios::binary);
     // TODO: Add error checking for file open
     uint64_t      offset = 0;
@@ -1623,6 +1630,9 @@ Simulation_impl::checkpoint(const std::string& checkpoint_filename)
 
     size_t size, buffer_size;
     char*  buffer;
+
+    if (gen_checkpoint_schema)
+        ser.enable_schema(checkpoint_root + ".json");
 
     /* Section 2: Loaded libraries */
     ser.start_sizing();
@@ -1785,6 +1795,7 @@ Simulation_impl::checkpoint(const std::string& checkpoint_filename)
 
     if (ser.schema()) {
         ser.schema()->write_types();
+        ser.schema()->close();
         ser.disable_schema();
     }
 
