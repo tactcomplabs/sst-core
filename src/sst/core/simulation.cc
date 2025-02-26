@@ -1503,14 +1503,12 @@ Simulation_impl::checkpoint_write_globals(
     if (gen_checkpoint_schema)
         ser.enable_schema(checkpoint_root + "_globals.json");
 
-    checkpoint_id++;
-
     size_t size, buffer_size;
     char*  buffer;
 
     /* Section 1: Config options */
     ser.start_sizing();
-    //SER_INI(seg0begin);
+    SER_INI(seg0begin);
     //SER_INI(marker0);
     SER_INI(num_ranks.rank);
     SER_INI(num_ranks.thread);
@@ -1518,7 +1516,6 @@ Simulation_impl::checkpoint_write_globals(
     std::string libpath = factory->getSearchPaths();
     SER_INI(libpath);
     SER_INI(timeLord.timeBaseString);
-    // User specific. Can it be overridden for portability?
     SER_INI(output_directory);
     std::string prefix = sim_output.getPrefix();
     SER_INI(prefix);
@@ -1529,14 +1526,14 @@ Simulation_impl::checkpoint_write_globals(
     SER_INI(Params::keyMap);
     SER_INI(Params::keyMapReverse);
     SER_INI(Params::nextKeyID);
-    //SER_INI(seg0end);
+    SER_INI(seg0end);
 
     size        = ser.size();
     buffer_size = size;
     buffer      = new char[buffer_size];
 
     ser.start_packing(buffer, size);
-    //ser& seg0begin;
+    ser& seg0begin;
     //ser& marker0;
     ser& num_ranks.rank;
     ser& num_ranks.thread;
@@ -1550,12 +1547,13 @@ Simulation_impl::checkpoint_write_globals(
     ser& Params::keyMap;
     ser& Params::keyMapReverse;
     ser& Params::nextKeyID;
-    //ser& seg0end;
+    ser& seg0end;
 
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(buffer, size);
     SER_SEG_DONE("config_options",size);
     // close global schema
+    // TODO macro SER_SCHEMA_CLOSE
     if (ser.schema()) {
         ser.schema()->write_types();
         ser.schema()->close();
@@ -1636,29 +1634,29 @@ Simulation_impl::checkpoint(const std::string& checkpoint_root)
 
     /* Section 2: Loaded libraries */
     ser.start_sizing();
-    //SER_INI(seg1begin);
+    SER_INI(seg1begin);
     std::set<std::string> libnames;
     factory->getLoadedLibraryNames(libnames);
     SER_INI(libnames);
-    //SER_INI(seg1end);
+    SER_INI(seg1end);
 
     size        = ser.size();
     buffer_size = size;
     buffer      = new char[buffer_size];
 
     ser.start_packing(buffer, size);
-    //ser& seg1begin;
+    ser& seg1begin;
     ser& libnames;
-    //ser& seg1end;
+    ser& seg1end;
 
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(buffer, size);
     offset += (sizeof(size) + size);
-
+    SER_SEG_DONE("loaded_libraries",size);
 
     /* Section 3: Simulation_impl */
     ser.start_sizing();
-    //SER_INI(seg2begin);
+    SER_INI(seg2begin);
     SER_INI(num_ranks);
     SER_INI(my_rank);
     SER_INI(currentSimCycle);
@@ -1695,7 +1693,7 @@ Simulation_impl::checkpoint(const std::string& checkpoint_root)
     // Last, get the timevortex
     SER_INI(timeVortex);
     //SER_INI(marker2);  // BAD
-    //SER_INI(seg2end);
+    SER_INI(seg2end);
 
     size = ser.size();
     if ( size > buffer_size ) {
@@ -1706,7 +1704,7 @@ Simulation_impl::checkpoint(const std::string& checkpoint_root)
 
     // Pack buffer
     ser.start_packing(buffer, size);
-    //ser& seg2begin;
+    ser& seg2begin;
     ser& num_ranks;
     ser& my_rank;
     ser& currentSimCycle;
@@ -1745,7 +1743,7 @@ Simulation_impl::checkpoint(const std::string& checkpoint_root)
     // Last, get the timevortex
     ser& timeVortex;
     //ser& marker2;
-    //ser& seg2end;
+    ser& seg2end;
 
     // Write buffer to file
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
@@ -1767,9 +1765,9 @@ Simulation_impl::checkpoint(const std::string& checkpoint_root)
     for ( auto comp = compInfoMap.begin(); comp != compInfoMap.end(); comp++ ) {
         ser.start_sizing();
         ComponentInfo* compinfo = *comp;
-        //SER_INI(segcbegin);
+        SER_INI(segcbegin);
         SER_INI(compinfo);
-        //SER_INI(segcend);
+        SER_INI(segcend);
         size = ser.size();
 
         if ( buffer_size < size ) {
@@ -1779,9 +1777,9 @@ Simulation_impl::checkpoint(const std::string& checkpoint_root)
         }
 
         ser.start_packing(buffer, size);
-        //ser& segcbegin;
+        ser& segcbegin;
         ser& compinfo;
-        //ser& segcend;
+        ser& segcend;
 
         component_blob_offsets_.emplace_back(compinfo->id, offset);
         fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
@@ -1793,6 +1791,7 @@ Simulation_impl::checkpoint(const std::string& checkpoint_root)
     fs.close();
     delete[] buffer;
 
+    // TODO macro
     if (ser.schema()) {
         ser.schema()->write_types();
         ser.schema()->close();

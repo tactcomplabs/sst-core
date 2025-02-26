@@ -1131,7 +1131,6 @@ Config::insertOptions()
         "load-checkpoint", 0,
         "Load checkpoint and continue simulation. Specified SDL file will be used as the checkpoint file.",
         std::bind(&ConfigHelper::setLoadFromCheckpoint, this, _1), false);
-
     DEF_ARG_EH(
         "checkpoint-prefix", 0, "PREFIX",
         "Set prefix for checkpoint filenames. The checkpoint prefix defaults to checkpoint if this option is not set "

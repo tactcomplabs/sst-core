@@ -122,8 +122,11 @@ public:
         unpacker_.unpack<T>(t);
     }
 
+    virtual ~serializer() {}
+
     SERIALIZE_MODE
     mode() const { return mode_; }
+
     void set_mode(SERIALIZE_MODE mode) { mode_ = mode; }
     // TODO keep schema object alive and just reset members
     void enable_schema(const std::string& fileroot) {  
@@ -333,7 +336,6 @@ protected:
     // Used for unpacking and mapping
     std::map<uintptr_t, uintptr_t> ser_pointer_map;
     uintptr_t                      split_key;
-
 };
 
 } // namespace Serialization

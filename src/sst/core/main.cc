@@ -811,8 +811,6 @@ main(int argc, char* argv[])
         fs_globals.close();
         delete[] buffer;
 
-        // KG these provide override support on restart ( being worked on )
-        // Challenge for handling statistics file
         // Error check that ranks & threads match after output is created
         cfg.libpath_  = cpt_lib_path;
         cfg.timeBase_ = cpt_timebase;
