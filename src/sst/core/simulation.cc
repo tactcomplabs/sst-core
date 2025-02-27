@@ -1688,11 +1688,9 @@ Simulation_impl::checkpoint(const std::string& checkpoint_root)
 
     // Serialize the clockmap
     SER_INI(clockMap);
-    //SER_INI(marker1);  // OK HERE
 
     // Last, get the timevortex
     SER_INI(timeVortex);
-    //SER_INI(marker2);  // BAD
     SER_INI(seg2end);
 
     size = ser.size();
@@ -1735,14 +1733,10 @@ Simulation_impl::checkpoint(const std::string& checkpoint_root)
     // Add shared regions
     if ( my_rank.thread == 0 ) { ser& SharedObject::manager; }
 
-    //ser& marker0;
-
     ser& clockMap;
-    //ser& marker1;
 
     // Last, get the timevortex
     ser& timeVortex;
-    //ser& marker2;
     ser& seg2end;
 
     // Write buffer to file
