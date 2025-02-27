@@ -793,7 +793,9 @@ main(int argc, char* argv[])
         std::vector<std::string>        cpt_params_key_map_reverse;
         uint32_t                        cpt_params_next_key_id;
 
+        uint64_t segstart, segend;
         ser.start_unpacking(buffer, size);
+        ser& segstart;
         ser& cpt_num_ranks;
         ser& cpt_num_threads;
         ser& cpt_lib_path;
@@ -806,6 +808,10 @@ main(int argc, char* argv[])
         ser& cpt_params_key_map;
         ser& cpt_params_key_map_reverse;
         ser& cpt_params_next_key_id;
+        ser& segend;
+
+        assert(segstart==0xa5a5a5a5a5a5bb01);
+        assert(segend==0xa5a5a5a5a5a5ee01);
 
         fs_globals.close();
         delete[] buffer;
