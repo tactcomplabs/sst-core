@@ -17,10 +17,9 @@
 #include <string>
 #include <vector>
 
-namespace SST {
-namespace ELI {
+namespace SST::ELI {
 
-template <class T, class Enable = void>
+template <typename, typename = void>
 struct InfoProfilePoints
 {
     static const std::vector<SST::ElementInfoProfilePoint>& get()
@@ -31,7 +30,7 @@ struct InfoProfilePoints
 };
 
 template <class T>
-struct InfoProfilePoints<T, typename MethodDetect<decltype(T::ELI_getProfilePoints())>::type>
+struct InfoProfilePoints<T, std::void_t<decltype(T::ELI_getProfilePoints())>>
 {
     static const std::vector<SST::ElementInfoProfilePoint>& get() { return T::ELI_getProfilePoints(); }
 };
@@ -67,18 +66,17 @@ private:
     std::vector<ElementInfoProfilePoint> points_;
 };
 
-} // namespace ELI
-} // namespace SST
+} // namespace SST::ELI
 
 // clang-format off
-#define SST_ELI_DOCUMENT_PROFILE_POINTS(...)                                                                       \
-    static const std::vector<SST::ElementInfoProfilePoint>& ELI_getProfilePoints()                                 \
-    {                                                                                                              \
-        static std::vector<SST::ElementInfoProfilePoint> var = { __VA_ARGS__ };                                    \
-        auto parent = SST::ELI::InfoProfilePoints<                                                                 \
-            typename std::conditional<(__EliDerivedLevel > __EliBaseLevel), __LocalEliBase, __ParentEliBase>::type>::get(); \
-        SST::ELI::combineEliInfo(var, parent);                                                                     \
-        return var;                                                                                                \
+#define SST_ELI_DOCUMENT_PROFILE_POINTS(...)                                                                  \
+    static const std::vector<SST::ElementInfoProfilePoint>& ELI_getProfilePoints()                            \
+    {                                                                                                         \
+        static std::vector<SST::ElementInfoProfilePoint> var = { __VA_ARGS__ };                               \
+        auto parent = SST::ELI::InfoProfilePoints<                                                            \
+           std::conditional_t<(__EliDerivedLevel > __EliBaseLevel), __LocalEliBase, __ParentEliBase>>::get(); \
+        SST::ELI::combineEliInfo(var, parent);                                                                \
+        return var;                                                                                           \
     }
 // clang-format on
 #define SST_ELI_DELETE_PROFILE_POINT(point) \

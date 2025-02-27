@@ -986,7 +986,7 @@ Simulation_impl::signalShutdown(bool abnormal)
 // If this version is called, we need to set the end time in the exit
 // object as well
 void
-Simulation_impl::endSimulation(void)
+Simulation_impl::endSimulation()
 {
     m_exit->setEndTime(currentSimCycle);
     endSimulation(currentSimCycle);
@@ -1233,7 +1233,7 @@ Simulation_impl::getSyncQueueDataSize() const
 }
 
 Statistics::StatisticProcessingEngine*
-Simulation_impl::getStatisticsProcessingEngine(void)
+Simulation_impl::getStatisticsProcessingEngine()
 {
     return &stat_engine;
 }

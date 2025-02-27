@@ -16,9 +16,7 @@
 #include "sst/core/output.h"
 #include "sst/core/serialization/serializable.h"
 
-namespace SST {
-namespace Core {
-namespace Serialization {
+namespace SST::Core::Serialization {
 namespace pvt {
 
 void
@@ -190,6 +188,4 @@ void serialize_schema::write_types()
         type_map.clear();
 } 
 
-} // namespace Serialization
-} // namespace Core
-} // namespace SST
+} // namespace SST::Core::Serialization
