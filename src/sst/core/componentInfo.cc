@@ -243,8 +243,7 @@ ComponentInfo::serialize_order(SST::Core::Serialization::serializer& ser)
         for ( auto it = subComponents.begin(); it != subComponents.end(); ++it ) {
             // keys are const values - annoyingly
             SER_INI(const_cast<ComponentId_t&>(it->first));
-            std::cout << "Error: checkpoint schema not yet supporting 'ser |'" << std::endl;
-            assert(false);
+            std::cout << "WARNING: checkpoint schema not yet supporting 'ser |'" << std::endl;
             ser | it->second;
         }
         break;
