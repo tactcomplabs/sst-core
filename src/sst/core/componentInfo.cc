@@ -197,8 +197,8 @@ ComponentInfo::~ComponentInfo()
 void
 ComponentInfo::serialize_comp(SST::Core::Serialization::serializer& ser)
 {
-    SER_INI(component);
-    SER_INI(link_map);
+    SER_SCHEMA(component);
+    SER_SCHEMA(link_map);
     for ( auto it = subComponents.begin(); it != subComponents.end(); ++it ) {
         it->second.serialize_comp(ser);
     }
@@ -217,21 +217,21 @@ ComponentInfo::serialize_order(SST::Core::Serialization::serializer& ser)
 
     // Serialize all my data except the component and link_map
 
-    SER_INI(const_cast<ComponentId_t&>(id_));
-    SER_INI(parent_info);
-    SER_INI(const_cast<std::string&>(name));
-    SER_INI(const_cast<std::string&>(type));
+    SER_SCHEMA(const_cast<ComponentId_t&>(id_));
+    SER_SCHEMA(parent_info);
+    SER_SCHEMA(const_cast<std::string&>(name));
+    SER_SCHEMA(const_cast<std::string&>(type));
 
     // Not used after construction, no need to serialize
-    // SER_INI(params;
+    // SER_SCHEMA(params;
 
-    SER_INI(defaultTimeBase);
+    SER_SCHEMA(defaultTimeBase);
 
     // ser& coordinates;
-    SER_INI(subIDIndex);
-    SER_INI(const_cast<std::string&>(slot_name));
-    SER_INI(slot_num);
-    SER_INI(share_flags);
+    SER_SCHEMA(subIDIndex);
+    SER_SCHEMA(const_cast<std::string&>(slot_name));
+    SER_SCHEMA(slot_num);
+    SER_SCHEMA(share_flags);
 
     // Serialize statistic data structures - only needed for late stat registration
     // No one else has these pointers so serialize the data structure & reallocate on UNPACK
@@ -287,10 +287,10 @@ ComponentInfo::serialize_order(SST::Core::Serialization::serializer& ser)
     case SST::Core::Serialization::serializer::SIZER:
     {
         size_t size = subComponents.size();
-        SER_INI(size);
+        SER_SCHEMA(size);
         for ( auto it = subComponents.begin(); it != subComponents.end(); ++it ) {
             // keys are const values - annoyingly
-            SER_INI(const_cast<ComponentId_t&>(it->first));
+            SER_SCHEMA(const_cast<ComponentId_t&>(it->first));
             std::cout << "WARNING: checkpoint schema not yet supporting 'ser |'" << std::endl;
             ser | it->second;
         }

@@ -1508,25 +1508,24 @@ Simulation_impl::checkpoint_write_globals(
 
     /* Section 1: Config options */
     ser.start_sizing();
-    SER_INI(seg1begin);
-    //SER_INI(marker0);
-    SER_INI(num_ranks.rank);
-    SER_INI(num_ranks.thread);
+    SER_SCHEMA(seg1begin);
+    SER_SCHEMA(num_ranks.rank);
+    SER_SCHEMA(num_ranks.thread);
     // User specific (and long), is this needed? I don't see it in restart code - reloaded by main
     std::string libpath = factory->getSearchPaths();
-    SER_INI(libpath);
-    SER_INI(timeLord.timeBaseString);
-    SER_INI(output_directory);
+    SER_SCHEMA(libpath);
+    SER_SCHEMA(timeLord.timeBaseString);
+    SER_SCHEMA(output_directory);
     std::string prefix = sim_output.getPrefix();
-    SER_INI(prefix);
+    SER_SCHEMA(prefix);
     uint32_t    verbose = sim_output.getVerboseLevel();
-    SER_INI(verbose);
-    SER_INI(globalOutputFileName);
-    SER_INI(checkpoint_prefix_);
-    SER_INI(Params::keyMap);
-    SER_INI(Params::keyMapReverse);
-    SER_INI(Params::nextKeyID);
-    SER_INI(seg1end);
+    SER_SCHEMA(verbose);
+    SER_SCHEMA(globalOutputFileName);
+    SER_SCHEMA(checkpoint_prefix_);
+    SER_SCHEMA(Params::keyMap);
+    SER_SCHEMA(Params::keyMapReverse);
+    SER_SCHEMA(Params::nextKeyID);
+    SER_SCHEMA(seg1end);
 
     size        = ser.size();
     buffer_size = size;
@@ -1632,11 +1631,11 @@ Simulation_impl::checkpoint(const std::string& checkpoint_root)
 
     /* Section 2: Loaded libraries */
     ser.start_sizing();
-    SER_INI(seg2begin);
+    SER_SCHEMA(seg2begin);
     std::set<std::string> libnames;
     factory->getLoadedLibraryNames(libnames);
-    SER_INI(libnames);
-    SER_INI(seg2end);
+    SER_SCHEMA(libnames);
+    SER_SCHEMA(seg2end);
 
     size        = ser.size();
     buffer_size = size;
@@ -1654,42 +1653,42 @@ Simulation_impl::checkpoint(const std::string& checkpoint_root)
 
     /* Section 3: Simulation_impl */
     ser.start_sizing();
-    SER_INI(seg3begin);
-    SER_INI(num_ranks);
-    SER_INI(my_rank);
-    SER_INI(currentSimCycle);
-    // SER_INI(threadMinPartTC);
-    SER_INI(minPart);
-    SER_INI(minPartTC);
-    SER_INI(interThreadLatencies);
-    SER_INI(interThreadMinLatency);
-    SER_INI(endSim);
-    SER_INI(independent);
-    SER_INI(timeVortexType); // Used by TimeVortex serialization
-    // SER_INI(sim_output);
-    SER_INI(runMode);
-    SER_INI(currentPriority);
-    SER_INI(endSimCycle);
-    SER_INI(output_directory);
+    SER_SCHEMA(seg3begin);
+    SER_SCHEMA(num_ranks);
+    SER_SCHEMA(my_rank);
+    SER_SCHEMA(currentSimCycle);
+    // SER_SCHEMA(threadMinPartTC);
+    SER_SCHEMA(minPart);
+    SER_SCHEMA(minPartTC);
+    SER_SCHEMA(interThreadLatencies);
+    SER_SCHEMA(interThreadMinLatency);
+    SER_SCHEMA(endSim);
+    SER_SCHEMA(independent);
+    SER_SCHEMA(timeVortexType); // Used by TimeVortex serialization
+    // SER_SCHEMA(sim_output);
+    SER_SCHEMA(runMode);
+    SER_SCHEMA(currentPriority);
+    SER_SCHEMA(endSimCycle);
+    SER_SCHEMA(output_directory);
     // Actions that may also be in TV
-    SER_INI(real_time_);
-    if ( my_rank.thread == 0 ) { SER_INI(m_exit); }
-    SER_INI(m_heartbeat);
+    SER_SCHEMA(real_time_);
+    if ( my_rank.thread == 0 ) { SER_SCHEMA(m_exit); }
+    SER_SCHEMA(m_heartbeat);
 
     // Add statistics engine and associated state
     // Individual statistics are checkpointing with component
-    if ( my_rank.thread == 0 ) { SER_INI(StatisticProcessingEngine::m_statOutputs); }
-    SER_INI(stat_engine);
+    if ( my_rank.thread == 0 ) { SER_SCHEMA(StatisticProcessingEngine::m_statOutputs); }
+    SER_SCHEMA(stat_engine);
 
     // Add shared regions
-    if ( my_rank.thread == 0 ) { SER_INI(SharedObject::manager); }
+    if ( my_rank.thread == 0 ) { SER_SCHEMA(SharedObject::manager); }
 
     // Serialize the clockmap
-    SER_INI(clockMap);
+    SER_SCHEMA(clockMap);
 
     // Last, get the timevortex
-    SER_INI(timeVortex);
-    SER_INI(seg3end);
+    SER_SCHEMA(timeVortex);
+    SER_SCHEMA(seg3end);
 
     size = ser.size();
     if ( size > buffer_size ) {
@@ -1756,9 +1755,9 @@ Simulation_impl::checkpoint(const std::string& checkpoint_root)
     for ( auto comp = compInfoMap.begin(); comp != compInfoMap.end(); comp++ ) {
         ser.start_sizing();
         ComponentInfo* compinfo = *comp;
-        SER_INI(segcbegin);
-        SER_INI(compinfo);
-        SER_INI(segcend);
+        SER_SCHEMA(segcbegin);
+        SER_SCHEMA(compinfo);
+        SER_SCHEMA(segcend);
         size = ser.size();
 
         if ( buffer_size < size ) {

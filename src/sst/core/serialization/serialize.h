@@ -454,7 +454,17 @@ sst_map_object(serializer& ser, T& t, const char* name)
 
 // Serialization macros for checkpoint/debug serialization
 // #define SST_SER(obj)        ser& obj;
-#define SST_SER(obj)        sst_map_object(ser, obj, #obj);
+
+#define TCL_SCHEMA
+#ifdef TCL_SCHEMA
+#define SST_SER(obj) \
+GEN_SCHEMA(obj) \
+sst_map_object(ser, obj, #obj);
+#else
+#define SST_SER(obj) sst_map_object(ser, obj, #obj);
+#endif
+
+//TODO SCHEMA FOR PTR
 #define SST_SER_AS_PTR(obj) ser | obj;
 
 } // namespace SST::Core::Serialization
