@@ -55,15 +55,15 @@ private:
     const std::string sp = "   ";
 };
 
-#define GEN_SCHEMA(obj) \
+#define GEN_SCHEMA(obj, name, tidhash, tidname) \
     if (ser.schema_enabled()) { \
         ser.schema()->update(  \
-            #obj, ser.size(),   \
-            typeid(obj).hash_code(), sizeof(obj), typeid(obj).name()); \
+            name, ser.size(),   \
+            tidhash, sizeof(obj), tidname); \
     }
 
 #define SER_SCHEMA(obj) \
-    GEN_SCHEMA(obj) \
+    GEN_SCHEMA(obj, #obj, typeid(obj).hash_code(), typeid(obj).name()) \
     ser& obj;
 
 #define SER_SEG_DONE( name, size ) \

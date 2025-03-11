@@ -457,8 +457,13 @@ sst_map_object(serializer& ser, T& t, const char* name)
 
 #define TCL_SCHEMA
 #ifdef TCL_SCHEMA
+// implicit typeid info
 #define SST_SER(obj) \
-GEN_SCHEMA(obj) \
+GEN_SCHEMA(#obj, #obj, typeid(obj).hash_code(), typeid(obj).name()) \
+sst_map_object(ser, obj, #obj);
+// brute forcing of name and typeinfo for debugging only.
+#define SST_SER4(obj, name, tidhash, tidname) \
+GEN_SCHEMA(obj, name, tidhash, tidname) \
 sst_map_object(ser, obj, #obj);
 #else
 #define SST_SER(obj) sst_map_object(ser, obj, #obj);
