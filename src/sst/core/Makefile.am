@@ -177,6 +177,7 @@ sst_core_sources = \
 	configBase.cc \
 	configShared.cc \
 	configGraph.cc \
+	configGraphOutput.cc \
 	cfgoutput/pythonConfigOutput.cc \
 	cfgoutput/dotConfigOutput.cc \
 	cfgoutput/xmlConfigOutput.cc \
@@ -247,7 +248,8 @@ sst_core_sources = \
 	iouse.cc \
 	objectComms.h \
 	objectSerialization.h \
-	simulation_impl.h
+	simulation_impl.h \
+	sst_mpi.h
 
 bin_PROGRAMS = sst sst-info sst-config sst-register
 libexec_PROGRAMS = sstsim.x sstinfo.x

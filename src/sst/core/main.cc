@@ -21,12 +21,6 @@ DISABLE_WARN_DEPRECATED_REGISTER
 #include <Python.h>
 REENABLE_WARNING
 
-#ifdef SST_CONFIG_HAVE_MPI
-DISABLE_WARN_MISSING_OVERRIDE
-#include <mpi.h>
-REENABLE_WARNING
-#endif
-
 #include "sst/core/activity.h"
 #include "sst/core/checkpointAction.h"
 #include "sst/core/config.h"
@@ -44,6 +38,7 @@ REENABLE_WARNING
 #include "sst/core/rankInfo.h"
 #include "sst/core/realtime.h"
 #include "sst/core/simulation_impl.h"
+#include "sst/core/sst_mpi.h"
 #include "sst/core/statapi/statengine.h"
 #include "sst/core/stringize.h"
 #include "sst/core/threadsafe.h"
@@ -292,9 +287,8 @@ start_graph_creation(
         }
     }
 
-
     // Create the model generator
-    SSTModelDescription* modelGen = nullptr;
+    std::unique_ptr<SSTModelDescription> modelGen;
 
     force_rank_sequential_start(cfg.rank_seq_startup(), myRank, world_size);
 
@@ -319,8 +313,8 @@ start_graph_creation(
         }
 
         if ( myRank.rank == 0 || cfg.parallel_load() ) {
-            modelGen = factory->Create<SSTModelDescription>(
-                model_name, cfg.configFile(), cfg.verbose(), &cfg, sst_get_cpu_time());
+            modelGen.reset(factory->Create<SSTModelDescription>(
+                model_name, cfg.configFile(), cfg.verbose(), &cfg, sst_get_cpu_time()));
         }
     }
 
@@ -355,12 +349,6 @@ start_graph_creation(
         }
     }
 #endif
-
-    // Delete the model generator
-    if ( modelGen ) {
-        delete modelGen;
-        modelGen = nullptr;
-    }
 
     return start_graph_gen;
 }
@@ -458,9 +446,9 @@ start_simulation(uint32_t tid, SimThreadInfo_t& info, Core::ThreadSafe::Barrier&
         sim->checkpoint_directory_ = Checkpointing::initializeCheckpointInfrastructure(
             info.config, sim->real_time_->canInitiateCheckpoint(), info.myRank.rank);
 
-        if ( sim->checkpoint_directory_ != "" ) {
-            // Write out any data structures needed for all checkpoints
-        }
+        // if ( sim->checkpoint_directory_ != "" ) {
+        //     // Write out any data structures needed for all checkpoints
+        // }
     }
     // Wait for all checkpointing files to be initialzed
     barrier.wait();
@@ -667,7 +655,7 @@ start_simulation(uint32_t tid, SimThreadInfo_t& info, Core::ThreadSafe::Barrier&
 
         for ( uint32_t i = 0; i < info.world_size.thread; ++i ) {
             if ( i == info.myRank.thread ) {
-                fp = fopen(file.c_str(), mode.c_str());
+                fp = Simulation_impl::filesystem.fopen(file, mode.c_str());
                 sim->printProfilingInfo(fp);
                 fclose(fp);
             }
@@ -680,7 +668,6 @@ start_simulation(uint32_t tid, SimThreadInfo_t& info, Core::ThreadSafe::Barrier&
 
     delete sim;
 }
-
 
 int
 main(int argc, char* argv[])
@@ -712,6 +699,18 @@ main(int argc, char* argv[])
     else if ( ret_value == 1 ) {
         // Just asked for info, clean exit
         return 0;
+    }
+
+    // Set up the Filesystem object with the output directory
+    bool out_dir_okay = Simulation_impl::filesystem.setBasePath(cfg.output_directory());
+    if ( !out_dir_okay ) {
+        fprintf(
+            stderr,
+            "ERROR: Directory specified with --output-directory (%s) is not valid.  Most likely causes are that the "
+            "user "
+            "does not have permissions to write to this path, or a file of the same name exists.\n",
+            cfg.output_directory().c_str());
+        return -1;
     }
 
     // Check to see if we are doing a restart from a checkpoint

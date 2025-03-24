@@ -32,6 +32,7 @@
 #include "sst/core/realtime.h"
 #include "sst/core/serialization/objectMapDeferred.h"
 #include "sst/core/shared/sharedObject.h"
+#include "sst/core/sst_mpi.h"
 #include "sst/core/statapi/statengine.h"
 #include "sst/core/stopAction.h"
 #include "sst/core/stringize.h"
@@ -41,13 +42,6 @@
 #include "sst/core/timeLord.h"
 #include "sst/core/timeVortex.h"
 #include "sst/core/unitAlgebra.h"
-#include "sst/core/warnmacros.h"
-
-#ifdef SST_CONFIG_HAVE_MPI
-DISABLE_WARN_MISSING_OVERRIDE
-#include <mpi.h>
-REENABLE_WARNING
-#endif
 
 #include <cinttypes>
 #include <exception>
@@ -1493,7 +1487,7 @@ Simulation_impl::checkpoint_write_globals(
     int checkpoint_id, const std::string& registry_filename, const std::string& checkpoint_root)
 {
     const std::string globals_filename = checkpoint_root + "_globals.bin";
-    std::ofstream fs(globals_filename, std::ios::out | std::ios::binary);
+    std::ofstream fs = filesystem.ofstream(globals_filename, std::ios::out | std::ios::binary);
 
     // TODO: Add error checking for file open
 
@@ -1558,7 +1552,7 @@ Simulation_impl::checkpoint_write_globals(
     }
     fs.close();
 
-    std::ofstream fs_reg(registry_filename, std::ios::out);
+    std::ofstream fs_reg = filesystem.ofstream(registry_filename, std::ios::out);
 
     /* Section 1: Checkpoint info */
     fs_reg << "## Checkpoint #" << checkpoint_id << " at time " << currentSimCycle << " ("
@@ -1601,7 +1595,7 @@ Simulation_impl::checkpoint_append_registry(const std::string& registry_name, co
     // the binary checkpoint files are written, each rank/thread will
     // take turns writing their registry data to the file.
 
-    std::ofstream fs(registry_name, std::ios::out | std::ios::app);
+    std::ofstream fs = filesystem.ofstream(registry_name, std::ios::out | std::ios::app);
 
     // Write out the component offsets
     fs << "\n** (" << my_rank.rank << ":" << my_rank.thread << "): " << blob_name << std::endl;
@@ -1616,15 +1610,14 @@ void
 Simulation_impl::checkpoint(const std::string& checkpoint_root)
 {
     std::string checkpoint_filename = checkpoint_root + ".bin";
-    std::ofstream fs(checkpoint_filename, std::ios::out | std::ios::binary);
+    std::ofstream fs     = filesystem.ofstream(checkpoint_filename, std::ios::out | std::ios::binary);
     // TODO: Add error checking for file open
     uint64_t      offset = 0;
 
     SST::Core::Serialization::serializer ser;
     ser.enable_pointer_tracking();
 
-    size_t size, buffer_size;
-    char*  buffer;
+    size_t size;
 
     if (gen_checkpoint_schema)
         ser.enable_schema(checkpoint_root + ".json");
@@ -1637,17 +1630,16 @@ Simulation_impl::checkpoint(const std::string& checkpoint_root)
     SER_SCHEMA(libnames);
     SER_SCHEMA(seg2end);
 
-    size        = ser.size();
-    buffer_size = size;
-    buffer      = new char[buffer_size];
+    size = ser.size();
+    std::vector<char> buffer(size);
 
-    ser.start_packing(buffer, size);
+    ser.start_packing(&buffer[0], size);
     ser& seg2begin;
     ser& libnames;
     ser& seg2end;
 
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
-    fs.write(buffer, size);
+    fs.write(&buffer[0], size);
     offset += (sizeof(size) + size);
     SER_SEG_DONE("loaded_libraries",size);
 
@@ -1691,14 +1683,10 @@ Simulation_impl::checkpoint(const std::string& checkpoint_root)
     SER_SCHEMA(seg3end);
 
     size = ser.size();
-    if ( size > buffer_size ) {
-        delete[] buffer;
-        buffer_size = size;
-        buffer      = new char[buffer_size];
-    }
+    buffer.resize(size);
 
     // Pack buffer
-    ser.start_packing(buffer, size);
+    ser.start_packing(&buffer[0], size);
     ser& seg3begin;
     ser& num_ranks;
     ser& my_rank;
@@ -1737,7 +1725,7 @@ Simulation_impl::checkpoint(const std::string& checkpoint_root)
     ser& seg3end;
     // Write buffer to file
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
-    fs.write(buffer, size);
+    fs.write(&buffer[0], size);
     SER_SEG_DONE("simulation_impl",size);
     offset += (sizeof(size) + size);
 
@@ -1759,27 +1747,21 @@ Simulation_impl::checkpoint(const std::string& checkpoint_root)
         SER_SCHEMA(compinfo);
         SER_SCHEMA(segcend);
         size = ser.size();
+        buffer.resize(size);
 
-        if ( buffer_size < size ) {
-            delete[] buffer;
-            buffer      = new char[size];
-            buffer_size = size;
-        }
-
-        ser.start_packing(buffer, size);
+        ser.start_packing(&buffer[0], size);
         ser& segcbegin;
         ser& compinfo;
         ser& segcend;
 
         component_blob_offsets_.emplace_back(compinfo->id_, offset);
         fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
-        fs.write(buffer, size);
+        fs.write(&buffer[0], size);
         SER_SEG_DONE(compinfo->getName(), size);
         offset += (sizeof(size) + size);
     }
 
     fs.close();
-    delete[] buffer;
 
     // TODO macro
     if (ser.schema()) {
@@ -1819,8 +1801,7 @@ Simulation_impl::restart(Config* cfg)
     }
     fs.close();
 
-    size_t                               size, buffer_size;
-    char*                                buffer;
+    size_t                               size;
     SST::Core::Serialization::serializer ser;
     ser.enable_pointer_tracking();
     std::ifstream fs_blob(blob_filename, std::ios::binary);
@@ -1828,10 +1809,9 @@ Simulation_impl::restart(Config* cfg)
     /* Begin deserialization, libraries */
     fs_blob.read(reinterpret_cast<char*>(&size), sizeof(size));
 
-    buffer_size = size;
-    buffer      = new char[buffer_size];
-    fs_blob.read(buffer, size);
-    ser.start_unpacking(buffer, size);
+    std::vector<char> buffer(size);
+    fs_blob.read(&buffer[0], size);
+    ser.start_unpacking(&buffer[0], size);
 
     uint64_t segstart, segend;
     ser& segstart;
@@ -1847,14 +1827,10 @@ Simulation_impl::restart(Config* cfg)
 
     /* Now get the global blob */
     fs_blob.read(reinterpret_cast<char*>(&size), sizeof(size));
-    if ( size > buffer_size ) {
-        delete[] buffer;
-        buffer_size = size;
-        buffer      = new char[buffer_size];
-    }
-    fs_blob.read(buffer, size);
+    buffer.resize(size);
+    fs_blob.read(&buffer[0], size);
 
-    ser.start_unpacking(buffer, size);
+    ser.start_unpacking(&buffer[0], size);
 
     ser& segstart;
     ser& num_ranks;
@@ -1920,13 +1896,9 @@ Simulation_impl::restart(Config* cfg)
     // Deserialize component blobs individually
     for ( size_t comp = 0; comp < compCount; comp++ ) {
         fs_blob.read(reinterpret_cast<char*>(&size), sizeof(size));
-        if ( size > buffer_size ) {
-            delete[] buffer;
-            buffer_size = size;
-            buffer      = new char[buffer_size];
-        }
-        fs_blob.read(buffer, size);
-        ser.start_unpacking(buffer, size);
+        buffer.resize(size);
+        fs_blob.read(&buffer[0], size);
+        ser.start_unpacking(&buffer[0], size);
         ComponentInfo* compInfo = new ComponentInfo();
         ser&           segstart;
         ser&           compInfo;
@@ -1938,7 +1910,6 @@ Simulation_impl::restart(Config* cfg)
     }
 
     fs_blob.close();
-    delete[] buffer;
 
     // If we are a parallel job, need to call
     // finalizeLinkConfigurations() in order to finish setting up all
@@ -2155,6 +2126,7 @@ SST_Exit(int exit_code)
 
 /* Define statics */
 Factory*                   Simulation_impl::factory;
+Util::Filesystem           Simulation_impl::filesystem;
 TimeLord                   Simulation_impl::timeLord;
 std::map<LinkId_t, Link*>  Simulation_impl::cross_thread_links;
 Output                     Simulation_impl::sim_output;

@@ -24,6 +24,7 @@
 #include "sst/core/sst_types.h"
 #include "sst/core/statapi/statengine.h"
 #include "sst/core/unitAlgebra.h"
+#include "sst/core/util/filesystem.h"
 
 #include <atomic>
 #include <cstdio>
@@ -332,10 +333,9 @@ public:
     // To enable main to set up globals
     friend int ::main(int argc, char** argv);
 
-    Simulation_impl() {}
     Simulation_impl(Config* config, RankInfo my_rank, RankInfo num_ranks, bool restart);
-    Simulation_impl(Simulation_impl const&); // Don't Implement
-    void operator=(Simulation_impl const&);  // Don't implement
+    Simulation_impl(const Simulation_impl&) = delete;            // Don't Implement
+    Simulation_impl& operator=(const Simulation_impl&) = delete; // Don't implement
 
     /** Get a handle to a TimeConverter
      * @param cycles Frequency which is the base of the TimeConverter
@@ -367,6 +367,12 @@ public:
 
     /** Factory used to generate the simulation components */
     static Factory* factory;
+
+    /**
+       Filesystem object that will be used to ensure all core-created
+       files end up in the directory specified by --output-directory.
+     */
+    static SST::Util::Filesystem filesystem;
 
     static void                      resizeBarriers(uint32_t nthr);
     static Core::ThreadSafe::Barrier initBarrier;

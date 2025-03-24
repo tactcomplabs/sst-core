@@ -255,6 +255,11 @@ public:
     const std::string& checkpoint_prefix() const { return checkpoint_prefix_; }
 
     /**
+       Format for checkout filenames
+    */
+    const std::string& checkpoint_name_format() const { return checkpoint_name_format_; }
+
+    /**
        TimeVortex implementation to use
     */
     const std::string& timeVortex() const { return timeVortex_; }
@@ -464,6 +469,7 @@ public:
         ser& checkpoint_wall_period_;
         ser& checkpoint_sim_period_;
         ser& checkpoint_prefix_;
+        ser& checkpoint_name_format_;
 
         ser& enable_sig_handling_;
         ser& sigusr1_;
@@ -572,7 +578,7 @@ private:
     uint32_t
         checkpoint_wall_period_;    /*!< Interval to generate checkpoints at in terms of wall-clock measured seconds */
     std::string checkpoint_prefix_; /*!< Prefix for checkpoint filename and checkpoint directory */
-    std::string checkpoint_directory_; /*!< Directory to write checkpoints to */
+    std::string checkpoint_name_format_; /*!< Format for checkpoint filenames */
 
     // Advanced options - environment
     bool        gen_checkpoint_schema_ = false;
