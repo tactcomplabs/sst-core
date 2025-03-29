@@ -13,15 +13,13 @@
 #define SST_CORE_SERIALIZATION_SERIALIZER_H
 
 // These includes have guards to print warnings if they are included
-// independent of this file.  Set the #define that will disable the
-// warnings.
+// independent of this file.  Set the #define that will disable the warnings.
 #define SST_INCLUDING_SERIALIZER_H
 #include "sst/core/serialization/impl/mapper.h"
 #include "sst/core/serialization/impl/packer.h"
 #include "sst/core/serialization/impl/sizer.h"
 #include "sst/core/serialization/impl/unpacker.h"
-// Reenble warnings for including the above file independent of this
-// file.
+// Reenble warnings for including the above file independent of this file.
 #undef SST_INCLUDING_SERIALIZER_H
 
 #include <assert.h>
@@ -30,12 +28,19 @@
 #include <list>
 #include <map>
 #include <set>
+#include <stack>
+#include <stdexcept>
+#include <string>
+#include <utility>
+
 #include <typeinfo>
 #include <vector>
 #include <iostream>
 #include <fstream>
 
 namespace SST::Core::Serialization {
+
+class ObjectMap;
 
 class serialize_schema {
 public:
@@ -80,7 +85,6 @@ private:
             typeid(const char *).hash_code(), sizeof(obj), typeid(const char *).name()); \
         ser.schema()->write_segment( "NUM_COMPONENTS", sizeof(obj), false ); \
     }
-
 
 /**
  * This class is basically a wrapper for objects to declare the order in
@@ -163,7 +167,7 @@ public:
         }
     }
 
-    template <class T, int N>
+    template <class T, size_t N>
     void array(T arr[N])
     {
         switch ( mode_ ) {
@@ -315,9 +319,21 @@ public:
 
     inline bool is_pointer_tracking_enabled() { return enable_ptr_tracking_; }
 
-    inline void report_object_map(ObjectMap* ptr)
+    void report_object_map(ObjectMap* ptr);
+
+    void pushMapName(std::string name) { map_name.push(std::move(name)); }
+
+    const std::string& getMapName() const
     {
-        ser_pointer_map[reinterpret_cast<uintptr_t>(ptr->getAddr())] = reinterpret_cast<uintptr_t>(ptr);
+        if ( map_name.empty() || map_name.top().empty() )
+            throw std::invalid_argument("Internal error: Empty map name when map serialization requires it");
+        return map_name.top();
+    }
+
+    void popMapName()
+    {
+        getMapName(); // make sure name exists
+        map_name.pop();
     }
 
 protected:
@@ -335,6 +351,7 @@ protected:
     // Used for unpacking and mapping
     std::map<uintptr_t, uintptr_t> ser_pointer_map;
     uintptr_t                      split_key;
+    std::stack<std::string>        map_name;
 };
 
 } // namespace SST::Core::Serialization
