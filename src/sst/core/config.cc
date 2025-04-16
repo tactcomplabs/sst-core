@@ -99,6 +99,14 @@ public:
         return -1;
     }
 
+    // timing json
+    static int setTimingJSON(Config* cfg, const std::string& arg)
+    {
+        cfg->timing_json_ = arg;
+        return 0;
+    }
+
+
     // stop-at
     static int setStopAt(Config* cfg, const std::string& arg)
     {
@@ -811,6 +819,7 @@ Config::print()
     std::cout << "configFile = " << configFile_ << std::endl;
     std::cout << "model_options = " << model_options_ << std::endl;
     std::cout << "print_timing = " << print_timing_ << std::endl;
+    std::cout << "timing_json = " << timing_json_ << std::endl;
     std::cout << "stop_at = " << stop_at_ << std::endl;
     std::cout << "exit_after = " << exit_after_ << std::endl;
     std::cout << "partitioner = " << partitioner_ << std::endl;
@@ -889,6 +898,7 @@ Config::Config(uint32_t num_ranks, bool first_rank) : ConfigShared(!first_rank, 
     configFile_            = "NONE";
     model_options_         = "";
     print_timing_          = false;
+    timing_json_           = "";
     stop_at_               = "0 ns";
     exit_after_            = 0;
     partitioner_           = "sst.linear";
@@ -1023,6 +1033,9 @@ Config::insertOptions()
         "print-timing-info", 0, "Print SST timing information", std::bind(&ConfigHelper::setPrintTiming, this, _1),
         true);
     DEF_ARG(
+        "timing-info-json", 0, "FILE", "Write SST timing information to the specified file in JSON format",
+        std::bind(&ConfigHelper::setTimingJSON, this, _1), true);
+    DEF_ARG(
         "stop-at", 0, "TIME", "Set time at which simulation will end execution",
         std::bind(&ConfigHelper::setStopAt, this, _1), true);
     DEF_ARG(
@@ -1065,6 +1078,8 @@ Config::insertOptions()
     DEF_ARG(
         "output-config", 0, "FILE", "File to write SST configuration (in Python format)",
         std::bind(&ConfigHelper::setWriteConfig, this, _1), true);
+    // TODO Can we deprecate and rename this to output-config-json as to not confuse this with other json output files?
+    //      Also rename related members accordingly
     DEF_ARG(
         "output-json", 0, "FILE", "File to write SST configuration graph (in JSON format)",
         std::bind(&ConfigHelper::setWriteJSON, this, _1), true);
