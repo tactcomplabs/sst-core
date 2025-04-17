@@ -55,6 +55,7 @@ public:
 
     void set(Key key, uint64_t v);
     void set(Key key, UnitAlgebra v);
+    void set(Key key, double v);
 
  private:
     SST::Output output_;
@@ -62,6 +63,7 @@ public:
 
     std::map<Key, uint64_t> u64map_ = {};
     std::map<Key, UnitAlgebra> uamap_ = {};
+    std::map<Key, double> dmap_ = {};
     FILE* outputFile = nullptr;
 
 };

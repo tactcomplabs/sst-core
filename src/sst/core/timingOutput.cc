@@ -53,9 +53,9 @@ TimingOutput::generate()
         output_.output("\n");
         output_.output("------------------------------------------------------------\n");
         output_.output("Simulation Timing Information (Wall Clock Times):\n");
-        output_.output("  Build time:                      %f seconds\n", u64map_.at(MAX_BUILD_TIME));
-        output_.output("  Run loop time:                   %f seconds\n", u64map_.at(MAX_RUN_TIME));
-        output_.output("  Total time:                      %f seconds\n", u64map_.at(MAX_TOTAL_TIME));
+        output_.output("  Build time:                      %f seconds\n", dmap_.at(MAX_BUILD_TIME));
+        output_.output("  Run loop time:                   %f seconds\n", dmap_.at(MAX_RUN_TIME));
+        output_.output("  Total time:                      %f seconds\n", dmap_.at(MAX_TOTAL_TIME));
         output_.output("\n");
         output_.output(
             "Simulated time:                    %s\n", uamap_.at(SIMULATED_TIME_UA).toStringBestSI().c_str());
@@ -92,6 +92,12 @@ void
 TimingOutput::set(Key key, UnitAlgebra v)
 {
     uamap_[key] = v;
+}
+
+void
+TimingOutput::set(Key key, double v)
+{
+    dmap_[key] = v;
 }
 
 TimingOutput::~TimingOutput()

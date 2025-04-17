@@ -1180,15 +1180,12 @@ main(int argc, char* argv[])
 #endif
 
     // #define OLD_TIMING
-    #ifndef OLD_TIMING
-
-    #else
+    #ifdef OLD_TIMING
     const uint64_t local_max_rss     = maxLocalMemSize();
     const uint64_t global_max_rss    = maxGlobalMemSize();
     const uint64_t local_max_pf      = maxLocalPageFaults();
     const uint64_t global_pf         = globalPageFaults();
     const uint64_t global_max_io_in  = maxInputOperations();
-    const uint64_t global_max_io_out = maxOutputOperations();
     const uint64_t global_max_io_out = maxOutputOperations();
     #endif
 
@@ -1207,13 +1204,13 @@ main(int argc, char* argv[])
         timingOutput.set(TimingOutput::Key::GLOBAL_MAX_IO_OUT, maxOutputOperations());
         timingOutput.set(TimingOutput::Key::GLOBAL_MAX_SYNC_DATA_SIZE, global_max_sync_data_size);
         timingOutput.set(TimingOutput::Key::GLOBAL_SYNC_DATA_SIZE, global_sync_data_size);
-        timingOutput.set(TimingOutput::Key::MAX_MEMPOOL_SIZE, max_mempool_size);
-        timingOutput.set(TimingOutput::Key::GLOBAL_MEMPOOL_SIZE, global_mempool_size);
+        timingOutput.set(TimingOutput::Key::MAX_MEMPOOL_SIZE, (uint64_t) max_mempool_size);
+        timingOutput.set(TimingOutput::Key::GLOBAL_MEMPOOL_SIZE, (uint64_t) global_mempool_size);
         timingOutput.set(TimingOutput::Key::MAX_BUILD_TIME, max_build_time);
         timingOutput.set(TimingOutput::Key::MAX_RUN_TIME, max_run_time);
         timingOutput.set(TimingOutput::Key::MAX_TOTAL_TIME, max_total_time);
         timingOutput.set(TimingOutput::Key::SIMULATED_TIME_UA, threadInfo[0].simulated_time);
-        timingOutput.set(TimingOutput::Key::GLOBAL_ACTIVE_ACTIVITIES, global_active_activities);
+        timingOutput.set(TimingOutput::Key::GLOBAL_ACTIVE_ACTIVITIES, (uint64_t) global_active_activities);
         timingOutput.set(TimingOutput::Key::GLOBAL_CURRENT_TV_DEPTH, global_current_tv_depth);
         timingOutput.set(TimingOutput::Key::GLOBAL_MAX_TV_DEPTH, global_max_tv_depth);
 
