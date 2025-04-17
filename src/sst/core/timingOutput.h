@@ -13,6 +13,10 @@
 #define SST_CORE_TIMING_OUTPUT_H
 
 #include "sst/core/util/filesystem.h"
+#include "sst/core/output.h"
+#include "sst/core/unitAlgebra.h"
+
+#include <map>
 
 namespace SST::Core {
 
@@ -24,19 +28,42 @@ class TimingOutput
 public:
     /** Timing Parameters
      */
-    enum TimingInfo_t {
-        local_max_rss,
-        global_max_rss,
-        local_max_pf,
-        global_pf,
-        global_max_io_in,
-        global_max_io_out
+    enum Key {
+        LOCAL_MAX_RSS,
+        GLOBAL_MAX_RSS,
+        LOCAL_MAX_PF,
+        GLOBAL_PF,
+        GLOBAL_MAX_IO_IN,
+        GLOBAL_MAX_IO_OUT,
+        GLOBAL_MAX_SYNC_DATA_SIZE,
+        GLOBAL_SYNC_DATA_SIZE,
+        MAX_MEMPOOL_SIZE,
+        GLOBAL_MEMPOOL_SIZE,
+        MAX_BUILD_TIME,
+        MAX_RUN_TIME,
+        MAX_TOTAL_TIME,
+        SIMULATED_TIME_UA,
+        GLOBAL_ACTIVE_ACTIVITIES,
+        GLOBAL_CURRENT_TV_DEPTH,
+        GLOBAL_MAX_TV_DEPTH,
     };
 
-    TimingOutput(const char* path);
+    TimingOutput(const SST::Output& output, bool printEnable);
     virtual ~TimingOutput();
- protected:
-    FILE* outputFile;
+    void setJSON(const std::string& path);
+    void generate();
+
+    void set(Key key, uint64_t v);
+    void set(Key key, UnitAlgebra v);
+
+ private:
+    SST::Output output_;
+    bool printEnable_;
+
+    std::map<Key, uint64_t> u64map_ = {};
+    std::map<Key, UnitAlgebra> uamap_ = {};
+    FILE* outputFile = nullptr;
+
 };
 
 } // namespace SST::Core

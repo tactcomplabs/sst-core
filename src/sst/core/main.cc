@@ -1179,15 +1179,9 @@ main(int argc, char* argv[])
     global_active_activities = active_activities;
 #endif
 
-    #define OLD_TIMING
+    // #define OLD_TIMING
     #ifndef OLD_TIMING
-    std::map<TimingOutput::TimingInfo_t, uint64_t> timing_map;
-    timing_map[TimingOutput::TimingInfo_t::local_max_rss]     = maxLocalMemSize();
-    timing_map[TimingOutput::TimingInfo_t::global_max_rss]    = maxGlobalMemSize();
-    timing_map[TimingOutput::TimingInfo_t::local_max_pf]      = maxLocalPageFaults();
-    timing_map[TimingOutput::TimingInfo_t::global_pf]         = globalPageFaults();
-    timing_map[TimingOutput::TimingInfo_t::global_max_io_in]  = maxInputOperations();
-    timing_map[TimingOutput::TimingInfo_t::global_max_io_out] = maxOutputOperations();
+
     #else
     const uint64_t local_max_rss     = maxLocalMemSize();
     const uint64_t global_max_rss    = maxGlobalMemSize();
@@ -1195,15 +1189,35 @@ main(int argc, char* argv[])
     const uint64_t global_pf         = globalPageFaults();
     const uint64_t global_max_io_in  = maxInputOperations();
     const uint64_t global_max_io_out = maxOutputOperations();
+    const uint64_t global_max_io_out = maxOutputOperations();
     #endif
 
     if ( myRank.rank == 0 && (cfg.verbose() || cfg.print_timing() || cfg.timing_json() != "" ) ) {
 
         #ifndef OLD_TIMING
-        // timingOutput = TimingOutput(timing_map, cfg.verbose() || cfg.print_timing());
-        // if (cfg.timing_json() != " ") 
-        //     timingOutput.setJSON(cfg.timing_json);
-        // timing.generate();
+        TimingOutput timingOutput = TimingOutput(g_output, cfg.verbose() || cfg.print_timing());
+        if (cfg.timing_json() != "") 
+            timingOutput.setJSON(cfg.timing_json());
+        
+        timingOutput.set(TimingOutput::Key::LOCAL_MAX_RSS, maxLocalMemSize());
+        timingOutput.set(TimingOutput::Key::GLOBAL_MAX_RSS, maxGlobalMemSize());
+        timingOutput.set(TimingOutput::Key::LOCAL_MAX_PF, maxLocalPageFaults());
+        timingOutput.set(TimingOutput::Key::GLOBAL_PF, globalPageFaults());
+        timingOutput.set(TimingOutput::Key::GLOBAL_MAX_IO_IN, maxInputOperations());
+        timingOutput.set(TimingOutput::Key::GLOBAL_MAX_IO_OUT, maxOutputOperations());
+        timingOutput.set(TimingOutput::Key::GLOBAL_MAX_SYNC_DATA_SIZE, global_max_sync_data_size);
+        timingOutput.set(TimingOutput::Key::GLOBAL_SYNC_DATA_SIZE, global_sync_data_size);
+        timingOutput.set(TimingOutput::Key::MAX_MEMPOOL_SIZE, max_mempool_size);
+        timingOutput.set(TimingOutput::Key::GLOBAL_MEMPOOL_SIZE, global_mempool_size);
+        timingOutput.set(TimingOutput::Key::MAX_BUILD_TIME, max_build_time);
+        timingOutput.set(TimingOutput::Key::MAX_RUN_TIME, max_run_time);
+        timingOutput.set(TimingOutput::Key::MAX_TOTAL_TIME, max_total_time);
+        timingOutput.set(TimingOutput::Key::SIMULATED_TIME_UA, threadInfo[0].simulated_time);
+        timingOutput.set(TimingOutput::Key::GLOBAL_ACTIVE_ACTIVITIES, global_active_activities);
+        timingOutput.set(TimingOutput::Key::GLOBAL_CURRENT_TV_DEPTH, global_current_tv_depth);
+        timingOutput.set(TimingOutput::Key::GLOBAL_MAX_TV_DEPTH, global_max_tv_depth);
+
+        timingOutput.generate();
 
         #else
         std::string ua_buffer;
