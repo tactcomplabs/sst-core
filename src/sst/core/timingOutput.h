@@ -22,6 +22,17 @@ namespace SST::Core {
 class TimingOutput
 {
 public:
+    /** Timing Parameters
+     */
+    enum TimingInfo_t {
+        local_max_rss,
+        global_max_rss,
+        local_max_pf,
+        global_pf,
+        global_max_io_in,
+        global_max_io_out
+    };
+
     TimingOutput(const char* path);
     virtual ~TimingOutput();
  protected:

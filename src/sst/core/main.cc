@@ -45,6 +45,7 @@ REENABLE_WARNING
 #include "sst/core/threadsafe.h"
 #include "sst/core/timeLord.h"
 #include "sst/core/timeVortex.h"
+#include "sst/core/timingOutput.h"
 
 #include <cinttypes>
 #include <exception>
@@ -1180,8 +1181,13 @@ main(int argc, char* argv[])
 
     #define OLD_TIMING
     #ifndef OLD_TIMING
-    std::map<TIMING_INFO, uint64_t> timing_map;
-    timing_map[TIMING_INFO::LocalMaxRSS] = maxLocalMemSize();
+    std::map<TimingOutput::TimingInfo_t, uint64_t> timing_map;
+    timing_map[TimingOutput::TimingInfo_t::local_max_rss]     = maxLocalMemSize();
+    timing_map[TimingOutput::TimingInfo_t::global_max_rss]    = maxGlobalMemSize();
+    timing_map[TimingOutput::TimingInfo_t::local_max_pf]      = maxLocalPageFaults();
+    timing_map[TimingOutput::TimingInfo_t::global_pf]         = globalPageFaults();
+    timing_map[TimingOutput::TimingInfo_t::global_max_io_in]  = maxInputOperations();
+    timing_map[TimingOutput::TimingInfo_t::global_max_io_out] = maxOutputOperations();
     #else
     const uint64_t local_max_rss     = maxLocalMemSize();
     const uint64_t global_max_rss    = maxGlobalMemSize();
@@ -1194,6 +1200,11 @@ main(int argc, char* argv[])
     if ( myRank.rank == 0 && (cfg.verbose() || cfg.print_timing() || cfg.timing_json() != "" ) ) {
 
         #ifndef OLD_TIMING
+        // timingOutput = TimingOutput(timing_map, cfg.verbose() || cfg.print_timing());
+        // if (cfg.timing_json() != " ") 
+        //     timingOutput.setJSON(cfg.timing_json);
+        // timing.generate();
+
         #else
         std::string ua_buffer;
         ua_buffer = format_string("%" PRIu64 "KB", local_max_rss);
@@ -1244,7 +1255,6 @@ main(int argc, char* argv[])
         g_output.output("\n");
         g_output.output("\n");
     #endif
-
     }
 
 #ifdef SST_CONFIG_HAVE_MPI
