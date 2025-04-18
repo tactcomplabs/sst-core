@@ -171,17 +171,6 @@ public:
     /** Return the collection mode that is registered */
     StatMode_t getRegisteredCollectionMode() const { return info_->registered_collection_mode_; }
 
-    // Delay Methods (Uses OneShot to disable Statistic or Collection)
-    /** Delay the statistic from outputting data for a specified delay time
-     * @param delay_time - Value in UnitAlgebra format for delay (i.e. 10ns).
-     */
-    void delayOutput(const char* delay_time);
-
-    /** Delay the statistic from collecting data for a specified delay time.
-     * @param delayTime - Value in UnitAlgebra format for delay (i.e. 10ns).
-     */
-    void delayCollection(const char* delay_time);
-
     // Status of Statistic
     /** Indicate that the Statistic is Ready to be used */
     virtual bool isReady() const { return true; }
@@ -257,10 +246,6 @@ private:
     bool operator==(StatisticBase& check_stat);
 
     void checkEventForOutput();
-
-    // OneShot Callbacks:
-    void delayOutputExpiredHandler();     // Enable Output in handler
-    void delayCollectionExpiredHandler(); // Enable Collection in Handler
 
     const StatisticGroup* getGroup() const { return info_->group_; }
     void                  setGroup(const StatisticGroup* group) { info_->group_ = group; }
@@ -654,9 +639,7 @@ namespace Core::Serialization {
 template <class T>
 class serialize_impl<Statistics::Statistic<T>*>
 {
-    template <class A>
-    friend class serialize;
-    void operator()(Statistics::Statistic<T>*& s, serializer& ser)
+    void operator()(Statistics::Statistic<T>*& s, serializer& ser, ser_opt_t UNUSED(options))
     {
         // For sizer and pack, need to get the information needed
         // to create a new statistic of the correct type on unpack.
@@ -668,10 +651,10 @@ class serialize_impl<Statistics::Statistic<T>*>
             std::string    stat_name     = s->getStatName();
             std::string    stat_id       = s->getStatSubId();
             BaseComponent* comp          = s->getComponent();
-            ser&           stat_eli_type;
-            ser&           comp;
-            ser&           stat_name;
-            ser&           stat_id;
+            SST_SER(stat_eli_type);
+            SST_SER(comp);
+            SST_SER(stat_name);
+            SST_SER(stat_id);
             s->serialize_order(ser);
             break;
         }
@@ -681,11 +664,11 @@ class serialize_impl<Statistics::Statistic<T>*>
             BaseComponent* comp;
             std::string    stat_name;
             std::string    stat_id;
-            ser&           stat_eli_type;
-            ser&           comp;
-            ser&           stat_name;
-            ser&           stat_id;
-            Params         params;
+            SST_SER(stat_eli_type);
+            SST_SER(comp);
+            SST_SER(stat_name);
+            SST_SER(stat_id);
+            Params params;
             params.insert("type", stat_eli_type);
             s = Factory::getFactory()->CreateWithParams<Statistics::Statistic<T>>(
                 stat_eli_type, params, comp, stat_name, stat_id, params);
@@ -700,6 +683,8 @@ class serialize_impl<Statistics::Statistic<T>*>
         }
         }
     }
+
+    SST_FRIEND_SERIALZE();
 };
 
 } // namespace Core::Serialization
