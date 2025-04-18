@@ -54,6 +54,7 @@ TimingOutput::set(Key key, double v)
 
 TimingOutput::~TimingOutput()
 {
+  if (outputFile)
     fclose(outputFile);
 }
 
