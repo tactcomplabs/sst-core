@@ -21,11 +21,14 @@ namespace SST {
 namespace Core {
 
 TimingOutput::TimingOutput(const SST::Output& output, bool printEnable) 
-: output_(output), printEnable_(printEnable), jsonEnable_(false) {}
+: output_(output), printEnable_(printEnable), jsonEnable_(false) {
+    output.output("TimingOutput constructor\n");
+}
 
 void
 TimingOutput::setJSON(const std::string& path)
 {
+    output.output("TimingOutput::setJSON\n");
     SST::Util::Filesystem filesystem = Simulation_impl::filesystem;
     outputFile                       = filesystem.fopen(path, "wt");
     if (outputFile == nullptr)
@@ -37,6 +40,7 @@ TimingOutput::setJSON(const std::string& path)
 void
 TimingOutput::set(Key key, const uint64_t v)
 {
+    output_.output("%s %d", key2cstr.at(key),v);
     u64map_[key] = v;
 }
 
@@ -62,6 +66,7 @@ TimingOutput::~TimingOutput()
 void
 TimingOutput::generate()
 {
+    output_.output("Generating timing output\n");
     if (printEnable_) 
         renderText();
 

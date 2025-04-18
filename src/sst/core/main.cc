@@ -1179,93 +1179,34 @@ main(int argc, char* argv[])
     global_active_activities = active_activities;
 #endif
 
-    // #define OLD_TIMING
-    #ifdef OLD_TIMING
-    const uint64_t local_max_rss     = maxLocalMemSize();
-    const uint64_t global_max_rss    = maxGlobalMemSize();
-    const uint64_t local_max_pf      = maxLocalPageFaults();
-    const uint64_t global_pf         = globalPageFaults();
-    const uint64_t global_max_io_in  = maxInputOperations();
-    const uint64_t global_max_io_out = maxOutputOperations();
-    #endif
-
     if ( myRank.rank == 0 && (cfg.verbose() || cfg.print_timing() || cfg.timing_json() != "" ) ) {
-
-        #ifndef OLD_TIMING
-        TimingOutput timingOutput = TimingOutput(g_output, cfg.verbose() || cfg.print_timing());
-        if (cfg.timing_json() != "") 
-            timingOutput.setJSON(cfg.timing_json());
         
-        timingOutput.set(TimingOutput::Key::LOCAL_MAX_RSS, maxLocalMemSize());
-        timingOutput.set(TimingOutput::Key::GLOBAL_MAX_RSS, maxGlobalMemSize());
-        timingOutput.set(TimingOutput::Key::LOCAL_MAX_PF, maxLocalPageFaults());
-        timingOutput.set(TimingOutput::Key::GLOBAL_PF, globalPageFaults());
-        timingOutput.set(TimingOutput::Key::GLOBAL_MAX_IO_IN, maxInputOperations());
-        timingOutput.set(TimingOutput::Key::GLOBAL_MAX_IO_OUT, maxOutputOperations());
-        timingOutput.set(TimingOutput::Key::GLOBAL_MAX_SYNC_DATA_SIZE, global_max_sync_data_size);
-        timingOutput.set(TimingOutput::Key::GLOBAL_SYNC_DATA_SIZE, global_sync_data_size);
-        timingOutput.set(TimingOutput::Key::MAX_MEMPOOL_SIZE, (uint64_t) max_mempool_size);
-        timingOutput.set(TimingOutput::Key::GLOBAL_MEMPOOL_SIZE, (uint64_t) global_mempool_size);
-        timingOutput.set(TimingOutput::Key::MAX_BUILD_TIME, max_build_time);
-        timingOutput.set(TimingOutput::Key::MAX_RUN_TIME, max_run_time);
-        timingOutput.set(TimingOutput::Key::MAX_TOTAL_TIME, max_total_time);
-        timingOutput.set(TimingOutput::Key::SIMULATED_TIME_UA, threadInfo[0].simulated_time);
-        timingOutput.set(TimingOutput::Key::GLOBAL_ACTIVE_ACTIVITIES, (uint64_t) global_active_activities);
-        timingOutput.set(TimingOutput::Key::GLOBAL_CURRENT_TV_DEPTH, global_current_tv_depth);
-        timingOutput.set(TimingOutput::Key::GLOBAL_MAX_TV_DEPTH, global_max_tv_depth);
+        g_output.output("Creating TimingOutput\n");
+        std::unique_ptr<TimingOutput> timingOutput = std::make_unique<TimingOutput>(g_output, cfg.verbose() || cfg.print_timing());
+        g_output.output("Created TimingOutput\n");
+        if (cfg.timing_json() != "") 
+            timingOutput->setJSON(cfg.timing_json());
+        
+        timingOutput->set(TimingOutput::Key::LOCAL_MAX_RSS, maxLocalMemSize());
+        timingOutput->set(TimingOutput::Key::GLOBAL_MAX_RSS, maxGlobalMemSize());
+        timingOutput->set(TimingOutput::Key::LOCAL_MAX_PF, maxLocalPageFaults());
+        timingOutput->set(TimingOutput::Key::GLOBAL_PF, globalPageFaults());
+        timingOutput->set(TimingOutput::Key::GLOBAL_MAX_IO_IN, maxInputOperations());
+        timingOutput->set(TimingOutput::Key::GLOBAL_MAX_IO_OUT, maxOutputOperations());
+        timingOutput->set(TimingOutput::Key::GLOBAL_MAX_SYNC_DATA_SIZE, global_max_sync_data_size);
+        timingOutput->set(TimingOutput::Key::GLOBAL_SYNC_DATA_SIZE, global_sync_data_size);
+        timingOutput->set(TimingOutput::Key::MAX_MEMPOOL_SIZE, (uint64_t) max_mempool_size);
+        timingOutput->set(TimingOutput::Key::GLOBAL_MEMPOOL_SIZE, (uint64_t) global_mempool_size);
+        timingOutput->set(TimingOutput::Key::MAX_BUILD_TIME, max_build_time);
+        timingOutput->set(TimingOutput::Key::MAX_RUN_TIME, max_run_time);
+        timingOutput->set(TimingOutput::Key::MAX_TOTAL_TIME, max_total_time);
+        timingOutput->set(TimingOutput::Key::SIMULATED_TIME_UA, threadInfo[0].simulated_time);
+        timingOutput->set(TimingOutput::Key::GLOBAL_ACTIVE_ACTIVITIES, (uint64_t) global_active_activities);
+        timingOutput->set(TimingOutput::Key::GLOBAL_CURRENT_TV_DEPTH, global_current_tv_depth);
+        timingOutput->set(TimingOutput::Key::GLOBAL_MAX_TV_DEPTH, global_max_tv_depth);
+        
+        timingOutput->generate();
 
-        timingOutput.generate();
-
-        #else
-        std::string ua_buffer;
-        ua_buffer = format_string("%" PRIu64 "KB", local_max_rss);
-        UnitAlgebra max_rss_ua(ua_buffer);
-
-        ua_buffer = format_string("%" PRIu64 "KB", global_max_rss);
-        UnitAlgebra global_rss_ua(ua_buffer);
-
-        ua_buffer = format_string("%" PRIu64 "B", global_max_sync_data_size);
-        UnitAlgebra global_max_sync_data_size_ua(ua_buffer);
-
-        ua_buffer = format_string("%" PRIu64 "B", global_sync_data_size);
-        UnitAlgebra global_sync_data_size_ua(ua_buffer);
-
-        ua_buffer = format_string("%" PRIu64 "B", max_mempool_size);
-        UnitAlgebra max_mempool_size_ua(ua_buffer);
-
-        ua_buffer = format_string("%" PRIu64 "B", global_mempool_size);
-        UnitAlgebra global_mempool_size_ua(ua_buffer);
-
-        g_output.output("\n");
-        g_output.output("\n");
-        g_output.output("------------------------------------------------------------\n");
-        g_output.output("Simulation Timing Information (Wall Clock Times):\n");
-        g_output.output("  Build time:                      %f seconds\n", max_build_time);
-        g_output.output("  Run loop time:                   %f seconds\n", max_run_time);
-        g_output.output("  Total time:                      %f seconds\n", max_total_time);
-        g_output.output("\n");
-        g_output.output(
-            "Simulated time:                    %s\n", threadInfo[0].simulated_time.toStringBestSI().c_str());
-        g_output.output("\n");
-        g_output.output("Simulation Resource Information:\n");
-        g_output.output("  Max Resident Set Size:           %s\n", max_rss_ua.toStringBestSI().c_str());
-        g_output.output("  Approx. Global Max RSS Size:     %s\n", global_rss_ua.toStringBestSI().c_str());
-        g_output.output("  Max Local Page Faults:           %" PRIu64 " faults\n", local_max_pf);
-        g_output.output("  Global Page Faults:              %" PRIu64 " faults\n", global_pf);
-        g_output.output("  Max Output Blocks:               %" PRIu64 " blocks\n", global_max_io_out);
-        g_output.output("  Max Input Blocks:                %" PRIu64 " blocks\n", global_max_io_in);
-        g_output.output("  Max mempool usage:               %s\n", max_mempool_size_ua.toStringBestSI().c_str());
-        g_output.output("  Global mempool usage:            %s\n", global_mempool_size_ua.toStringBestSI().c_str());
-        g_output.output("  Global active activities:        %" PRIu64 " activities\n", global_active_activities);
-        g_output.output("  Current global TimeVortex depth: %" PRIu64 " entries\n", global_current_tv_depth);
-        g_output.output("  Max TimeVortex depth:            %" PRIu64 " entries\n", global_max_tv_depth);
-        g_output.output(
-            "  Max Sync data size:              %s\n", global_max_sync_data_size_ua.toStringBestSI().c_str());
-        g_output.output("  Global Sync data size:           %s\n", global_sync_data_size_ua.toStringBestSI().c_str());
-        g_output.output("------------------------------------------------------------\n");
-        g_output.output("\n");
-        g_output.output("\n");
-    #endif
     }
 
 #ifdef SST_CONFIG_HAVE_MPI
