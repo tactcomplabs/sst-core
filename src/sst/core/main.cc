@@ -1179,20 +1179,27 @@ main(int argc, char* argv[])
     global_active_activities = active_activities;
 #endif
 
+    // These functions invoked MPI_Allreduce
+    const uint64_t local_max_rss     = maxLocalMemSize();
+    const uint64_t global_max_rss    = maxGlobalMemSize();
+    const uint64_t local_max_pf      = maxLocalPageFaults();
+    const uint64_t global_pf         = globalPageFaults();
+    const uint64_t global_max_io_in  = maxInputOperations();
+    const uint64_t global_max_io_out = maxOutputOperations();
+
     if ( myRank.rank == 0 && (cfg.verbose() || cfg.print_timing() || cfg.timing_json() != "" ) ) {
-        
         g_output.output("Creating TimingOutput\n");
         std::unique_ptr<TimingOutput> timingOutput = std::make_unique<TimingOutput>(g_output, cfg.verbose() || cfg.print_timing());
         g_output.output("Created TimingOutput\n");
         if (cfg.timing_json() != "") 
             timingOutput->setJSON(cfg.timing_json());
-        
-        timingOutput->set(TimingOutput::Key::LOCAL_MAX_RSS, maxLocalMemSize());
-        timingOutput->set(TimingOutput::Key::GLOBAL_MAX_RSS, maxGlobalMemSize());
-        timingOutput->set(TimingOutput::Key::LOCAL_MAX_PF, maxLocalPageFaults());
-        timingOutput->set(TimingOutput::Key::GLOBAL_PF, globalPageFaults());
-        timingOutput->set(TimingOutput::Key::GLOBAL_MAX_IO_IN, maxInputOperations());
-        timingOutput->set(TimingOutput::Key::GLOBAL_MAX_IO_OUT, maxOutputOperations());
+            
+        timingOutput->set(TimingOutput::Key::LOCAL_MAX_RSS, local_max_rss);
+        timingOutput->set(TimingOutput::Key::GLOBAL_MAX_RSS, global_max_rss);
+        timingOutput->set(TimingOutput::Key::LOCAL_MAX_PF, local_max_pf);
+        timingOutput->set(TimingOutput::Key::GLOBAL_PF, global_pf);
+        timingOutput->set(TimingOutput::Key::GLOBAL_MAX_IO_IN, global_max_io_in);
+        timingOutput->set(TimingOutput::Key::GLOBAL_MAX_IO_OUT, global_max_io_out);
         timingOutput->set(TimingOutput::Key::GLOBAL_MAX_SYNC_DATA_SIZE, global_max_sync_data_size);
         timingOutput->set(TimingOutput::Key::GLOBAL_SYNC_DATA_SIZE, global_sync_data_size);
         timingOutput->set(TimingOutput::Key::MAX_MEMPOOL_SIZE, (uint64_t) max_mempool_size);
@@ -1204,9 +1211,7 @@ main(int argc, char* argv[])
         timingOutput->set(TimingOutput::Key::GLOBAL_ACTIVE_ACTIVITIES, (uint64_t) global_active_activities);
         timingOutput->set(TimingOutput::Key::GLOBAL_CURRENT_TV_DEPTH, global_current_tv_depth);
         timingOutput->set(TimingOutput::Key::GLOBAL_MAX_TV_DEPTH, global_max_tv_depth);
-        
         timingOutput->generate();
-
     }
 
 #ifdef SST_CONFIG_HAVE_MPI

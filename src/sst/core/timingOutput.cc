@@ -15,6 +15,8 @@
 #include "sst/core/stringize.h"
 #include "nlohmann/json.hpp"
 
+#include "tcldbg.h"
+
 namespace json = ::nlohmann;
 
 namespace SST {
@@ -22,13 +24,14 @@ namespace Core {
 
 TimingOutput::TimingOutput(const SST::Output& output, bool printEnable) 
 : output_(output), printEnable_(printEnable), jsonEnable_(false) {
-    output.output("TimingOutput constructor\n");
+    output_.output("TimingOutput constructor\n");
+    tcldbg::spinner("TIMING_SPINNER");
 }
 
 void
 TimingOutput::setJSON(const std::string& path)
 {
-    output.output("TimingOutput::setJSON\n");
+    output_.output("TimingOutput::setJSON(%s)\n",path.c_str());
     SST::Util::Filesystem filesystem = Simulation_impl::filesystem;
     outputFile                       = filesystem.fopen(path, "wt");
     if (outputFile == nullptr)
@@ -40,19 +43,21 @@ TimingOutput::setJSON(const std::string& path)
 void
 TimingOutput::set(Key key, const uint64_t v)
 {
-    output_.output("%s %d", key2cstr.at(key),v);
+    output_.output("%s %" PRId64 "\n", key2cstr.at(key),v);
     u64map_[key] = v;
 }
 
 void
 TimingOutput::set(Key key, UnitAlgebra v)
 {
+    output_.output("%s %s\n", key2cstr.at(key), v.toStringBestSI().c_str());
     uamap_[key] = v;
 }
 
 void
 TimingOutput::set(Key key, double v)
 {
+    output_.output("%s %f\n", key2cstr.at(key),v);
     dmap_[key] = v;
 }
 
