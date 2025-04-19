@@ -102,10 +102,18 @@ public:
     // timing json
     static int setTimingJSON(Config* cfg, const std::string& arg)
     {
+        // if filename omitted we can pick up the next option as the filename.
+        //TODO this must be a general problem for other string options. 
+        if (arg[0]=='-' ) {
+            fprintf(
+                stderr,
+                "Error parsing file for --timing-info-json. Argument = [%s]\n",
+                arg.c_str());
+            return -1;
+        }
         cfg->timing_json_ = arg;
         return 0;
     }
-
 
     // stop-at
     static int setStopAt(Config* cfg, const std::string& arg)
