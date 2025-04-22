@@ -40,7 +40,7 @@ public:
      */
     TimeConverter(TimeConverter* tc) { factor = tc->factor; }
 
-    [[deprecated]] TimeConverter(nullptr_t UNUSED(tc)) { factor = 0; }
+    [[deprecated]] TimeConverter(std::nullptr_t UNUSED(tc)) { factor = 0; }
 
     /**
        Do not directly invoke this constructor from Components to get
