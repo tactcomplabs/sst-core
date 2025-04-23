@@ -21,6 +21,8 @@
 #include "sst/core/ssthandler.h"
 #include "sst/core/subcomponent.h"
 
+#include <vector>
+
 namespace SST::CoreTest::MessageMesh {
 
 class PortInterface : public SST::SubComponent
@@ -28,7 +30,7 @@ class PortInterface : public SST::SubComponent
 public:
     SST_ELI_REGISTER_SUBCOMPONENT_API(SST::CoreTest::MessageMesh::PortInterface)
 
-    PortInterface(ComponentId_t id) : SubComponent(id) {}
+    explicit PortInterface(ComponentId_t id) : SubComponent(id) {}
     virtual ~PortInterface() {}
 
     /**
@@ -93,7 +95,7 @@ class RouteInterface : public SST::SubComponent
 public:
     SST_ELI_REGISTER_SUBCOMPONENT_API(SST::CoreTest::MessageMesh::RouteInterface, const std::vector<PortInterface*>&, int)
 
-    RouteInterface(ComponentId_t id) : SubComponent(id) {}
+    explicit RouteInterface(ComponentId_t id) : SubComponent(id) {}
     virtual ~RouteInterface() {}
 
     virtual void send(MessageEvent* ev, int incoming_port) = 0;
@@ -129,8 +131,8 @@ public:
 
     EnclosingComponent(ComponentId_t id, Params& params);
 
-    void setup();
-    void finish();
+    void setup() override;
+    void finish() override;
 
 private:
     void handleEvent(SST::Event* ev, int port);
@@ -210,7 +212,7 @@ public:
     MessagePort(ComponentId_t id, Params& params);
     ~MessagePort() {}
 
-    void send(MessageEvent* ev);
+    void send(MessageEvent* ev) override;
     void handleEvent(Event* ev);
 
 private:

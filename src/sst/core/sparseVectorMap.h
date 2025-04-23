@@ -18,6 +18,7 @@
 #include "sst/core/sst_types.h"
 
 #include <algorithm>
+#include <string>
 #include <vector>
 
 namespace SST {
@@ -275,7 +276,7 @@ public:
 class bad_filtered_key_error : public std::runtime_error
 {
 public:
-    bad_filtered_key_error(const std::string& what_arg) : runtime_error(what_arg) {}
+    explicit bad_filtered_key_error(const std::string& what_arg) : runtime_error(what_arg) {}
 };
 
 

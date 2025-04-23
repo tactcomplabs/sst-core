@@ -16,6 +16,8 @@
 #include "sst/core/module.h"
 #include "sst/core/serialization/serialize_impl_fwd.h"
 
+#include <cstdint>
+
 namespace SST {
 
 class Output;
@@ -86,7 +88,7 @@ class SST::Core::Serialization::serialize_impl<TimeVortex*>
         }
     }
 
-    SST_FRIEND_SERIALZE();
+    SST_FRIEND_SERIALIZE();
 };
 
 } // namespace SST

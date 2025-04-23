@@ -17,7 +17,10 @@
 #include "sst/core/sync/syncManager.h"
 #include "sst/core/threadsafe.h"
 
+#include <atomic>
+#include <cstdint>
 #include <map>
+#include <string>
 
 namespace SST {
 
@@ -28,7 +31,7 @@ class RankSyncParallelSkip : public RankSync
 {
 public:
     /** Create a new Sync object which fires with a specified period */
-    RankSyncParallelSkip(RankInfo num_ranks);
+    explicit RankSyncParallelSkip(RankInfo num_ranks);
     RankSyncParallelSkip() {} // For serialization
     virtual ~RankSyncParallelSkip();
 

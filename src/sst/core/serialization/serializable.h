@@ -15,6 +15,9 @@
 #include "sst/core/serialization/serializable_base.h"
 #include "sst/core/serialization/serialize.h"
 
+#include <cstdint>
+#include <type_traits>
+
 namespace SST::Core::Serialization {
 
 class serializable : public serializable_base
@@ -68,7 +71,7 @@ class serialize_impl<T*, std::enable_if_t<std::is_base_of_v<serializable, T>>>
         s = static_cast<T*>(sp);
     }
 
-    SST_FRIEND_SERIALZE();
+    SST_FRIEND_SERIALIZE();
 };
 
 template <class T>
@@ -110,7 +113,7 @@ class serialize_impl<T, std::enable_if_t<std::is_base_of_v<serializable, T>>>
         // For now mapping mode won't provide any data
     }
 
-    SST_FRIEND_SERIALZE();
+    SST_FRIEND_SERIALIZE();
 };
 
 } // namespace SST::Core::Serialization

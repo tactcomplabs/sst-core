@@ -216,10 +216,65 @@ public:
      */
     void* getAddr() override { return addr_; }
 
-    explicit ObjectMapFundamental(TimeConverter** addr) : ObjectMap(), addr_(addr) {}
+    explicit ObjectMapFundamental(TimeConverter** addr) : ObjectMap(), addr_(addr) { setReadOnly(true); }
 
     std::string getType() override { return demangle_name(typeid(TimeConverter).name()); }
 };
+
+template <>
+class ObjectMapFundamental<TimeConverter> : public ObjectMap
+{
+protected:
+    /**
+       Address of the variable for reading and writing
+     */
+    TimeConverter* addr_ = nullptr;
+
+public:
+    // We'll treat this as a period when printing
+    std::string get() override
+    {
+        TimeLord*   timelord = Simulation_impl::getTimeLord();
+        UnitAlgebra base     = timelord->getTimeBase();
+        base *= addr_->getFactor();
+        return base.toStringBestSI();
+    }
+
+    void set_impl(const std::string& UNUSED(value)) override { return; }
+
+    // We'll act like we're a fundamental type
+    bool isFundamental() override { return true; }
+
+    /**
+       Get the address of the variable represented by the ObjectMap
+
+       @return Address of varaible
+     */
+    void* getAddr() override { return addr_; }
+
+    explicit ObjectMapFundamental(TimeConverter* addr) : ObjectMap(), addr_(addr) { setReadOnly(true); }
+
+    std::string getType() override { return demangle_name(typeid(TimeConverter).name()); }
+};
+
+void
+serialize_impl<TimeConverter>::operator()(TimeConverter& s, serializer& ser, ser_opt_t options)
+{
+    switch ( ser.mode() ) {
+    case serializer::SIZER:
+    case serializer::PACK:
+    case serializer::UNPACK:
+        SST_SER(s.factor);
+        break;
+    case serializer::MAP:
+    {
+        ObjectMap* obj_map = new ObjectMapFundamental<TimeConverter>(&s);
+        if ( options & SerOption::map_read_only ) { ser.mapper().setNextObjectReadOnly(); }
+        ser.mapper().map_primitive(ser.getMapName(), obj_map);
+        break;
+    }
+    }
+}
 
 
 void

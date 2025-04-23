@@ -458,7 +458,6 @@ start_simulation(uint32_t tid, SimThreadInfo_t& info, Core::ThreadSafe::Barrier&
     if ( !restart ) {
         double start_build = sst_get_cpu_time();
 
-
         barrier.wait();
 
         sim->processGraphInfo(*info.graph, info.myRank, info.min_part);
@@ -1004,7 +1003,7 @@ main(int argc, char* argv[])
                 Comms::broadcast(Params::keyMap, 0);
                 Comms::broadcast(Params::keyMapReverse, 0);
                 Comms::broadcast(Params::nextKeyID, 0);
-                Comms::broadcast(Params::global_params, 0);
+                Comms::broadcast(Params::shared_params, 0);
 
                 std::set<uint32_t> my_ranks;
                 std::set<uint32_t> your_ranks;

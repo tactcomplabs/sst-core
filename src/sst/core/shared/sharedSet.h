@@ -15,7 +15,10 @@
 #include "sst/core/shared/sharedObject.h"
 #include "sst/core/sst_types.h"
 
+#include <cstddef>
+#include <mutex>
 #include <set>
+#include <string>
 
 namespace SST::Shared {
 
@@ -230,7 +233,10 @@ private:
         verify_type verify;
 
         Data() : SharedObjectData(), change_set(nullptr), verify(VERIFY_UNINITIALIZED) {}
-        Data(const std::string& name) : SharedObjectData(name), change_set(nullptr), verify(VERIFY_UNINITIALIZED)
+        explicit Data(const std::string& name) :
+            SharedObjectData(name),
+            change_set(nullptr),
+            verify(VERIFY_UNINITIALIZED)
         {
             if ( Private::getNumRanks().rank > 1 ) { change_set = new ChangeSet(name); }
         }
@@ -327,7 +333,7 @@ private:
         public:
             // For serialization
             ChangeSet() : SharedObjectChangeSet(), verify(VERIFY_UNINITIALIZED) {}
-            ChangeSet(const std::string& name) : SharedObjectChangeSet(name), verify(VERIFY_UNINITIALIZED) {}
+            explicit ChangeSet(const std::string& name) : SharedObjectChangeSet(name), verify(VERIFY_UNINITIALIZED) {}
 
             void addChange(const valT& value) { changes.insert(value); }
 

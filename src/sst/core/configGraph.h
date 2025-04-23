@@ -24,8 +24,12 @@
 #include "sst/core/unitAlgebra.h"
 
 #include <climits>
+#include <cstddef>
+#include <cstdint>
 #include <map>
+#include <ostream>
 #include <set>
+#include <string>
 #include <vector>
 
 using namespace SST::Statistics;
@@ -100,7 +104,7 @@ public:
 
 private:
     friend class ConfigGraph;
-    ConfigLink(LinkId_t id) : id(id), no_cut(false)
+    explicit ConfigLink(LinkId_t id) : id(id), no_cut(false)
     {
         order = 0;
 
@@ -170,7 +174,7 @@ public:
     size_t                        outputID;
     UnitAlgebra                   outputFrequency;
 
-    ConfigStatGroup(const std::string& name) : name(name), outputID(0) {}
+    explicit ConfigStatGroup(const std::string& name) : name(name), outputID(0) {}
     ConfigStatGroup() {} /* Do not use */
 
     bool addComponent(ComponentId_t id);
@@ -203,7 +207,7 @@ public:
     std::string type;
     Params      params;
 
-    ConfigStatOutput(const std::string& type) : type(type) {}
+    explicit ConfigStatOutput(const std::string& type) : type(type) {}
     ConfigStatOutput() {}
 
     void addParameter(const std::string& key, const std::string& val) { params.insert(key, val); }
@@ -314,9 +318,22 @@ public:
     void setStatisticParameters(const std::string& statisticName, const Params& params, bool recursively = false);
     void setStatisticLoadLevel(uint8_t level, bool recursively = false);
 
-    void                     addGlobalParamSet(const std::string& set) { params.addGlobalParamSet(set); }
+    void addSharedParamSet(const std::string& set) { params.addSharedParamSet(set); }
+    [[deprecated(
+        "addGlobalParamSet() has been deprecated and will be removed in SST 16.  Please use addSharedParamSet()")]] void
+    addGlobalParamSet(const std::string& set)
+    {
+        params.addSharedParamSet(set);
+    }
     std::vector<std::string> getParamsLocalKeys() const { return params.getLocalKeys(); }
-    std::vector<std::string> getSubscribedGlobalParamSets() const { return params.getSubscribedGlobalParamSets(); }
+    std::vector<std::string> getSubscribedSharedParamSets() const { return params.getSubscribedSharedParamSets(); }
+
+    [[deprecated("getSubscribedGlobalParamSets() has been deprecated and will be removed in SST 16.  Please use "
+                 "getSubscribedSharedParamSets()")]] std::vector<std::string>
+    getSubscribedGlobalParamSets() const
+    {
+        return params.getSubscribedSharedParamSets();
+    }
 
     void addPortModule(const std::string& port, const std::string& type, const Params& params);
 
@@ -463,8 +480,12 @@ public:
     /** Create a new component */
     ComponentId_t addComponent(const std::string& name, const std::string& type);
 
-    /** Add a parameter to a global param set */
-    void addGlobalParam(const std::string& global_set, const std::string& key, const std::string& value);
+    /** Add a parameter to a shared param set */
+    void addSharedParam(const std::string& shared_set, const std::string& key, const std::string& value);
+
+    [[deprecated(
+        "addGlobalParam() has been deprecated and will be removed in SST 16.  Please use addSharedParam()")]] void
+    addGlobalParam(const std::string& shared_set, const std::string& key, const std::string& value);
 
     /** Set the statistic output module */
     void setStatisticOutput(const std::string& name);
@@ -597,14 +618,14 @@ public:
 
     ComponentIdMap_t group;
 
-    PartitionComponent(const ConfigComponent* cc)
+    explicit PartitionComponent(const ConfigComponent* cc)
     {
         id     = cc->id;
         weight = cc->weight;
         rank   = cc->rank;
     }
 
-    PartitionComponent(LinkId_t id) : id(id), weight(0), rank(RankInfo(RankInfo::UNASSIGNED, 0)) {}
+    explicit PartitionComponent(LinkId_t id) : id(id), weight(0), rank(RankInfo(RankInfo::UNASSIGNED, 0)) {}
 
     // PartitionComponent(ComponentId_t id, ConfigGraph* graph, const ComponentIdMap_t& group);
     void print(std::ostream& os, const PartitionGraph* graph) const;

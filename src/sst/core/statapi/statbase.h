@@ -23,6 +23,8 @@
 #include "sst/core/warnmacros.h"
 
 #include <string>
+#include <tuple>
+#include <vector>
 
 namespace SST {
 class BaseComponent;
@@ -507,7 +509,7 @@ public:
 
 protected:
     template <class T>
-    ImplementsStatFields(T* UNUSED(t)) :
+    explicit ImplementsStatFields(T* UNUSED(t)) :
         field_name_(T::ELI_fieldName()),
         short_name_(T::ELI_fieldShortName()),
         field_(T::ELI_registerField(T::ELI_fieldName(), T::ELI_fieldShortName()))
@@ -684,7 +686,7 @@ class serialize_impl<Statistics::Statistic<T>*>
         }
     }
 
-    SST_FRIEND_SERIALZE();
+    SST_FRIEND_SERIALIZE();
 };
 
 } // namespace Core::Serialization
