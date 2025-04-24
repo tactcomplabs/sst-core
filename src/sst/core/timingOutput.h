@@ -46,6 +46,7 @@ public:
         GLOBAL_ACTIVE_ACTIVITIES,   // Global active activities
         GLOBAL_CURRENT_TV_DEPTH,    // Current global TimeVortex depth
         GLOBAL_MAX_TV_DEPTH,        // Max TimeVortex depth
+        RANKS,                      // MPI ranks
     };
 
     const std::map<Key, const char*> key2cstr = {
@@ -66,6 +67,7 @@ public:
         {GLOBAL_ACTIVE_ACTIVITIES, "global_active_activities"},
         {GLOBAL_CURRENT_TV_DEPTH, "global_current_tv_depth"},
         {GLOBAL_MAX_TV_DEPTH, "global_max_tv_depth"},
+        {RANKS, "ranks"},
     };
 
     TimingOutput(const SST::Output& output, bool printEnable);

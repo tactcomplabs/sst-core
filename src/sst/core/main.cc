@@ -1210,6 +1210,7 @@ main(int argc, char* argv[])
         timingOutput->set(TimingOutput::Key::GLOBAL_ACTIVE_ACTIVITIES, (uint64_t) global_active_activities);
         timingOutput->set(TimingOutput::Key::GLOBAL_CURRENT_TV_DEPTH, global_current_tv_depth);
         timingOutput->set(TimingOutput::Key::GLOBAL_MAX_TV_DEPTH, global_max_tv_depth);
+        timingOutput->set(TimingOutput::Key::RANKS, (uint64_t) world_size.rank);
         timingOutput->generate();
     }
 

@@ -10,12 +10,12 @@
 // distribution.
 //
 
-#include "timingOutput.h"
-#include "simulation_impl.h"
+#include "sst/core/timingOutput.h"
+#include "sst/core/simulation_impl.h"
 #include "sst/core/stringize.h"
 #include "nlohmann/json.hpp"
 
-#include "tcldbg.h"
+#include <sys/ioctl.h>
 
 namespace json = ::nlohmann;
 
@@ -23,9 +23,9 @@ namespace SST {
 namespace Core {
 
 TimingOutput::TimingOutput(const SST::Output& output, bool printEnable) 
-: output_(output), printEnable_(printEnable), jsonEnable_(false) {
+: output_(output), printEnable_(printEnable), jsonEnable_(false)
+{
     output_.output("TimingOutput constructor\n");
-    tcldbg::spinner("TIMING_SPINNER");
 }
 
 void
@@ -148,8 +148,11 @@ TimingOutput::renderJSON()
     }
 
     std::stringstream ss;
-    ss << json_o << std::endl;
-    fprintf(outputFile, "%s", ss.str().c_str());
+    ss << std::setw(2) << json_o << std::endl;
+
+    // Avoid potential lifetime issues
+    std::string outputString = ss.str();
+    fprintf(outputFile, "%s", outputString.c_str());
 }
 
 } // namespace Core
