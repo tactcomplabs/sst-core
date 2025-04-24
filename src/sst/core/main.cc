@@ -1211,6 +1211,7 @@ main(int argc, char* argv[])
         timingOutput->set(TimingOutput::Key::GLOBAL_CURRENT_TV_DEPTH, global_current_tv_depth);
         timingOutput->set(TimingOutput::Key::GLOBAL_MAX_TV_DEPTH, global_max_tv_depth);
         timingOutput->set(TimingOutput::Key::RANKS, (uint64_t) world_size.rank);
+        timingOutput->set(TimingOutput::Key::THREADS, (uint64_t) world_size.thread);
         timingOutput->generate();
     }
 
