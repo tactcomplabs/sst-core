@@ -183,15 +183,17 @@ CheckpointAction::createCheckpoint(Simulation_impl* sim)
 #endif
     }
     basename = pvt::createNameFromFormat(file_format_, prefix, checkpoint_id, sim->currentSimCycle);
+    std::string checkpoint_root =
+        directory + "/" + basename + "_" + std::to_string(rank_.rank) + "_" + std::to_string(rank_.thread);
     std::string filename =
-        directory + "/" + basename + "_" + std::to_string(rank_.rank) + "_" + std::to_string(rank_.thread) + ".bin";
+        checkpoint_root + ".bin";
 
     barrier.wait();
 
     if ( rank_.thread == 0 ) checkpoint_id++;
 
     // Write out the checkpoints for the partitions
-    sim->checkpoint(filename);
+    sim->checkpoint(checkpoint_root);
 
     // Write out the registry.  Rank 0 thread 0 will write the global
     // state and its registry, then each thread will take a turn
@@ -202,8 +204,7 @@ CheckpointAction::createCheckpoint(Simulation_impl* sim)
 
     if ( rank_.rank == 0 && rank_.thread == 0 ) {
         // Need to write out the globals
-        std::string globals_name = directory + "/" + basename + "_globals.bin";
-        sim->checkpoint_write_globals(checkpoint_id - 1, registry_name, globals_name);
+        sim->checkpoint_write_globals(checkpoint_id - 1, registry_name, directory + "/" + basename );
     }
     // No need to barrier here since rank 0 thread 0 will be the first
     // to execute in the loop below and everything else will wait

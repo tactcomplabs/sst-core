@@ -8,7 +8,6 @@
 // This file is part of the SST software package. For license
 // information, see the LICENSE file in the top level directory of the
 // distribution.
-
 #include "sst_config.h"
 
 #include "sst/core/warnmacros.h"
@@ -810,7 +809,9 @@ main(int argc, char* argv[])
         std::vector<std::string>        cpt_params_key_map_reverse;
         uint32_t                        cpt_params_next_key_id;
 
+        uint64_t segstart, segend;
         ser.start_unpacking(buffer, size);
+        SST_SER(segstart);
         SST_SER(cpt_num_ranks);
         SST_SER(cpt_num_threads);
         SST_SER(cpt_lib_path);
@@ -823,6 +824,10 @@ main(int argc, char* argv[])
         SST_SER(cpt_params_key_map);
         SST_SER(cpt_params_key_map_reverse);
         SST_SER(cpt_params_next_key_id);
+        SST_SER(segend);
+
+        assert(segstart==0xa5a5a5a5a5a5bb01);
+        assert(segend==0xa5a5a5a5a5a5ee01);
 
         fs_globals.close();
         delete[] buffer;

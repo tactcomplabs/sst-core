@@ -22,8 +22,10 @@
 // Reenble warnings for including the above file independent of this file.
 #undef SST_INCLUDING_SERIALIZER_H
 
+#include <assert.h>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
 #include <list>
 #include <map>
 #include <set>
@@ -36,6 +38,50 @@ namespace SST::Core::Serialization {
 
 class ObjectMap;
 class ObjectMapContext;
+
+class serialize_schema {
+public:
+    serialize_schema(const std::string& schema_filename);
+    ~serialize_schema();
+    void close();
+    void update(std::string name, size_t pos, size_t hash_code, size_t sz, std::string type_name);
+    void write_segment( std::string name, size_t size, bool inc_size=true);
+    void write_types();
+
+private:
+    unsigned seg_num = 0;
+    std::ofstream sfs;
+    std::map<size_t, std::pair<std::string, size_t>> type_map;           // type hash_code, <name, size>
+    std::vector<std::tuple<std::string, size_t, size_t>> namepos_vector; // variable name, position, hash_code
+    const char q = '\"';
+    const std::string sp = "   ";
+};
+
+#define GEN_SCHEMA(obj, name, tidhash, tidname) \
+    if (ser.schema_enabled()) { \
+        ser.schema()->update(  \
+            name, ser.size(),   \
+            tidhash, sizeof(obj), tidname); \
+    }
+
+#define SER_SCHEMA(obj) \
+    GEN_SCHEMA(obj, #obj, typeid(obj).hash_code(), typeid(obj).name()) \
+    ser& obj;
+
+#define SER_SEG_DONE( name, size ) \
+    if (ser.schema()) {    \
+        ser.schema()->write_segment( name, size); \
+    }
+
+// TODO This should actually be the start of a hierarchical object containing components.
+// The components themselves may or may not be the same size.  
+#define SER_COMPONENTS_START(obj) \
+    if (ser.schema()) { \
+        ser.schema()->update(  \
+            "NUM_COMPONENTS", 0,   \
+            typeid(const char *).hash_code(), sizeof(obj), typeid(const char *).name()); \
+        ser.schema()->write_segment( "NUM_COMPONENTS", sizeof(obj), false ); \
+    }
 
 /**
  * This class is basically a wrapper for objects to declare the order in
@@ -83,6 +129,16 @@ public:
     mode() const { return mode_; }
 
     void set_mode(SERIALIZE_MODE mode) { mode_ = mode; }
+    // TODO keep schema object alive and just reset members
+    void enable_schema(const std::string& fileroot) {  
+        assert(!schema_); 
+        schema_ = new serialize_schema(fileroot); 
+    }
+    void disable_schema() { 
+        assert(schema_); delete schema_; 
+    }
+    bool schema_enabled() const { return schema_ && ( mode_ == SIZER ); }
+    serialize_schema* schema() const { return schema_; }
 
     void reset()
     {
@@ -260,6 +316,7 @@ protected:
     pvt::ser_mapper   mapper_;
     SERIALIZE_MODE    mode_;
     bool              enable_ptr_tracking_ = false;
+    serialize_schema* schema_ = nullptr;
 
     std::set<uintptr_t>            ser_pointer_set;
     // Used for unpacking and mapping

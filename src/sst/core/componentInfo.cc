@@ -192,8 +192,8 @@ ComponentInfo::~ComponentInfo()
 void
 ComponentInfo::serialize_comp(SST::Core::Serialization::serializer& ser)
 {
-    SST_SER(component);
-    SST_SER(link_map);
+    SER_SCHEMA(component);
+    SER_SCHEMA(link_map);
     for ( auto it = subComponents.begin(); it != subComponents.end(); ++it ) {
         it->second.serialize_comp(ser);
     }
@@ -212,21 +212,21 @@ ComponentInfo::serialize_order(SST::Core::Serialization::serializer& ser)
 
     // Serialize all my data except the component and link_map
 
-    SST_SER(const_cast<ComponentId_t&>(id_));
-    SST_SER(parent_info);
-    SST_SER(const_cast<std::string&>(name));
-    SST_SER(const_cast<std::string&>(type));
+    SER_SCHEMA(const_cast<ComponentId_t&>(id_));
+    SER_SCHEMA(parent_info);
+    SER_SCHEMA(const_cast<std::string&>(name));
+    SER_SCHEMA(const_cast<std::string&>(type));
 
     // Not used after construction, no need to serialize
-    // SST_SER(params);
+    // SER_SCHEMA(params);
 
-    SST_SER(defaultTimeBase);
+    SER_SCHEMA(defaultTimeBase);
 
-    // SST_SER(coordinates);
-    SST_SER(subIDIndex);
-    SST_SER(const_cast<std::string&>(slot_name));
-    SST_SER(slot_num);
-    SST_SER(share_flags);
+    // SER_SCHEMA(coordinates);
+    SER_SCHEMA(subIDIndex);
+    SER_SCHEMA(const_cast<std::string&>(slot_name));
+    SER_SCHEMA(slot_num);
+    SER_SCHEMA(share_flags);
 
     // Serialize statistic data structures - only needed for late stat registration
     // No one else has these pointers so serialize the data structure & reallocate on UNPACK

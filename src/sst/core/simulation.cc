@@ -270,7 +270,8 @@ Simulation_impl::Simulation_impl(Config* cfg, RankInfo my_rank, RankInfo num_ran
     complete_phase_total_time_(0.0),
     checkpoint_id_(0),
     checkpoint_prefix_(cfg->checkpoint_prefix()),
-    globalOutputFileName(cfg->debugFile())
+    globalOutputFileName(cfg->debugFile()),
+    gen_checkpoint_schema(cfg->gen_checkpoint_schema())
 {
 
     sim_output.init(cfg->output_core_prefix(), cfg->verbose(), 0, Output::STDOUT);
@@ -1640,35 +1641,40 @@ Simulation_impl::scheduleCheckpoint()
 
 void
 Simulation_impl::checkpoint_write_globals(
-    int checkpoint_id, const std::string& registry_filename, const std::string& globals_filename)
+    int checkpoint_id, const std::string& registry_filename, const std::string& checkpoint_root)
 {
+    const std::string globals_filename = checkpoint_root + "_globals.bin";
     std::ofstream fs = filesystem.ofstream(globals_filename, std::ios::out | std::ios::binary);
 
     // TODO: Add error checking for file open
 
     SST::Core::Serialization::serializer ser;
     ser.enable_pointer_tracking();
+    
+    if (gen_checkpoint_schema)
+        ser.enable_schema(checkpoint_root + "_globals.json");
 
     size_t size, buffer_size;
     char*  buffer;
 
     /* Section 1: Config options */
     ser.start_sizing();
-    SST_SER(num_ranks.rank);
-    SST_SER(num_ranks.thread);
+    SER_SCHEMA(num_ranks.rank);
+    SER_SCHEMA(num_ranks.thread);
     std::string libpath = factory->getSearchPaths();
-    SST_SER(libpath);
-    SST_SER(timeLord.timeBaseString);
-    SST_SER(output_directory);
+    SER_SCHEMA(libpath);
+    SER_SCHEMA(timeLord.timeBaseString);
+    SER_SCHEMA(output_directory);
     std::string prefix = sim_output.getPrefix();
-    SST_SER(prefix);
+    SER_SCHEMA(prefix);
     uint32_t verbose = sim_output.getVerboseLevel();
-    SST_SER(verbose);
-    SST_SER(globalOutputFileName);
-    SST_SER(checkpoint_prefix_);
-    SST_SER(Params::keyMap);
-    SST_SER(Params::keyMapReverse);
-    SST_SER(Params::nextKeyID);
+    SER_SCHEMA(verbose);
+    SER_SCHEMA(globalOutputFileName);
+    SER_SCHEMA(checkpoint_prefix_);
+    SER_SCHEMA(Params::keyMap);
+    SER_SCHEMA(Params::keyMapReverse);
+    SER_SCHEMA(Params::nextKeyID);
+    SER_SCHEMA(seg1end);
 
     size        = ser.size();
     buffer_size = size;
@@ -1687,9 +1693,18 @@ Simulation_impl::checkpoint_write_globals(
     SST_SER(Params::keyMap);
     SST_SER(Params::keyMapReverse);
     SST_SER(Params::nextKeyID);
+    SST_SER(seg1end);
 
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(buffer, size);
+    SER_SEG_DONE("config_options",size);
+    // close global schema
+    // TODO macro SER_SCHEMA_CLOSE
+    if (ser.schema()) {
+        ser.schema()->write_types();
+        ser.schema()->close();
+        ser.disable_schema();
+    }
     fs.close();
 
     std::ofstream fs_reg = filesystem.ofstream(registry_filename, std::ios::out);
@@ -1747,8 +1762,9 @@ Simulation_impl::checkpoint_append_registry(const std::string& registry_name, co
 }
 
 void
-Simulation_impl::checkpoint(const std::string& checkpoint_filename)
+Simulation_impl::checkpoint(const std::string& checkpoint_root)
 {
+    std::string checkpoint_filename = checkpoint_root + ".bin";
     std::ofstream fs     = filesystem.ofstream(checkpoint_filename, std::ios::out | std::ios::binary);
     // TODO: Add error checking for file open
     uint64_t      offset = 0;
@@ -1758,61 +1774,69 @@ Simulation_impl::checkpoint(const std::string& checkpoint_filename)
 
     size_t size;
 
+    if (gen_checkpoint_schema)
+        ser.enable_schema(checkpoint_root + ".json");
+
     /* Section 2: Loaded libraries */
     ser.start_sizing();
+    SER_SCHEMA(seg2begin);
     std::set<std::string> libnames;
     factory->getLoadedLibraryNames(libnames);
-    SST_SER(libnames);
+    SER_SCHEMA(libnames);
+    SER_SCHEMA(seg2end);
 
     size = ser.size();
     std::vector<char> buffer(size);
 
     ser.start_packing(&buffer[0], size);
     SST_SER(libnames);
+    SST_SER(seg2end);
 
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(&buffer[0], size);
     offset += (sizeof(size) + size);
-
+    SER_SEG_DONE("loaded_libraries",size);
 
     /* Section 3: Simulation_impl */
     ser.start_sizing();
-    SST_SER(num_ranks);
-    SST_SER(my_rank);
-    SST_SER(currentSimCycle);
-    SST_SER(stop_at_);
-    // SST_SER(threadMinPartTC);
-    SST_SER(minPart);
-    SST_SER(minPartTC);
-    SST_SER(interThreadLatencies);
-    SST_SER(interThreadMinLatency);
-    SST_SER(endSim);
-    SST_SER(independent);
-    SST_SER(timeVortexType); // Used by TimeVortex serialization
-    // SST_SER(sim_output);
-    SST_SER(runMode);
-    SST_SER(currentPriority);
-    SST_SER(endSimCycle);
-    SST_SER(output_directory);
+    SER_SCHEMA(num_ranks);
+    SER_SCHEMA(my_rank);
+    SER_SCHEMA(currentSimCycle);
+    SER_SCHEMA(stop_at_);
+    // SER_SCHEMA(threadMinPartTC);
+    SER_SCHEMA(minPart);
+    SER_SCHEMA(minPartTC);
+    SER_SCHEMA(interThreadLatencies);
+    SER_SCHEMA(interThreadMinLatency);
+    SER_SCHEMA(endSim);
+    SER_SCHEMA(independent);
+    SER_SCHEMA(timeVortexType); // Used by TimeVortex serialization
+    // SER_SCHEMA(sim_output);
+    SER_SCHEMA(runMode);
+    SER_SCHEMA(currentPriority);
+    SER_SCHEMA(endSimCycle);
+    SER_SCHEMA(output_directory);
     // Actions that may also be in TV
-    SST_SER(real_time_);
+    SER_SCHEMA(real_time_);
 
     // Exit created here in restart
 
-    SST_SER(m_heartbeat);
+    SER_SCHEMA(m_heartbeat);
 
     // Add statistics engine and associated state
     // Individual statistics are checkpointing with component
     if ( my_rank.thread == 0 ) {
-        SST_SER(StatisticProcessingEngine::m_statOutputs);
+        SER_SCHEMA(StatisticProcessingEngine::m_statOutputs);
     }
-    SST_SER(stat_engine);
+    SER_SCHEMA(stat_engine);
 
     // Add shared regions
     if ( my_rank.thread == 0 ) {
-        SST_SER(SharedObject::manager);
+        SER_SCHEMA(SharedObject::manager);
     }
 
+    SER_SCHEMA(seg3end);
+    
     // First we need to get the TimeVortexContents and sort them
     tv_sort_.data.clear();
     timeVortex->getContents(tv_sort_.data);
@@ -1823,6 +1847,7 @@ Simulation_impl::checkpoint(const std::string& checkpoint_filename)
 
     // Pack buffer
     ser.start_packing(&buffer[0], size);
+    SST_SER(seg3begin);
     SST_SER(num_ranks);
     SST_SER(my_rank);
     SST_SER(currentSimCycle);
@@ -1859,14 +1884,19 @@ Simulation_impl::checkpoint(const std::string& checkpoint_filename)
     if ( my_rank.thread == 0 ) {
         SST_SER(SharedObject::manager);
     }
+    SST_SER(seg3end);
 
     // Write buffer to file
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     fs.write(&buffer[0], size);
+    SER_SEG_DONE("simulation_impl",size);
     offset += (sizeof(size) + size);
 
-    size = compInfoMap.size();
+    // SST Components special header. 
+    // Here 'size' is the number of components and not sizeof(compInfoMap)
+    size = compInfoMap.size(); 
     fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    SER_COMPONENTS_START(size);
     offset += size;
 
     // Clear the offsets vector to start this round
@@ -1876,21 +1906,33 @@ Simulation_impl::checkpoint(const std::string& checkpoint_filename)
     for ( auto comp = compInfoMap.begin(); comp != compInfoMap.end(); comp++ ) {
         ser.start_sizing();
         ComponentInfo* compinfo = *comp;
+        SER_SCHEMA(segcbegin);	  
         SST_SER(compinfo);
+        SER_SCHEMA(segcend);	
         size = ser.size();
         buffer.resize(size);
 
         ser.start_packing(&buffer[0], size);
+        SST_SER(segcbegin);
         SST_SER(compinfo);
+        SST_SER(segcend);
 
         component_blob_offsets_.emplace_back(compinfo->id_, offset);
         fs.write(reinterpret_cast<const char*>(&size), sizeof(size));
         fs.write(&buffer[0], size);
+        SER_SEG_DONE(compinfo->getName(), size);
         offset += (sizeof(size) + size);
     }
 
     fs.close();
     tv_sort_.data.clear();
+
+    // TODO macro
+    if (ser.schema()) {
+        ser.schema()->write_types();
+        ser.schema()->close();
+        ser.disable_schema();
+    }
 
     /*
      * Still needs to be added to checkpoint:
@@ -1935,8 +1977,14 @@ Simulation_impl::restart(Config* cfg)
     fs_blob.read(&buffer[0], size);
     ser.start_unpacking(&buffer[0], size);
 
+    uint64_t segstart, segend;
+    ser& segstart;
     std::set<std::string> libnames;
     SST_SER(libnames);
+    SST_SER(segend);
+    
+    assert(segstart==0xa5a5a5a5a5a5bb02);
+    assert(segend==0xa5a5a5a5a5a5ee02);
 
     /* Load libraries before anything else */
     factory->loadUnloadedLibraries(libnames);
@@ -1948,6 +1996,7 @@ Simulation_impl::restart(Config* cfg)
 
     ser.start_unpacking(&buffer[0], size);
 
+    SST_SER(segstart);
     SST_SER(num_ranks);
     SST_SER(my_rank);
     SST_SER(currentSimCycle);
@@ -2019,6 +2068,8 @@ Simulation_impl::restart(Config* cfg)
 
     checkpoint_action_->insertIntoTimeVortex(this);
 
+    SST_SER(segend);
+
     /* Extract components */
     size_t compCount;
     fs_blob.read(reinterpret_cast<char*>(&compCount), sizeof(compCount));
@@ -2030,8 +2081,13 @@ Simulation_impl::restart(Config* cfg)
         fs_blob.read(&buffer[0], size);
         ser.start_unpacking(&buffer[0], size);
         ComponentInfo* compInfo = new ComponentInfo();
+        SST_SER(segstart);
         SST_SER(compInfo);
+        SST_SER(segend);
         compInfoMap.insert(compInfo);
+
+        assert(segstart==0xa5a5a5a5a5a5bb0c);
+        assert(segend==0xa5a5a5a5a5a5ee0c);
     }
 
     fs_blob.close();

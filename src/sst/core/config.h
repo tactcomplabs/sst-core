@@ -250,6 +250,8 @@ public:
      */
     bool load_from_checkpoint() const { return load_from_checkpoint_; }
 
+    bool gen_checkpoint_schema() const { return gen_checkpoint_schema_; }
+    
     /**
        Prefix for checkpoint filenames and directory
     */
@@ -582,6 +584,7 @@ private:
     std::string checkpoint_name_format_; /*!< Format for checkpoint filenames */
 
     // Advanced options - environment
+    bool        gen_checkpoint_schema_ = false;
     bool        enable_sig_handling_; /*!< Enable signal handling */
     std::string sigusr1_;             /*!< RealTimeAction to call on a SIGUSR1 */
     std::string sigusr2_;             /*!< RealTimeAction to call on a SIGUSR2 */

@@ -592,6 +592,13 @@ public:
         return 0;
     }
 
+    // Set whether to generate JSON schema for checkpoint
+    static int setGenCheckpointSchema(Config* cfg, const std::string& UNUSED(arg))
+    {
+        cfg->gen_checkpoint_schema_ = true;
+        return 0;
+    }
+
     // Set the prefix for checkpoint files
     static int setCheckpointPrefix(Config* cfg, const std::string& arg)
     {
@@ -1186,6 +1193,10 @@ Config::insertOptions()
         "and checkpointing is enabled.",
         std::bind(&ConfigHelper::setCheckpointPrefix, this, _1), std::bind(&ConfigHelper::getCheckpointPrefixExtHelp),
         true);
+    DEF_FLAG(
+        "gen-checkpoint-schema", 0,
+        "(Debug prototyping) Generate JSON representation of serialized data",
+        std::bind(&ConfigHelper::setGenCheckpointSchema, this, _1), false);
     DEF_ARG_EH("checkpoint-name-format", 0, "FORMAT",
         "Set the format for checkpoint filenames. See extended help for format options.  Default is "
         "\"%p_%n_%t/%p_%n_%t\"",

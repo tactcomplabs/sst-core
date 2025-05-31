@@ -957,8 +957,8 @@ BaseComponent::initiateInteractive(const std::string& msg)
 void
 BaseComponent::serialize_order(SST::Core::Serialization::serializer& ser)
 {
-    SST_SER(my_info_);
-    SST_SER(component_state_);
+    SER_SCHEMA(my_info_);
+    SER_SCHEMA(component_state_);
 
     switch ( ser.mode() ) {
     case SST::Core::Serialization::serializer::SIZER:
@@ -970,12 +970,12 @@ BaseComponent::serialize_order(SST::Core::Serialization::serializer& ser)
         // Need to serialize each handler
         std::pair<Clock::HandlerBase*, SimTime_t> p;
         size_t                                    num_handlers = clock_handlers_.size();
-        SST_SER(num_handlers);
+        SER_SCHEMA(num_handlers);
         for ( auto* handler : clock_handlers_ ) {
             p.first  = handler;
             // See if it's currently registered with a clock
             p.second = sim_->getClockForHandler(handler);
-            SST_SER(p);
+            SER_SCHEMA(p);
         }
         break;
     }
