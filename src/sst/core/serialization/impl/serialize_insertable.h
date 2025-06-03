@@ -152,14 +152,14 @@ class serialize_impl<OBJ, std::enable_if_t<is_insertable_v<OBJ>>>
                 // For std::vector<bool>, iterate over bool values instead of references to elements.
                 for ( bool e : obj )
                     // as_ptr_elem not valid for bool
-                    SST_SER(e);
+                    { SST_SER(e); }
             }
             else {
                 ser_opt_t opts =
                     SerOption::is_set(options, SerOption::as_ptr_elem) ? SerOption::as_ptr : SerOption::none;
                 // Iterate over references to elements, casting away any const in keys
                 for ( auto& e : obj )
-                    SST_SER(const_cast<value_type&>(reinterpret_cast<const value_type&>(e)), opts);
+                    { SST_SER(const_cast<value_type&>(reinterpret_cast<const value_type&>(e)), opts); }
             }
             break;
         }

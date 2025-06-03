@@ -64,9 +64,10 @@ private:
             tidhash, sizeof(obj), tidname); \
     }
 
-#define SER_SCHEMA(obj) \
+#define SER_SCHEMA(obj, ...) \
     GEN_SCHEMA(obj, #obj, typeid(obj).hash_code(), typeid(obj).name()) \
-    ser& obj;
+    SST::Core::Serialization::sst_ser_object( \
+        ser, (obj), SST::Core::Serialization::pvt::sst_ser_or_helper(__VA_ARGS__), #obj);
 
 #define SER_SEG_DONE( name, size ) \
     if (ser.schema()) {    \

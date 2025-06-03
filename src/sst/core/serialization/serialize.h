@@ -482,25 +482,21 @@ operator|(serializer& ser, T&& obj)
 
 
 // Serialization macros for checkpoint/debug serialization
+#define TCL_SCHEMA
+#ifndef TCL_SCHEMA
 #define SST_SER(obj, ...)                     \
     SST::Core::Serialization::sst_ser_object( \
         ser, (obj), SST::Core::Serialization::pvt::sst_ser_or_helper(__VA_ARGS__), #obj)
-
-// # TODO KG NOW WHAT?
-// #define TCL_SCHEMA
-// #ifdef TCL_SCHEMA
-// // implicit typeid info
-// #define SST_SER(obj) \
-// GEN_SCHEMA(#obj, #obj, typeid(obj).hash_code(), typeid(obj).name()) \
-// sst_map_object(ser, (obj), #obj);
-// // brute forcing of name and typeinfo for debugging only.
-// #define SST_SER4(obj, name, tidhash, tidname) \
-// GEN_SCHEMA(obj, name, tidhash, tidname) \
-// sst_map_object(ser, obj, #obj);
-// #else
-// #define SST_SER(obj)        sst_map_object(ser, (obj), #obj);
-// #endif
-
+#else
+#define SST_SER(obj, ...)                     \
+    GEN_SCHEMA(#obj, #obj, typeid(obj).hash_code(), typeid(obj).name()) \
+    SST::Core::Serialization::sst_ser_object( \
+        ser, (obj), SST::Core::Serialization::pvt::sst_ser_or_helper(__VA_ARGS__), #obj)
+#define SST_SER4(obj, name, tidhash, tidname)                     \
+    GEN_SCHEMA(obj, name, tidhash, tidname) \
+    SST::Core::Serialization::sst_ser_object( \
+        ser, (obj), SST::Core::Serialization::pvt::sst_ser_or_helper(obj), #obj)
+#endif
 
 #define SST_SER_NAME(obj, name, ...)          \
     SST::Core::Serialization::sst_ser_object( \

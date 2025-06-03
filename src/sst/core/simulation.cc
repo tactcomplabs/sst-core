@@ -1978,7 +1978,7 @@ Simulation_impl::restart(Config* cfg)
     ser.start_unpacking(&buffer[0], size);
 
     uint64_t segstart, segend;
-    ser& segstart;
+    SST_SER(segstart);
     std::set<std::string> libnames;
     SST_SER(libnames);
     SST_SER(segend);
