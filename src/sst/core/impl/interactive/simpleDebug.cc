@@ -82,7 +82,7 @@ SimpleDebugger::SimpleDebugger(Params& params) :
             [this](std::vector<std::string>& tokens) { cmd_exit(tokens); } },
         { "quit", "q", "alias for exit", ConsoleCommandGroup::SIMULATION,
             [this](std::vector<std::string>& tokens) { cmd_exit(tokens); } },
-        { "shutdown", "shutdown", "exit the debugger and cleanly shutdown simulator", ConsoleCommandGroup::SIMULATION,
+        { "shutdown", "shutd", "exit the debugger and cleanly shutdown simulator", ConsoleCommandGroup::SIMULATION,
             [this](std::vector<std::string>& tokens) { cmd_shutdown(tokens); } },
         { "logging", "log", "<filepath>: log command line entires to file", ConsoleCommandGroup::LOGGING,
             [this](std::vector<std::string>& tokens) { cmd_logging(tokens); } },
@@ -148,12 +148,12 @@ SimpleDebugger::SimpleDebugger(Params& params) :
                      "\tUp/Down keys: navigate command history\n"
                      "\tLeft/Right keys: navigate command string\n"
                      "\tbackspace: delete characters to the left\n"
-	             "\ttab: auto-completion\n"
+	                "\ttab: auto-completion\n"
                      "\tctrl-a: move cursor to beginning of line\n"
                      "\tctrl-b: move cursor to the left\n"
                      "\tctrl-d: delete character at cursor\n"
                      "\tctrl-e: move cursor to end of line\n"
-	             "\tctrl-f: move cursor to the right\n" },
+	                "\tctrl-f: move cursor to the right\n" },
     };
 
     // Command autofill strings

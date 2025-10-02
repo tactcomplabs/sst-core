@@ -16,26 +16,38 @@
 #include <unistd.h>
 #include "cmdLineEditor.h"
 
-void CmdLineEditor::setRawMode() {
+int CmdLineEditor::checktty( int rc ) {
+    if (rc == -1 ) {
+        std::cout << "input error: " << strerror(errno) << std::endl;
+        errno = 0;
+        std::cin.clear(); 
+    }
+    return rc;
+}
+
+int CmdLineEditor::setRawMode() {
     termios rawTerm;
-    // Get current terminal settings
-    tcgetattr(STDIN_FILENO, &originalTerm); 
+    errno = 0; 
+    int rc = checktty(tcgetattr(STDIN_FILENO, &originalTerm));
+    if (rc) return rc;
     rawTerm = originalTerm;
     // Disable canonical mode and echoing
     rawTerm.c_lflag &= ~(ICANON | ECHO);
     // Apply new settings
-    tcsetattr(STDIN_FILENO, TCSANOW, &rawTerm); 
+    rc = checktty(tcsetattr(STDIN_FILENO, TCSANOW, &rawTerm)); 
+    return rc;
 }
-void CmdLineEditor::restoreTermMode() {
+int CmdLineEditor::restoreTermMode() {
     // Restore original settings
-    tcsetattr(STDIN_FILENO, TCSANOW, &originalTerm); 
+    int rc = checktty(tcsetattr(STDIN_FILENO, TCSANOW, &originalTerm));
+    return rc;
 }
 bool CmdLineEditor::read2chars(char seq[3]) {
-    bool ok = read(STDIN_FILENO, &seq[0], 1);
-    if (!ok) return 0;
-    ok = read(STDIN_FILENO, &seq[1], 1);
+    auto nbytes = read(STDIN_FILENO, &seq[0], 1);
+    if (!nbytes) return 0;
+    nbytes = read(STDIN_FILENO, &seq[1], 1);
     seq[2] = '\0';
-    return ok;
+    return (nbytes>0);
 }
 void CmdLineEditor::move_cursor_left() {
     if (curpos>(int)prompt.size()+1) {
@@ -145,7 +157,7 @@ CmdLineEditor::getline(const std::vector<std::string>& cmdHistory, std::string& 
 {
 
     // save terminal settings and enable raw mode
-    this->setRawMode();
+    if (setRawMode() == -1 ) return;
     
     // local edited history
     std::vector<std::string> history = cmdHistory;
@@ -159,8 +171,9 @@ CmdLineEditor::getline(const std::vector<std::string>& cmdHistory, std::string& 
     
     // Start checking for keys
     char c;
-    while (read(STDIN_FILENO, &c, 1) == 1) {
-        if (c == lf_char) {
+    int bytesRead = 1;
+    while (bytesRead=read(STDIN_FILENO, &c, 1) == 1) {
+        if (c == lf_char) {   
             // Done if line feed
             break; 
         } else if (c == esc_char) { 
@@ -239,6 +252,12 @@ CmdLineEditor::getline(const std::vector<std::string>& cmdHistory, std::string& 
             auto_complete(history[index]);
             redraw_line(history[index]);
         }
+    }
+
+    if (bytesRead == -1 ) {
+        std::cout << "input error: " << strerror(errno) << std::endl;
+        errno = 0;
+        std::cin.clear(); 
     }
 
     // Restore original terminal settings
