@@ -133,7 +133,9 @@ SimpleDebugger::SimpleDebugger(Params& params) :
             "\t'watch' creates a default watchpoint that breaks into an interactive console when triggered\n"
             "\t'trace' creates a watchpoint with a trace buffer to trace a set of variables and trigger an <action>\n"
             "\tAvailable actions include: \n"
-            "\t  interactive, printTrace, checkpoint, set <var> <val>, printStatus, or shutdown" },
+            "\t  interactive, printTrace, checkpoint, set <var> <val>, printStatus, or shutdown" 
+            "\t  Note: checkpoint action must be enabled at startup via the '--checkpoint-enable' command line option\n"
+},
         { "watch", "<trigger>: adds watchpoint to the watchlist; breaks into interactive console when triggered\n"
                    "\tExample: watch var1 > 90 && var2 < 100 || var3 changed" },
         { "trace",
@@ -791,6 +793,22 @@ SimpleDebugger::cmd_run(std::vector<std::string>& tokens)
             printf("Unknown time in call to run: %s\n", tokens[1].c_str());
             return;
         }
+    }
+    else if (tokens.size() == 3) {
+        std::string time = tokens[1] + tokens[2];
+        try {
+            TimeConverter* tc = getTimeConverter(time);
+            std::string    msg = format_string("Running clock %" PRI_SIMTIME " sim cycles", tc->getFactor());
+            schedule_interactive(tc->getFactor(), msg);
+        }
+        catch (std::exception& e) {
+            printf("Unknown time in call to run: %s\n", time.c_str());
+            return;
+        }
+
+    }
+    else if (tokens.size() != 1) {
+        printf("Too many arguments for 'run <time>'\n");
     }
 
     done = true;
