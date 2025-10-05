@@ -57,7 +57,7 @@ public:
     void redraw_line(const std::string& s);
     void getline(const std::vector<std::string> &cmdHistory, std::string &newcmd);
 
-    // Auto-completino support
+    // Auto-completion support
     void set_cmd_strings(const std::list<std::string>& sortedStrings);
     void set_listing_callback(std::function<void(std::list<std::string>&)> callback) {
         listing_callback_ = callback;
@@ -69,8 +69,9 @@ private:
     std::function<void(std::list<std::string>& callback)> listing_callback_ = nullptr;
 
     int curpos = -1;
-    void setRawMode();
-    void restoreTermMode();
+    int checktty(int rc);
+    int setRawMode();
+    int restoreTermMode();
     bool read2chars(char seq[3]);
     void move_cursor_left();
     void move_cursor_right(int slen);
