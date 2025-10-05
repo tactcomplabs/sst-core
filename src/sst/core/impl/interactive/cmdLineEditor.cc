@@ -172,7 +172,7 @@ CmdLineEditor::getline(const std::vector<std::string>& cmdHistory, std::string& 
     // Start checking for keys
     char c;
     int bytesRead = 1;
-    while (bytesRead=read(STDIN_FILENO, &c, 1) == 1) {
+    while ((bytesRead=read(STDIN_FILENO, &c, 1)) == 1) {
         if (c == lf_char) {   
             // Done if line feed
             break; 
