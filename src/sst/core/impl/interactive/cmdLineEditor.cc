@@ -11,6 +11,7 @@
 
 #include "sst/core/impl/interactive/cmdLineEditor.h"
 #include <cctype>
+#include <cstring>
 #include <iostream>
 #include <sstream>
 #include <unistd.h>
