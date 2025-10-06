@@ -48,7 +48,7 @@ SimpleDebugger::SimpleDebugger(Params& params) :
             [this](std::vector<std::string>& tokens) { cmd_setConfirm(tokens); } },
         { "pwd", "pwd", "print the current working directory in the object map", ConsoleCommandGroup::NAVIGATION,
             [this](std::vector<std::string>& tokens) { cmd_pwd(tokens); } },
-        { "chdir", "cd", "change directory level in the object map", ConsoleCommandGroup::NAVIGATION,
+        { "chdir", "cd", "change 1 directory level in the object map", ConsoleCommandGroup::NAVIGATION,
             [this](std::vector<std::string>& tokens) { cmd_cd(tokens); } },
         { "list", "ls", "list the objects in the current level of the object map", ConsoleCommandGroup::NAVIGATION,
             [this](std::vector<std::string>& tokens) { cmd_ls(tokens); } },
@@ -56,7 +56,7 @@ SimpleDebugger::SimpleDebugger(Params& params) :
             [this](std::vector<std::string>& tokens) { cmd_time(tokens); } },
         { "print", "p", "[-rN] [<obj>]: print objects at the current level", ConsoleCommandGroup::STATE,
             [this](std::vector<std::string>& tokens) { cmd_print(tokens); } },
-        { "set", "s", "[-rN] [<obj>]: print objects at the current level", ConsoleCommandGroup::STATE,
+        { "set", "s", "var value: set value for a variable at the current level", ConsoleCommandGroup::STATE,
             [this](std::vector<std::string>& tokens) { cmd_set(tokens); } },
         { "watch", "w", "<trig>: adds watchpoint to the watchlist", ConsoleCommandGroup::WATCH,
             [this](std::vector<std::string>& tokens) { cmd_watch(tokens); } },
@@ -151,12 +151,12 @@ SimpleDebugger::SimpleDebugger(Params& params) :
                      "\tUp/Down keys: navigate command history\n"
                      "\tLeft/Right keys: navigate command string\n"
                      "\tbackspace: delete characters to the left\n"
-	                "\ttab: auto-completion\n"
+	                 "\ttab: auto-completion\n"
                      "\tctrl-a: move cursor to beginning of line\n"
                      "\tctrl-b: move cursor to the left\n"
                      "\tctrl-d: delete character at cursor\n"
                      "\tctrl-e: move cursor to end of line\n"
-	                "\tctrl-f: move cursor to the right\n" },
+	                 "\tctrl-f: move cursor to the right\n" },
     };
 
     // Command autofill strings
@@ -347,6 +347,11 @@ SimpleDebugger::cmd_help(std::vector<std::string>& tokens)
         std::string c = tokens[1];
         if ( cmdHelp.find(c) != cmdHelp.end() ) {
             std::cout << c << " " << cmdHelp.at(c) << std::endl;
+        } else {
+            for (auto& creg : cmdRegistry) {
+                if (creg.match(c)) 
+                    std::cout << creg << std::endl;
+            }
         }
     }
 }
