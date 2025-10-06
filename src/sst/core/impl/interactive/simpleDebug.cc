@@ -739,29 +739,23 @@ SimpleDebugger::cmd_print(std::vector<std::string>& tokens)
     // See if have a -r or not
     int         recurse = 0;
     std::string tok     = tokens[1];
-    if ( tok.size() >= 2 && tok[0] == '-' && tok[1] == 'r' ) {
+    if ( (tok.size() >= 2) && (tok[0] == '-') && (tok[1] == 'r') ) {
         // Got a -r
-        std::string num = tok.substr(2);
-        if ( num.size() != 0 ) {
-            try {
-                recurse = SST::Core::from_string<int>(num);
-            }
-            catch ( const std::invalid_argument& e ) {
-                printf("Invalid number format specified with -r: %s\n", tok.c_str());
-                return;
+        if (tok.size() == 2) {
+            recurse = 4;
+        } else {
+            std::string num = tok.substr(2);
+            if (num.size() != 0) {
+                try {
+                    recurse = SST::Core::from_string<int>(num);
+                }
+                catch (std::invalid_argument& e) {
+                    printf("Invalid number format specified with -r: %s\n", tok.c_str());
+                    return;
+                }
             }
         }
-        else {
-            recurse = 4; // default -r depth
-        }
-
         var_index = 2;
-    }
-
-    if ( tokens.size() == var_index ) {
-        // Print current object
-        obj_->list(recurse);
-        return;
     }
 
     if ( tokens.size() != (var_index + 1) ) {
@@ -771,9 +765,8 @@ SimpleDebugger::cmd_print(std::vector<std::string>& tokens)
 
     bool        found;
     std::string listing = obj_->listVariable(tokens[var_index], found, recurse);
-
     if ( !found ) {
-        printf("Unknown object in print command: %s\n", tokens[1].c_str());
+        printf("Unknown object in print command: %s\n", tokens[var_index].c_str());
         return;
     }
     else {

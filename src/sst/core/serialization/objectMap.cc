@@ -167,12 +167,14 @@ ObjectMap::demangle_name(const char* name)
 std::string
 ObjectMap::listVariable(std::string name, bool& found, int recurse)
 {
+    auto& vars = getVariables();
     ObjectMap* var = findVariable(name);
     if ( nullptr == var ) {
         found = false;
         return "";
     }
     found = true;
+
 
     std::string ret;
 
@@ -204,7 +206,6 @@ ObjectMap::listRecursive(const std::string& name, int level, int recurse)
         ret = format_string("%s%s = %s (%s)\n", indent.c_str(), name.c_str(), get().c_str(), getType().c_str());
         return ret;
     }
-
     ret = format_string("%s%s (%s)\n", indent.c_str(), name.c_str(), getType().c_str());
 
     if ( level <= recurse ) {
