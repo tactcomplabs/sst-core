@@ -23,7 +23,7 @@
 namespace SST {
 
 void WatchPoint::InteractiveWPAction::invokeAction(WatchPoint* wp) {
-    msg("    SetInteractive\n");
+    msg("    SetInteractive");
     wp->setEnterInteractive(); // Trigger action
     std::string handlerStr = wp->handlerToString(wp->triggerHandler);
     wp->setInteractiveMsg(format_string("  WP%ld: %s : %s ...", wp->wpIndex, handlerStr.c_str(), wp->name_.c_str()));
@@ -90,7 +90,7 @@ WatchPoint::~WatchPoint() { delete obj_; }
 void WatchPoint::beforeHandler(uintptr_t UNUSED(key), const Event* UNUSED(ev))
 {
     if ( handler & BEFORE_EVENT ) {
-        msg("  Before Event Handler\n");
+        msg("  Before Event Handler");
         check();
         if ( tb_ ) {
 
@@ -110,7 +110,7 @@ void WatchPoint::beforeHandler(uintptr_t UNUSED(key), const Event* UNUSED(ev))
             }
         }
         else {
-            msg("    No trace buffer\n");
+            msg("    No trace buffer");
             if ( trigger ) {
                 triggerHandler = HANDLER::BEFORE_EVENT;
                 wpAction->invokeAction(this);
@@ -124,7 +124,7 @@ void WatchPoint::beforeHandler(uintptr_t UNUSED(key), const Event* UNUSED(ev))
 void WatchPoint::afterHandler(uintptr_t UNUSED(key))
 {
     if ( handler & AFTER_EVENT ) {
-        msg("  After Event Handler\n");
+        msg("  After Event Handler");
         check();
         if ( tb_ ) {
 
@@ -144,7 +144,7 @@ void WatchPoint::afterHandler(uintptr_t UNUSED(key))
             }
         }
         else {
-            msg("    No trace buffer\n");
+            msg("    No trace buffer");
             if ( trigger ) {
                 triggerHandler = HANDLER::AFTER_EVENT;
                 wpAction->invokeAction(this);
@@ -158,7 +158,7 @@ void WatchPoint::afterHandler(uintptr_t UNUSED(key))
 void WatchPoint::beforeHandler(uintptr_t UNUSED(key), const Cycle_t& UNUSED(cycle))
 {
     if ( handler & BEFORE_CLOCK ) {
-        msg("  Before Clock Handler\n");
+        msg("  Before Clock Handler");
         check();
         if ( tb_ ) {
             if ( reset_ && !getInteractive() ) {
@@ -177,7 +177,7 @@ void WatchPoint::beforeHandler(uintptr_t UNUSED(key), const Cycle_t& UNUSED(cycl
             }
         }
         else {
-            msg("    No trace buffer\n");
+            msg("    No trace buffer");
             if ( trigger ) {
                 triggerHandler = HANDLER::BEFORE_CLOCK;
                 wpAction->invokeAction(this);
@@ -191,7 +191,7 @@ void WatchPoint::beforeHandler(uintptr_t UNUSED(key), const Cycle_t& UNUSED(cycl
 void WatchPoint::afterHandler(uintptr_t UNUSED(key), const bool& UNUSED(ret))
     {
         if ( handler & AFTER_CLOCK ) {
-            msg("  After Clock Handler\n");
+            msg("  After Clock Handler");
             check();
             if ( tb_ ) {
                 if ( reset_ && !getInteractive() ) {
@@ -210,7 +210,7 @@ void WatchPoint::afterHandler(uintptr_t UNUSED(key), const bool& UNUSED(ret))
                 }
             }
             else {
-                msg("    No trace buffer\n");
+                msg("    No trace buffer");
                 if ( trigger ) {
                     triggerHandler = HANDLER::AFTER_CLOCK;
                     wpAction->invokeAction(this);
