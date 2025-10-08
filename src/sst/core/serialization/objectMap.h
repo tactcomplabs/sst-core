@@ -132,7 +132,7 @@ public:
 
     virtual bool        compare()         = 0;
     virtual std::string getCurrentValue() = 0;
-    virtual void        print()           = 0;
+    virtual void        print(std::ostream& stream) = 0;
     std::string         getName() { return name_; }
 
     virtual void* getVar() = 0;
@@ -790,13 +790,13 @@ public:
 
     void* getVar() override { return var_; }
 
-    void print() override
+    void print(std::ostream& stream) override
     {
-        std::cout << name_ << " " << getStringFromOp(op_);
+        stream << name_ << " " << getStringFromOp(op_);
         if ( op_ == Op::CHANGED )
-            std::cout << " ";
+            stream << " ";
         else
-            std::cout << " " << SST::Core::to_string(comp_value_) << " ";
+            stream << " " << SST::Core::to_string(comp_value_) << " ";
     }
 
 private:
@@ -958,13 +958,13 @@ public:
 
     void* getVar() override { return var1_; }
 
-    void print() override
+    void print(std::ostream& stream) override
     {
-        std::cout << name_ << " " << getStringFromOp(op_);
+        stream << name_ << " " << getStringFromOp(op_);
         if ( op_ == Op::CHANGED )
-            std::cout << " ";
+            stream << " ";
         else
-            std::cout << " " << name2_ << " ";
+            stream << " " << name2_ << " ";
     }
 
 private:

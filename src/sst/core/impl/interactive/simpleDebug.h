@@ -40,8 +40,8 @@ const std::map<ConsoleCommandGroup, std::string> GroupText {
     { ConsoleCommandGroup::MISC, "Misc" },
 };
 
-enum class verbosityMask : uint32_t {
-    SHOW_TRIGGERS = 0b0001'0000 // 0x10
+enum class VERBOSITY_MASK : uint32_t {
+    WATCHPOINTS = 0b0001'0000 // 0x10
 };
 
 // Encapsulate a console command.
@@ -232,8 +232,8 @@ private:
     CmdLineEditor cmdLineEditor;
 
     // Verbosity controlled console printing
-    uint32_t verbosityLevel = 0;
-    void print_verbose(verbosityMask mask, std::string message);
+    uint32_t verbosity = 0;
+    void msg(VERBOSITY_MASK mask, std::string message);
 };
 
 } // namespace SST::IMPL::Interactive
