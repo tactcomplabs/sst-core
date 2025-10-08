@@ -42,8 +42,10 @@ SimpleDebugger::SimpleDebugger(Params& params) :
 
     // Populate the command registry
     cmdRegistry = {
-        { "help", "?", "[CMD]: show this help or detailed command help", ConsoleCommandGroup::GENERAL,
+        { "help", "?", "<[CMD]>: show this help or detailed command help", ConsoleCommandGroup::GENERAL,
             [this](std::vector<std::string>& tokens) { cmd_help(tokens); } },
+        { "verbose", "v", "[mask]: set verbosity mask or print if no mask specified", ConsoleCommandGroup::GENERAL,
+            [this](std::vector<std::string>& tokens) { cmd_verbose(tokens); } },
         { "confirm", "cfm", "<true/false>: set confirmation requests on (default) or off", ConsoleCommandGroup::GENERAL,
             [this](std::vector<std::string>& tokens) { cmd_setConfirm(tokens); } },
         { "pwd", "pwd", "print the current working directory in the object map", ConsoleCommandGroup::NAVIGATION,
@@ -98,6 +100,10 @@ SimpleDebugger::SimpleDebugger(Params& params) :
 
     // Detailed help from some commands. Can also add general things like 'help navigation'
     cmdHelp = {
+        { "verbose", "[mask]: set verbosity mask or print if no mask specified\n"
+                "\tA mask is used to select which features to enable verbosity.\n"
+                "\tTo turn on all features set the mask to 0xffffffff\n"
+                "\t\t0x10: Show trigger details" },
         { "print", "[-rN][<obj>]: print objects in the current level of the object map\n"
                    "\tif -rN is provided print recursive N levels (default N=4)" },
         { "set", "<obj> <value>: sets an object in the current scope to the provided value\n"
@@ -354,6 +360,18 @@ SimpleDebugger::cmd_help(std::vector<std::string>& tokens)
             }
         }
     }
+}
+
+void
+SimpleDebugger::cmd_verbose(std::vector<std::string>& tokens) {
+    if ( tokens.size()>1) {
+        try {
+            verbosityLevel = SST::Core::from_string<uint32_t>(tokens[1]);
+        } catch (std::invalid_argument& e) {
+            std::cout << "Invalid mask " << tokens[1] << std::endl;
+        }
+    }
+    std::cout << "verbose=0x" << std::hex << verbosityLevel << std::endl;
 }
 
 // pwd: print current working directory
@@ -1727,5 +1745,12 @@ CommandHistoryBuffer::searchAny(const std::string& s, std::string& newcmd)
     return false;
 }
 
+
+void
+SimpleDebugger::print_verbose(verbosityMask mask, std::string message)
+{
+    if (! static_cast<uint32_t>(mask) && verbosityLevel ) return;
+    std::cout << message << std::endl;
+}
 
 } // namespace SST::IMPL::Interactive
