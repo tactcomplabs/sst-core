@@ -152,6 +152,8 @@ private:
     SST::Core::Serialization::ObjectMap* obj_ = nullptr;
     bool                                 done = false;
 
+    bool autoCompleteEnable = true;
+
     // gdb/lldb thread spin support
     uint64_t spinner = 1;
 
@@ -208,6 +210,9 @@ private:
     void cmd_logging(std::vector<std::string>& tokens);
     void cmd_replay(std::vector<std::string>& tokens);
     void cmd_history(std::vector<std::string>& tokens);
+
+    // Auto-completion toggle
+    void cmd_autoComplete(std::vector<std::string>& UNUSED(tokens));
 
     // LLDB/GDB helper
     void cmd_spinThread(std::vector<std::string>& tokens);

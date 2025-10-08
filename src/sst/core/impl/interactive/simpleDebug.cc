@@ -94,6 +94,8 @@ SimpleDebugger::SimpleDebugger(Params& params) :
             [this](std::vector<std::string>& tokens) { cmd_replay(tokens); } },
         { "history", "h", "[N]: display all or last N unique commands", ConsoleCommandGroup::LOGGING,
             [this](std::vector<std::string>& tokens) { cmd_history(tokens); } },
+        { "autoComplete", "ac", "toggle command line auto-completion enable", ConsoleCommandGroup::MISC,
+            [this](std::vector<std::string>& tokens) { cmd_autoComplete(tokens); } },
         { "spinThread", "spin", "enter spin loop. See SimpleDebugger::cmd_spinThread", ConsoleCommandGroup::MISC,
             [this](std::vector<std::string>& tokens) { cmd_spinThread(tokens); } },
     };
@@ -224,7 +226,7 @@ SimpleDebugger::execute(const std::string& msg)
             else {
                 // Standard Input
                 if ( !std::cin ) std::cin.clear(); // fix corrupted input after process resumed
-                if (isatty(STDIN_FILENO))
+                if (autoCompleteEnable && isatty(STDIN_FILENO))
                     cmdLineEditor.getline(cmdHistoryBuf.getBuffer(), line);
                 else
                     std::getline(std::cin, line);
@@ -937,6 +939,13 @@ SimpleDebugger::cmd_watchlist(std::vector<std::string>& UNUSED(tokens))
         }
     }
     return;
+}
+
+void
+SimpleDebugger::cmd_autoComplete(std::vector<std::string>& UNUSED(tokens))
+{
+    autoCompleteEnable = !autoCompleteEnable;
+    std::cout << "auto completion is now " << autoCompleteEnable << std::endl;
 }
 
 // gdb helper. Recommended SST configuration
