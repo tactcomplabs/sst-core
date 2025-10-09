@@ -373,7 +373,7 @@ SimpleDebugger::cmd_verbose(std::vector<std::string>& tokens) {
             std::cout << "Invalid mask " << tokens[1] << std::endl;
         }
     }
-    std::cout << "verbose=0x" << std::hex << verbosity << std::endl;
+    std::cout << "verbose=" << verbosity << std::endl;
 
     // update watchpoint verbosity
     for ( auto& x : watch_points_ ) {
