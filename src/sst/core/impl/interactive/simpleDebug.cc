@@ -1767,7 +1767,7 @@ CommandHistoryBuffer::searchAny(const std::string& s, std::string& newcmd)
 void
 SimpleDebugger::msg(VERBOSITY_MASK mask, std::string message)
 {
-    if (! static_cast<uint32_t>(mask) && verbosity ) return;
+    if ((! static_cast<uint32_t>(mask)) & verbosity ) return;
     std::cout << message << std::endl;
 }
 

@@ -17,8 +17,6 @@
 #include "sst/core/sst_types.h"
 
 #include <string>
-#include "watchPoint.h"
-
 
 namespace SST {
 
