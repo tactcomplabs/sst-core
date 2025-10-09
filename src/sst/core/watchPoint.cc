@@ -9,6 +9,7 @@
 // information, see the LICENSE file in the top level directory of the
 // distribution.
 
+//clang-format off
 #include "sst_config.h"
 
 #include "sst/core/watchPoint.h"
@@ -17,8 +18,9 @@
 #include "sst/core/simulation_impl.h"
 #include "sst/core/sst_types.h"
 
+#include <cstdint>
 #include <string>
-
+//clang-format on
 
 namespace SST {
 
