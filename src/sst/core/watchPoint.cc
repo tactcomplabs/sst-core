@@ -13,7 +13,6 @@
 #include "sst_config.h"
 
 #include "sst/core/watchPoint.h"
-
 #include "sst/core/output.h"
 #include "sst/core/simulation_impl.h"
 #include "sst/core/sst_types.h"
@@ -25,7 +24,7 @@
 namespace SST {
 
 void WatchPoint::InteractiveWPAction::invokeAction(WatchPoint* wp) {
-    printf("    SetInteractive\n");
+    msg("    SetInteractive");
     wp->setEnterInteractive(); // Trigger action
     std::string handlerStr = wp->handlerToString(wp->triggerHandler);
     wp->setInteractiveMsg(format_string("  WP%ld: %s : %s ...", wp->wpIndex, handlerStr.c_str(), wp->name_.c_str()));
@@ -92,7 +91,7 @@ WatchPoint::~WatchPoint() { delete obj_; }
 void WatchPoint::beforeHandler(uintptr_t UNUSED(key), const Event* UNUSED(ev))
 {
     if ( handler & BEFORE_EVENT ) {
-        printf("  Before Event Handler\n");
+        msg("  Before Event Handler");
         check();
         if ( tb_ ) {
 
@@ -112,7 +111,7 @@ void WatchPoint::beforeHandler(uintptr_t UNUSED(key), const Event* UNUSED(ev))
             }
         }
         else {
-            printf("    No trace buffer\n");
+            msg("    No trace buffer");
             if ( trigger ) {
                 triggerHandler = HANDLER::BEFORE_EVENT;
                 wpAction->invokeAction(this);
@@ -126,7 +125,7 @@ void WatchPoint::beforeHandler(uintptr_t UNUSED(key), const Event* UNUSED(ev))
 void WatchPoint::afterHandler(uintptr_t UNUSED(key))
 {
     if ( handler & AFTER_EVENT ) {
-        printf("  After Event Handler\n");
+        msg("  After Event Handler");
         check();
         if ( tb_ ) {
 
@@ -146,7 +145,7 @@ void WatchPoint::afterHandler(uintptr_t UNUSED(key))
             }
         }
         else {
-            printf("    No trace buffer\n");
+            msg("    No trace buffer");
             if ( trigger ) {
                 triggerHandler = HANDLER::AFTER_EVENT;
                 wpAction->invokeAction(this);
@@ -160,7 +159,7 @@ void WatchPoint::afterHandler(uintptr_t UNUSED(key))
 void WatchPoint::beforeHandler(uintptr_t UNUSED(key), const Cycle_t& UNUSED(cycle))
 {
     if ( handler & BEFORE_CLOCK ) {
-        printf("  Before Clock Handler\n");
+        msg("  Before Clock Handler");
         check();
         if ( tb_ ) {
             if ( reset_ && !getInteractive() ) {
@@ -179,7 +178,7 @@ void WatchPoint::beforeHandler(uintptr_t UNUSED(key), const Cycle_t& UNUSED(cycl
             }
         }
         else {
-            printf("    No trace buffer\n");
+            msg("    No trace buffer");
             if ( trigger ) {
                 triggerHandler = HANDLER::BEFORE_CLOCK;
                 wpAction->invokeAction(this);
@@ -193,7 +192,7 @@ void WatchPoint::beforeHandler(uintptr_t UNUSED(key), const Cycle_t& UNUSED(cycl
 void WatchPoint::afterHandler(uintptr_t UNUSED(key), const bool& UNUSED(ret))
     {
         if ( handler & AFTER_CLOCK ) {
-            printf("  After Clock Handler\n");
+            msg("  After Clock Handler");
             check();
             if ( tb_ ) {
                 if ( reset_ && !getInteractive() ) {
@@ -212,7 +211,7 @@ void WatchPoint::afterHandler(uintptr_t UNUSED(key), const bool& UNUSED(ret))
                 }
             }
             else {
-                printf("    No trace buffer\n");
+                msg("    No trace buffer");
                 if ( trigger ) {
                     triggerHandler = HANDLER::AFTER_CLOCK;
                     wpAction->invokeAction(this);
@@ -251,8 +250,10 @@ void WatchPoint::printTrace()
     }
 }
 
-void WatchPoint::setHandler(unsigned handlerType) { 
-    handler = static_cast<HANDLER>(handlerType); 
+void
+WatchPoint::setHandler(unsigned handlerType)
+{
+    handler = static_cast<HANDLER>(handlerType);
 }
 
 std::string WatchPoint::handlerToString(HANDLER h) {
@@ -306,7 +307,7 @@ void WatchPoint::printWatchpoint()
     printHandler();
     // TODO: print the logic values
     for ( size_t i = 0; i < numCmpObj_; i++ ) { // Print trigger tests
-        cmpObjects_[i]->print();
+        cmpObjects_[i]->print(std::cout);
     }
     std::cout << " : ";
 
@@ -416,36 +417,41 @@ void WatchPoint::check()
     if ( cmpObjects_[0]->compare() ) {
         result = true;
     }
-    std::cout << std::boolalpha;
-    std::cout << "    WatchPoint " << name_.c_str() << " tests:\n";
-    std::cout << "      ";
-    cmpObjects_[0]->print();
-    std::cout << " -> " << result << std::endl;
+    std::stringstream s;
+    s << std::boolalpha;
+    s << "    WatchPoint " << name_.c_str() << " tests:\n";
+    s << "      ";
+    cmpObjects_[0]->print(s);
+    s << " -> " << result << std::endl;
 
     for ( size_t i = 1; i < numCmpObj_; i++ ) {
         bool result2 = false;
         if ( cmpObjects_[i]->compare() ) {
             result2 = true;
         }
-        std::cout << "      ";
-        cmpObjects_[i]->print();
-        std::cout << " -> " << result2 << std::endl;
+        s << "      ";
+        cmpObjects_[i]->print(s);
+        s << " -> " << result2 << std::endl;
         // printf("      comparison%ld = %d\n", i, result2);
 
         if ( logicOps_[i - 1] == LogicOp::AND ) {
             result = result && result2;
-            std::cout << "        AND -> " << result << std::endl;
+            s << "        AND -> " << result << std::endl;
         }
         else if ( logicOps_[i - 1] == LogicOp::OR ) {
             result = result || result2;
-            std::cout << "        OR -> " << result << std::endl;
+            s << "        OR -> " << result << std::endl;
         }
         else {
-            std::cout << "    ERROR: invalid LogicOp\n";
+            s << "    ERROR: invalid LogicOp\n";
             // Should trigger some error?
         }
     }
     if ( result == true ) trigger = true;
+
+    // print the message if verbosity mask matches
+    msg(s.str());
+
 }
 
 } // namespace SST

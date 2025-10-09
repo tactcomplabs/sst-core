@@ -105,7 +105,7 @@ SimpleDebugger::SimpleDebugger(Params& params) :
         { "verbose", "[mask]: set verbosity mask or print if no mask specified\n"
                 "\tA mask is used to select which features to enable verbosity.\n"
                 "\tTo turn on all features set the mask to 0xffffffff\n"
-                "\t\t0x10: Show trigger details" },
+                "\t\t16: Show trigger details" },
         { "print", "[-rN][<obj>]: print objects in the current level of the object map\n"
                    "\tif -rN is provided print recursive N levels (default N=4)" },
         { "set", "<obj> <value>: sets an object in the current scope to the provided value\n"
@@ -368,12 +368,19 @@ void
 SimpleDebugger::cmd_verbose(std::vector<std::string>& tokens) {
     if ( tokens.size()>1) {
         try {
-            verbosityLevel = SST::Core::from_string<uint32_t>(tokens[1]);
+            verbosity = SST::Core::from_string<uint32_t>(tokens[1]);
         } catch (std::invalid_argument& e) {
             std::cout << "Invalid mask " << tokens[1] << std::endl;
         }
     }
-    std::cout << "verbose=0x" << std::hex << verbosityLevel << std::endl;
+    std::cout << "verbose=" << verbosity << std::endl;
+
+    // update watchpoint verbosity
+    for ( auto& x : watch_points_ ) {
+        if (x.first)
+            x.first->setVerbosity(verbosity);
+    }
+
 }
 
 // pwd: print current working directory
@@ -1210,6 +1217,8 @@ SimpleDebugger::cmd_watch(std::vector<std::string>& tokens)
             return;
         }
         else {
+            // Every action gets the same verbosity as the console object
+            actionObj->setVerbosity(verbosity);
             pt->setAction(actionObj);
         }
 
@@ -1756,9 +1765,9 @@ CommandHistoryBuffer::searchAny(const std::string& s, std::string& newcmd)
 
 
 void
-SimpleDebugger::print_verbose(verbosityMask mask, std::string message)
+SimpleDebugger::msg(VERBOSITY_MASK mask, std::string message)
 {
-    if (! static_cast<uint32_t>(mask) && verbosityLevel ) return;
+    if ((! static_cast<uint32_t>(mask)) & verbosity ) return;
     std::cout << message << std::endl;
 }
 

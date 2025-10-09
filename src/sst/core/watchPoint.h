@@ -27,6 +27,8 @@ namespace SST {
 class WatchPoint : public Clock::HandlerBase::AttachPoint, public Event::HandlerBase::AttachPoint
 {
 public:
+    static const uint32_t VMASK = 0x10; // see simpleDebug.h::VERBOSITY_MASK
+
     /**
        Base class for performing comparisons and logic operations for
        determining when the WatchPoint triggers
@@ -48,6 +50,13 @@ public:
         virtual ~WPAction() = default;
         virtual std::string actionToString()             = 0;
         virtual void        invokeAction(WatchPoint* wp) = 0;
+        inline void setVerbosity(uint32_t v) { verbosity = v; }
+    protected:
+        uint32_t verbosity = 0;
+        inline void msg(const std::string& msg) {
+            if (WatchPoint::VMASK & verbosity)
+                std::cout << msg << std::endl;
+        }
     }; //class WPAction
 
     class InteractiveWPAction : public WPAction
@@ -144,6 +153,12 @@ public:
         ALL          = 15
     };
 
+    //TODO can we avoid code duplication in WatchPoint and the WatchPointAction?
+    inline void setVerbosity(uint32_t v) { verbosity=v; wpAction->setVerbosity(v); }
+    inline void msg(const std::string& msg) {
+        if (VMASK & verbosity)
+            std::cout << msg << std::endl;
+    }
     void setHandler(unsigned handlerType);
     std::string handlerToString(HANDLER h);
     void printHandler();
@@ -189,6 +204,7 @@ private:
 
     void setBufferReset();
     void check();
+    uint32_t verbosity = 0;
 
 
 }; //class WatchPoint
