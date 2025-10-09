@@ -15,8 +15,10 @@
 #include "sst/core/watchPoint.h"
 
 #include "sst/core/output.h"
+#include "sst/core/realtime.h"
 #include "sst/core/simulation_impl.h"
 #include "sst/core/sst_types.h"
+
 
 #include <cstddef>
 #include <cstdint>
@@ -405,7 +407,8 @@ WatchPoint::heartbeat()
 void
 WatchPoint::simulationShutdown()
 {
-    Simulation_impl::getSimulation()->endSimulation();
+    //Simulation_impl::getSimulation()->signalShutdown(false);  // only works for serial mode
+    Simulation_impl::getSimulation()->setShutdown(false);
 }
 
 void

@@ -58,7 +58,9 @@ public:
     virtual ~InteractiveConsole() = default;
 
     /** Called by TimeVortex to trigger checkpoint on simulation clock interval - not used in parallel simulation */
-    virtual void execute(const std::string& msg) = 0;
+    virtual int execute(const std::string& msg) = 0;
+    /** Called by SyncManager to get summary info for each thread */
+    virtual void summary() = 0;
 
 protected:
     // Functions that can be called by child class

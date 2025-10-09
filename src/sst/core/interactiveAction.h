@@ -15,6 +15,7 @@
 #include "sst/core/action.h"
 // Can include this because this header is not installed
 #include "sst/core/simulation_impl.h"
+#include "sst/core/interactiveConsole.h"
 
 #include <string>
 
@@ -31,7 +32,6 @@ public:
        Create a new InteractiveAction object for the simulation core to initiate interactive mode
     */
     InteractiveAction(Simulation_impl* sim, const std::string& msg) :
-        Action(),
         sim_(sim),
         msg_(msg)
     {
@@ -39,18 +39,47 @@ public:
     }
 
     ~InteractiveAction() {}
+#if 1
+    /**
+       Indicates InteractiveAction should be inserted into the
+       TimeVortex. The insertion will only happen for serial runs, as
+       InteractiveAction is managed by the SyncManager in parallel
+       runs.
+     */
+    void insertIntoTimeVortex(SimTime_t time) {
+        // If this is a serial job, insert this into
+        // the time TimeVortex.  If it is parallel, then the
+        // InteractiveAction is managed by the SyncManager.
+        //std::cout << "skk: insertIntoTimeVortex called\n";
+        RankInfo num_ranks = sim_->getNumRanks();
+        //if (num_ranks.rank == 1 && num_ranks.thread == 1) {
+            //std::cout << "  skk: insertIntoTimeVortex insertActivity\n";
+            sim_->insertActivity(time, this);
+        //}
+    }
+#endif
+#if 0
+    /** Break to interactive console next time check() is called */
+    void setInteractiveConsole() {
+        sim_->enter_interactive_ = true;
+    }
+#endif
 
     /** Called by TimeVortex to trigger interactive mode. */
     void execute() override
     {
         sim_->enter_interactive_ = true;
-        sim_->interactive_msg_   = msg_;
+        sim_->interactive_msg_ = msg_;
         delete this;
     }
+
 
 private:
     Simulation_impl* sim_;
     std::string      msg_;
+    
+    // Do I need flag here for break to interactive like ckptAction?
+    // Currently using sim_->enter_interactive_
 };
 
 } // namespace SST

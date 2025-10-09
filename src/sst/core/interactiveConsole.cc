@@ -100,6 +100,7 @@ InteractiveConsole::getTimeConverter(const std::string& time)
 void
 InteractiveConsole::schedule_interactive(SimTime_t time_offset, const std::string& msg)
 {
+    //std::cout << "skk: IC: schedule_interactive\n";
     Simulation_impl*   sim = Simulation_impl::getSimulation();
     InteractiveAction* act = new InteractiveAction(sim, msg);
     sim->insertActivity(getCurrentSimCycle() + time_offset, act);
@@ -114,7 +115,8 @@ InteractiveConsole::getComponentObjectMap()
 void
 InteractiveConsole::simulationShutdown()
 {
-    Simulation_impl::getSimulation()->endSimulation();
+    //Simulation_impl::getSimulation()->endSimulation();
+    Simulation_impl::getSimulation()->signalShutdown(false);
 }
 
 

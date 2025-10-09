@@ -46,6 +46,10 @@ SimpleDebugger::SimpleDebugger(Params& params) :
             [this](std::vector<std::string>& tokens) { cmd_help(tokens); } },
         { "verbose", "v", "[mask]: set verbosity mask or print if no mask specified", ConsoleCommandGroup::GENERAL,
             [this](std::vector<std::string>& tokens) { cmd_verbose(tokens); } },
+        { "info", "info", "\"current\"|\"all\" print summary for current thread or all threads", ConsoleCommandGroup::GENERAL,
+            [this](std::vector<std::string>& tokens) { cmd_info(tokens); } },
+        { "thread", "thd", "[threadID]: switch to specified thread ID", ConsoleCommandGroup::GENERAL,
+            [this](std::vector<std::string>& tokens) { cmd_thread(tokens); } },
         { "confirm", "cfm", "<true/false>: set confirmation requests on (default) or off", ConsoleCommandGroup::GENERAL,
             [this](std::vector<std::string>& tokens) { cmd_setConfirm(tokens); } },
         { "pwd", "pwd", "print the current working directory in the object map", ConsoleCommandGroup::NAVIGATION,
@@ -212,15 +216,52 @@ SimpleDebugger::~SimpleDebugger()
 }
 
 void
+SimpleDebugger::summary()
+{
+#if 0
+    RankInfo info = getRank();
+    RankInfo nRanks = getNumRanks();
+    std::count << "\n(Rank:" << info.rank << " / " << nRanks.rank
+        << " Thread:" << info.thread << "/" << nRanks.thread
+        << ")\n";
+    std::cout << " -- Trigger Status\n";
+#endif
+    
+    std::cout << " -- Component Summary\n";
+#if 0
+    std::vector<std::string> tokens;
+    if (nullptr == obj_) {
+        obj_ = getComponentObjectMap();
+    }
+    cmd_ls(tokens);
+#else
+    SST::Core::Serialization::ObjectMap* baseObj = getComponentObjectMap();
+    auto& vars = baseObj->getVariables();
+    for (auto& x : vars) {
+        if (x.second->isFundamental()) {
+            std::cout << x.first << " = " << x.second->get() << " (" << x.second->getType() << ")" << std::endl;
+        }
+        else {
+            std::cout << x.first.c_str() << "/ (" << x.second->getType() << ")\n";
+        }
+    }
+#endif
+}
+
+int
 SimpleDebugger::execute(const std::string& msg)
 {
-    printf("Entering interactive mode at time %" PRI_SIMTIME " \n", getCurrentSimCycle());
+    RankInfo info = getRank();
+    RankInfo nRanks = getNumRanks();
+    printf("\n---- Rank%d:Thread%d: Entering interactive mode at time %" PRI_SIMTIME " \n", info.rank, info.thread, getCurrentSimCycle());
     printf("%s\n", msg.c_str());
 
     if ( nullptr == obj_ ) {
         obj_ = getComponentObjectMap();
     }
     done = false;
+    retState = -1;
+    
 
     // Select the input source and next command line
     std::string line;
@@ -231,6 +272,9 @@ SimpleDebugger::execute(const std::string& msg)
 
             // Logging disable has edge cases for stack push/pop
             bool squashLogging = false;
+
+            // User input prompt
+            std::cout << "R" << info.rank << ":T" << info.thread << "> " << std::flush;
 
             if ( !injectedCommand.str().empty() ) {
                 // Injected commands allow sst command line options to cause actions (currently only replay)
@@ -285,6 +329,7 @@ SimpleDebugger::execute(const std::string& msg)
             std::cout << "Parsing error. Ignoring " << line << std::endl;
         }
     }
+    return retState;
 }
 
 // Invoke the command.
@@ -486,6 +531,78 @@ SimpleDebugger::cmd_verbose(std::vector<std::string>& tokens)
     }
 }
 
+void
+SimpleDebugger::cmd_info(std::vector<std::string>& UNUSED(tokens)) {
+
+    if (tokens.size() != 2) {
+        printf("Invalid format for info command (info \"current\"|\"all\")\n");
+        return;
+    }
+
+    RankInfo info = getRank();
+    RankInfo nRanks = getNumRanks();
+    if (tokens[1] == "current") {
+        std::cout << "Rank " << info.rank << "/" << nRanks.rank
+            << ", Thread " << info.thread << "/" << nRanks.thread << std::endl;
+    }
+    else if (tokens[1] == "all") {
+        if (nRanks.rank == 1 && nRanks.thread == 1) {
+            std::cout << "Rank " << info.rank << "/" << nRanks.rank
+                << ", Thread " << info.thread << "/" << nRanks.thread << std::endl;
+        }
+        else {
+            // Return to syncmanager to print summary for all threads
+            retState = -2; // summary info
+            done = true;
+        }
+    }
+    else {
+        printf("Invalid argument for info command: %s (info \"current\"|\"all\")\n", tokens[1].c_str());
+        return;
+    }
+}
+
+// thread <threadID> : switches to new thread
+void
+SimpleDebugger::cmd_thread(std::vector<std::string>& tokens) {
+
+    if (tokens.size() != 2) {
+        printf("Invalid format for thread command (thread <threadID>)\n");
+        return;
+    }
+
+    RankInfo info = getRank();
+    RankInfo nRanks = getNumRanks();
+    int threadID;
+
+    // Get threadID
+    try {
+        threadID = std::stoi(tokens[1]);
+    }
+    catch (const std::invalid_argument& e) {
+        std::cout << "Invalid argument for threadID: " << tokens[1] << std::endl;
+        return;
+    }
+    catch (const std::out_of_range& e) {
+        std::cout << "Out of range for threadID: " << tokens[1] << std::endl;
+        return;
+    }
+
+    // Check if valid threadID
+    if (threadID < 0 || threadID >= nRanks.thread) {
+        printf("ThreadID %d out of range (0:%d)\n", threadID, nRanks.thread-1);
+        return;
+    }
+    
+    // If not current thread, set retState and done flag
+    if (threadID != info.thread) {
+        retState = threadID;
+        done = true;
+    }
+    return;
+}
+
+
 // pwd: print current working directory
 void
 SimpleDebugger::cmd_pwd(std::vector<std::string>& UNUSED(tokens))
@@ -537,10 +654,18 @@ SimpleDebugger::get_listing_strings(std::list<std::string>& list)
 void
 SimpleDebugger::cmd_cd(std::vector<std::string>& tokens)
 {
+#if 1
     if ( tokens.size() != 2 ) {
         printf("Invalid format for cd command (cd <obj>)\n");
         return;
     }
+#else
+    // skk This works but doesn't delete/deactivate like objmap selectParent
+    if (tokens.size() == 1) {
+        obj_ = getComponentObjectMap();
+        return;
+    }
+#endif
 
     // Allow for trailing '/'
     std::string selection = tokens[1];
