@@ -20,7 +20,7 @@
 #include "sst/core/stringize.h"
 #include "sst/core/timeConverter.h"
 
-#include <fstream>
+
 #include <iostream>
 #include <list>
 #include <sstream>
@@ -96,6 +96,8 @@ SimpleDebugger::SimpleDebugger(Params& params) :
             [this](std::vector<std::string>& tokens) { cmd_history(tokens); } },
         { "autoComplete", "ac", "toggle command line auto-completion enable", ConsoleCommandGroup::MISC,
             [this](std::vector<std::string>& tokens) { cmd_autoComplete(tokens); } },
+        { "clear", "clr", "reset terminal", ConsoleCommandGroup::MISC,
+            [this](std::vector<std::string>& tokens) { cmd_clear(tokens); } },
         { "spinThread", "spin", "enter spin loop. See SimpleDebugger::cmd_spinThread", ConsoleCommandGroup::MISC,
             [this](std::vector<std::string>& tokens) { cmd_spinThread(tokens); } },
     };
@@ -105,7 +107,7 @@ SimpleDebugger::SimpleDebugger(Params& params) :
         { "verbose", "[mask]: set verbosity mask or print if no mask specified\n"
                 "\tA mask is used to select which features to enable verbosity.\n"
                 "\tTo turn on all features set the mask to 0xffffffff\n"
-                "\t\t16: Show trigger details" },
+                "\t\t0x10: Show trigger details" },
         { "print", "[-rN][<obj>]: print objects in the current level of the object map\n"
                    "\tif -rN is provided print recursive N levels (default N=4)" },
         { "set", "<obj> <value>: sets an object in the current scope to the provided value\n"
@@ -226,6 +228,7 @@ SimpleDebugger::execute(const std::string& msg)
             else {
                 // Standard Input
                 if ( !std::cin ) std::cin.clear(); // fix corrupted input after process resumed
+                std::cout.flush();
                 if (autoCompleteEnable && isatty(STDIN_FILENO))
                     cmdLineEditor.getline(cmdHistoryBuf.getBuffer(), line);
                 else
@@ -373,7 +376,12 @@ SimpleDebugger::cmd_verbose(std::vector<std::string>& tokens) {
             std::cout << "Invalid mask " << tokens[1] << std::endl;
         }
     }
+    #if 1
+    // This messes up the auto-complete keyboard input
+    std::cout << "verbose=0x" << std::hex << verbosity << std::endl;
+    #else
     std::cout << "verbose=" << verbosity << std::endl;
+    #endif
 
     // update watchpoint verbosity
     for ( auto& x : watch_points_ ) {
@@ -953,6 +961,13 @@ SimpleDebugger::cmd_autoComplete(std::vector<std::string>& UNUSED(tokens))
 {
     autoCompleteEnable = !autoCompleteEnable;
     std::cout << "auto completion is now " << autoCompleteEnable << std::endl;
+}
+
+void
+SimpleDebugger::cmd_clear(std::vector<std::string>& UNUSED(tokens))
+{
+    // clear screen and move cursor to (0,0)
+    std::cout << "\033[2J\033[1;1H"; 
 }
 
 // gdb helper. Recommended SST configuration

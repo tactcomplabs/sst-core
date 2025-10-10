@@ -214,6 +214,9 @@ private:
     // Auto-completion toggle
     void cmd_autoComplete(std::vector<std::string>& UNUSED(tokens));
 
+    // Reset terminal
+    void cmd_clear(std::vector<std::string>& UNUSED(tokens));
+
     // LLDB/GDB helper
     void cmd_spinThread(std::vector<std::string>& tokens);
 
