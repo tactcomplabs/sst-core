@@ -469,8 +469,8 @@ SimpleDebugger::cmd_cd(std::vector<std::string>& tokens)
 
     bool                                 loop_detected = false;
     SST::Core::Serialization::ObjectMap* new_obj       = obj_->selectVariable(selection, loop_detected);
-
-    if ( !new_obj ) {
+    assert(new_obj);
+    if ( !new_obj || (new_obj==obj_) ) {
         printf("Unknown object in cd command: %s\n", selection.c_str());
         return;
     }
@@ -574,7 +574,8 @@ SimpleDebugger::cmd_set(std::vector<std::string>& tokens)
 
     bool  loop_detected = false;
     auto* var           = obj_->selectVariable(tokens[1], loop_detected);
-    if ( !var ) {
+    assert(var);
+    if ( !var || (var==obj_) ) {
         printf("Unknown object in set command: %s\n", tokens[1].c_str());
         return;
     }

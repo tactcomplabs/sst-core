@@ -15,6 +15,7 @@
 #include "sst/core/from_string.h"
 #include "sst/core/warnmacros.h"
 
+#include <assert.h>
 #include <cstdint>
 #include <iostream>
 #include <map>
@@ -351,7 +352,9 @@ public:
     ObjectMap* selectParent();
 
     /**
-       Get the ObjectMap for the specified variable
+       Get the ObjectMap for the specified variable.
+       Important!!! This function return 'this' pointer and not a nullptr!!!
+       TODO: prefer this return nullptr as bugs have occurred with incorrect use
 
        @param name Name of variable to select
 
