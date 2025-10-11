@@ -12,6 +12,7 @@
 #ifndef SST_CORE_IMPL_INTERACTIVE_CMDLINEEDITOR_H
 #define SST_CORE_IMPL_INTERACTIVE_CMDLINEEDITOR_H
 
+#include <fstream>
 #include <functional>
 #include <list>
 #include <termios.h>
@@ -43,6 +44,7 @@ public:
         { arrow_lf, "Left"  },
     };
 
+
     const std::string clear_line_ctl = "\x1B[2K";
     const std::string move_left_ctl  = "\x1B[1D";
     const std::string move_right_ctl = "\x1B[1C";
@@ -54,6 +56,8 @@ public:
 
     const int max_line_size = 2048;
 
+    CmdLineEditor();
+    virtual ~CmdLineEditor();
     void redraw_line(const std::string& s);
     void getline(const std::vector<std::string> &cmdHistory, std::string &newcmd);
 
@@ -62,6 +66,9 @@ public:
     void set_listing_callback(std::function<void(std::list<std::string>&)> callback) {
         listing_callback_ = callback;
     }
+
+    // debug helper
+    std::ofstream dbgFile;
 
 private:
     termios originalTerm;
@@ -98,6 +105,9 @@ private:
         std::string matchstr = longstr.substr(0, searchfor.length());
         return std::equal(searchfor.begin(), searchfor.end(), matchstr.begin(), compareCharCaseInsensitive);
     }
+
+    // Bug: Why is this escape code injected at the 7th char after verbose printing of 0x...?
+    void flush_bad_escape();
 
 };
 
