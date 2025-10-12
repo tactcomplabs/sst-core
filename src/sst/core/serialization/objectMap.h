@@ -25,6 +25,8 @@
 #include <utility>
 #include <vector>
 
+//#define _OBJMAP_DEBUG_
+
 namespace SST::Core::Serialization {
 
 class ObjectMap;
@@ -1101,9 +1103,11 @@ public:
         }
 
         // Circular buffer
+        #ifdef _OBJMAP_DEBUG_
         std::cout << "    Sample:" << handler << ": numRecs:" << numRecs_ << " first:" << first_ << " cur:" << cur_
                   << " state:" << state2char.at(state_) << " isOverrun:" << isOverrun_
                   << " samplesLost:" << samplesLost_ << std::endl;
+        #endif
         cycleBuffer_[cur_]   = cycle;
         handlerBuffer_[cur_] = handler;
         if ( trigger ) {
