@@ -522,7 +522,8 @@ Config::insertOptions()
     DEF_SECTION_HEADING("Advanced Options - Debug");
     DEF_ARG("run-mode", 0, "MODE", "Set run mode [ init | run | both (default)]", runMode_, true, false, true);
     DEF_ARG("interactive-console", 0, "ACTION",
-        "[EXPERIMENTAL] Set console to use for interactive mode (overrides default console: sst.interactive.simpledebug). "
+        "[EXPERIMENTAL] Set console to use for interactive mode (overrides default console: "
+        "sst.interactive.simpledebug). "
         "NOTE: This currently only works for serial jobs and will be ignored for parallel runs.",
         interactive_console_, true, false, false);
     DEF_ARG_OPTVAL("interactive-start", 0, "TIME",
@@ -532,9 +533,8 @@ Config::insertOptions()
         "interactive console was set. NOTE: This currently only works for serial jobs and this option will be ignored "
         "for parallel runs.",
         interactive_start_time_, true, false, false);
-    DEF_ARG("replay-file", 0, "FILE",
-        "Specify file for replaying an interactive debug console session.",
-        replay_file_, false);
+    DEF_ARG("replay-file", 0, "FILE", "Specify file for replaying an interactive debug console session.", replay_file_,
+        false);
 #ifdef USE_MEMPOOL
     DEF_ARG("output-undeleted-events", 0, "FILE",
         "file to write information about all undeleted events at the end of simulation (STDOUT and STDERR can be used "
@@ -654,7 +654,7 @@ Config::setOptionFromModel(const std::string& entryName, const std::string& valu
 bool
 Config::canInitiateCheckpoint()
 {
-    if (checkpoint_enable_.value == true) return true;
+    if ( checkpoint_enable_.value == true ) return true;
     if ( checkpoint_wall_period_.value != 0 ) return true;
     if ( checkpoint_sim_period_.value != "" ) return true;
     return false;

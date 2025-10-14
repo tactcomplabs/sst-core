@@ -23,7 +23,6 @@
 
 #include <cstdint>
 #include <vector>
-#include <cstdint>
 
 namespace SST::CoreTest::MessageMesh {
 
