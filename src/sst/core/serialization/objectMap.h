@@ -25,7 +25,7 @@
 #include <utility>
 #include <vector>
 
-//#define _OBJMAP_DEBUG_
+// #define _OBJMAP_DEBUG_
 
 namespace SST::Core::Serialization {
 
@@ -133,8 +133,8 @@ public:
 
     virtual ~ObjectMapComparison() = default;
 
-    virtual bool        compare()         = 0;
-    virtual std::string getCurrentValue() = 0;
+    virtual bool        compare()                   = 0;
+    virtual std::string getCurrentValue()           = 0;
     virtual void        print(std::ostream& stream) = 0;
     std::string         getName() { return name_; }
 
@@ -927,7 +927,7 @@ compareType(U1 v, ObjectMapComparison::Op op, U2 w)
 
 // Comparison of two variables with at least one non-arithmetic type
 template <typename U1, typename U2,
-	  std::enable_if_t<( !std::is_same_v<U1, U2> && (!std::is_arithmetic_v<U1> || !std::is_arithmetic_v<U2>) ), int> = true>
+    std::enable_if_t<(!std::is_same_v<U1, U2> && (!std::is_arithmetic_v<U1> || !std::is_arithmetic_v<U2>)), int> = true>
 bool
 compareType(U1 UNUSED(v), ObjectMapComparison::Op UNUSED(op), U2 UNUSED(w))
 {
@@ -1102,12 +1102,12 @@ public:
             // printf("    Sample: post trigger\n");
         }
 
-        // Circular buffer
-        #ifdef _OBJMAP_DEBUG_
+// Circular buffer
+#ifdef _OBJMAP_DEBUG_
         std::cout << "    Sample:" << handler << ": numRecs:" << numRecs_ << " first:" << first_ << " cur:" << cur_
                   << " state:" << state2char.at(state_) << " isOverrun:" << isOverrun_
                   << " samplesLost:" << samplesLost_ << std::endl;
-        #endif
+#endif
         cycleBuffer_[cur_]   = cycle;
         handlerBuffer_[cur_] = handler;
         if ( trigger ) {
@@ -1143,14 +1143,14 @@ public:
             samplesLost_++;
         }
 
-        if ((state_ == TRIGGER) && (postDelay_ == 0)) {
+        if ( (state_ == TRIGGER) && (postDelay_ == 0) ) {
             invokeAction = true;
             std::cout << "    Invoke Action\n";
         }
 
-        if (state_ == POSTTRIGGER) {
+        if ( state_ == POSTTRIGGER ) {
             postCount_++;
-            if (postCount_ >= postDelay_) {
+            if ( postCount_ >= postDelay_ ) {
                 invokeAction = true;
                 std::cout << "    Invoke Action\n";
             }

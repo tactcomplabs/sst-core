@@ -38,7 +38,7 @@ public:
     public:
         virtual bool check() = 0;
         virtual ~Logic()     = default;
-    };// class Logic
+    }; // class Logic
 
     /**
         WatchPoint Action Inner Classes
@@ -47,17 +47,18 @@ public:
     {
     public:
         WPAction() {}
-        virtual ~WPAction() = default;
+        virtual ~WPAction()                              = default;
         virtual std::string actionToString()             = 0;
         virtual void        invokeAction(WatchPoint* wp) = 0;
-        inline void setVerbosity(uint32_t v) { verbosity = v; }
+        inline void         setVerbosity(uint32_t v) { verbosity = v; }
+
     protected:
-        uint32_t verbosity = 0;
-        inline void msg(const std::string& msg) {
-            if (WatchPoint::VMASK & verbosity)
-                std::cout << msg << std::endl;
+        uint32_t    verbosity = 0;
+        inline void msg(const std::string& msg)
+        {
+            if ( WatchPoint::VMASK & verbosity ) std::cout << msg << std::endl;
         }
-    }; //class WPAction
+    }; // class WPAction
 
     class InteractiveWPAction : public WPAction
     {
@@ -65,8 +66,8 @@ public:
         InteractiveWPAction() {}
         virtual ~InteractiveWPAction() = default;
         inline std::string actionToString() override { return "interactive"; }
-        void invokeAction(WatchPoint* wp) override;
-    }; //class InteractiveWPAction
+        void               invokeAction(WatchPoint* wp) override;
+    }; // class InteractiveWPAction
 
     class PrintTraceWPAction : public WPAction
     {
@@ -74,8 +75,8 @@ public:
         PrintTraceWPAction() {}
         virtual ~PrintTraceWPAction() = default;
         inline std::string actionToString() override { return "printTrace"; }
-        void invokeAction(WatchPoint* wp) override;
-    }; //class PrintTraceWPAction
+        void               invokeAction(WatchPoint* wp) override;
+    }; // class PrintTraceWPAction
 
     class CheckpointWPAction : public WPAction
     {
@@ -83,8 +84,8 @@ public:
         CheckpointWPAction() {}
         virtual ~CheckpointWPAction() = default;
         inline std::string actionToString() override { return "checkpoint"; }
-        void invokeAction(WatchPoint* wp) override;
-    }; //class CheckpointWPAction
+        void               invokeAction(WatchPoint* wp) override;
+    }; // class CheckpointWPAction
 
     class PrintStatusWPAction : public WPAction
     {
@@ -92,8 +93,8 @@ public:
         PrintStatusWPAction() {}
         virtual ~PrintStatusWPAction() = default;
         inline std::string actionToString() override { return "printStatus"; }
-        void invokeAction(WatchPoint* wp) override;
-    }; //class PrintStatusWPAction
+        void               invokeAction(WatchPoint* wp) override;
+    }; // class PrintStatusWPAction
 
     class SetVarWPAction : public WPAction
     {
@@ -105,12 +106,13 @@ public:
         {}
         virtual ~SetVarWPAction() = default;
         inline std::string actionToString() override { return "set " + name_ + " " + valStr_; }
-        void invokeAction(WatchPoint* wp) override;
+        void               invokeAction(WatchPoint* wp) override;
+
     private:
         std::string                     name_   = "";
         Core::Serialization::ObjectMap* obj_    = nullptr;
         std::string                     valStr_ = "";
-    }; //class SetVarWPAction
+    }; // class SetVarWPAction
 
     class ShutdownWPAction : public WPAction
     {
@@ -118,8 +120,8 @@ public:
         ShutdownWPAction() {}
         virtual ~ShutdownWPAction() = default;
         inline std::string actionToString() override { return "shutdown"; }
-        void invokeAction(WatchPoint* wp) override;
-    }; //class ShutdownWPAction
+        void               invokeAction(WatchPoint* wp) override;
+    }; // class ShutdownWPAction
 
     // Construction
     WatchPoint(size_t index, const std::string& name, Core::Serialization::ObjectMapComparison* obj);
@@ -139,13 +141,13 @@ public:
 
     // Local
     inline std::string getName() { return name_; }
-    size_t getBufferSize();
-    void printTriggerRecord();
-    void printTrace();
+    size_t             getBufferSize();
+    void               printTriggerRecord();
+    void               printTrace();
 
     enum HANDLER : unsigned {
         // Select which handlers do check and sample
-        NONE = 0,
+        NONE         = 0,
         BEFORE_CLOCK = 1,
         AFTER_CLOCK  = 2,
         BEFORE_EVENT = 4,
@@ -153,22 +155,26 @@ public:
         ALL          = 15
     };
 
-    //TODO can we avoid code duplication in WatchPoint and the WatchPointAction?
-    inline void setVerbosity(uint32_t v) { verbosity=v; wpAction->setVerbosity(v); }
-    inline void msg(const std::string& msg) {
-        if (VMASK & verbosity)
-            std::cout << msg << std::endl;
+    // TODO can we avoid code duplication in WatchPoint and the WatchPointAction?
+    inline void setVerbosity(uint32_t v)
+    {
+        verbosity = v;
+        wpAction->setVerbosity(v);
     }
-    void setHandler(unsigned handlerType);
+    inline void msg(const std::string& msg)
+    {
+        if ( VMASK & verbosity ) std::cout << msg << std::endl;
+    }
+    void        setHandler(unsigned handlerType);
     std::string handlerToString(HANDLER h);
-    void printHandler();
-    void printWatchpoint();
-    void resetTraceBuffer();
+    void        printHandler();
+    void        printWatchpoint();
+    void        resetTraceBuffer();
     inline bool checkReset() { return reset_; }
-    void printAction();
-    void addTraceBuffer(Core::Serialization::TraceBuffer* tb);
-    void addObjectBuffer(Core::Serialization::ObjectBuffer* ob);
-    void addComparison(Core::Serialization::ObjectMapComparison* cmp);
+    void        printAction();
+    void        addTraceBuffer(Core::Serialization::TraceBuffer* tb);
+    void        addObjectBuffer(Core::Serialization::ObjectBuffer* ob);
+    void        addComparison(Core::Serialization::ObjectMapComparison* cmp);
 
     enum LogicOp : unsigned { // Logical Op for trigger tests
         AND       = 0,
@@ -196,18 +202,18 @@ private:
     std::string                                            name_;
     Core::Serialization::TraceBuffer*                      tb_ = nullptr;
     size_t                                                 wpIndex;
-    HANDLER  handler = ALL;
-    bool      trigger = false;
-    HANDLER   triggerHandler = HANDLER::NONE;
-    bool      reset_  = false;
-    WPAction* wpAction;
+    HANDLER                                                handler        = ALL;
+    bool                                                   trigger        = false;
+    HANDLER                                                triggerHandler = HANDLER::NONE;
+    bool                                                   reset_         = false;
+    WPAction*                                              wpAction;
 
-    void setBufferReset();
-    void check();
+    void     setBufferReset();
+    void     check();
     uint32_t verbosity = 0;
 
 
-}; //class WatchPoint
+}; // class WatchPoint
 
 
 } // namespace SST

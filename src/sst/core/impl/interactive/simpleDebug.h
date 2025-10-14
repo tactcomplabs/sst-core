@@ -92,11 +92,9 @@ class CommandHistoryBuffer
 {
 public:
     const int MAX_CMDS = 200;
-    CommandHistoryBuffer() { 
-        buf_.resize(MAX_CMDS);
-    }
-    void append(std::string s);
-    void print(int num);
+    CommandHistoryBuffer() { buf_.resize(MAX_CMDS); }
+    void                      append(std::string s);
+    void                      print(int num);
     std::vector<std::string>& getBuffer();
     enum BANG_RC { INVALID, ECHO_ONLY, EXEC, NOP };
     BANG_RC bang(const std::string& token, std::string& newcmd);
@@ -109,10 +107,10 @@ private:
     std::vector<std::pair<std::size_t, std::string>> buf_; // actual history with index number
     std::vector<std::string> stringBuffer_;                // copy of history strings provided to command line editor
     // support for ! history retrieval
-    bool                                             findEvent(const std::string& s, std::string& newcmd);
-    bool                                             findOffset(const std::string& s, std::string& newcmd);
-    bool                                             searchFirst(const std::string& s, std::string& newcmd);
-    bool                                             searchAny(const std::string& s, std::string& newcmd);
+    bool                     findEvent(const std::string& s, std::string& newcmd);
+    bool                     findOffset(const std::string& s, std::string& newcmd);
+    bool                     searchFirst(const std::string& s, std::string& newcmd);
+    bool                     searchAny(const std::string& s, std::string& newcmd);
 };
 
 class SimpleDebugger : public SST::InteractiveConsole
@@ -179,7 +177,7 @@ private:
 
     // Navigation
     void cmd_help(std::vector<std::string>& UNUSED(tokens));
-    void cmd_verbose(std::vector<std::string>& (tokens));
+    void cmd_verbose(std::vector<std::string>&(tokens));
     void cmd_pwd(std::vector<std::string>& UNUSED(tokens));
     void cmd_ls(std::vector<std::string>& UNUSED(tokens));
     void cmd_cd(std::vector<std::string>& tokens);
@@ -236,7 +234,7 @@ private:
 
     // Verbosity controlled console printing
     uint32_t verbosity = 0;
-    void msg(VERBOSITY_MASK mask, std::string message);
+    void     msg(VERBOSITY_MASK mask, std::string message);
 };
 
 } // namespace SST::IMPL::Interactive

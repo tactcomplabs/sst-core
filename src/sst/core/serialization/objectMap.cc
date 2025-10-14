@@ -61,8 +61,8 @@ ObjectMap::selectVariable(std::string name, bool& loop_detected)
     loop_detected  = false;
     ObjectMap* var = findVariable(name);
 
-    //TODO Would prefer this be a simple nullptr to avoid confusion (bugs)
-    // If we get nullptr back, then it didn't exist.  Just return this
+    // TODO Would prefer this be a simple nullptr to avoid confusion (bugs)
+    //  If we get nullptr back, then it didn't exist.  Just return this
     if ( nullptr == var ) return this;
 
     // See if this creates a loop
@@ -108,7 +108,7 @@ ObjectMap::get(const std::string& var)
     bool       loop_detected = false;
     ObjectMap* obj           = selectVariable(var, loop_detected);
     assert(obj);
-    if ( nullptr == obj || (obj==this)) return "";
+    if ( nullptr == obj || (obj == this) ) return "";
     if ( !obj->isFundamental() ) return "";
     std::string ret = obj->get();
     obj->selectParent();
@@ -121,7 +121,7 @@ ObjectMap::set(const std::string& var, const std::string& value, bool& found, bo
     bool       loop_detected = false;
     ObjectMap* obj           = selectVariable(var, loop_detected);
     assert(obj);
-    if ( nullptr == obj || obj==this ) {
+    if ( nullptr == obj || obj == this ) {
         found = false;
         return;
     }

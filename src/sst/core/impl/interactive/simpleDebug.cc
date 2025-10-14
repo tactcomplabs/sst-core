@@ -12,14 +12,12 @@
 // #include "simpleDebug.h"
 #include "sst_config.h"
 
-#include "sst/core/simulation_impl.h"
-
 #include "sst/core/impl/interactive/simpleDebug.h"
 
 #include "sst/core/baseComponent.h"
+#include "sst/core/simulation_impl.h"
 #include "sst/core/stringize.h"
 #include "sst/core/timeConverter.h"
-
 
 #include <iostream>
 #include <list>
@@ -105,9 +103,9 @@ SimpleDebugger::SimpleDebugger(Params& params) :
     // Detailed help from some commands. Can also add general things like 'help navigation'
     cmdHelp = {
         { "verbose", "[mask]: set verbosity mask or print if no mask specified\n"
-                "\tA mask is used to select which features to enable verbosity.\n"
-                "\tTo turn on all features set the mask to 0xffffffff\n"
-                "\t\t0x10: Show trigger details" },
+                     "\tA mask is used to select which features to enable verbosity.\n"
+                     "\tTo turn on all features set the mask to 0xffffffff\n"
+                     "\t\t0x10: Show trigger details" },
         { "print", "[-rN][<obj>]: print objects in the current level of the object map\n"
                    "\tif -rN is provided print recursive N levels (default N=4)" },
         { "set", "<obj> <value>: sets an object in the current scope to the provided value\n"
@@ -127,15 +125,16 @@ SimpleDebugger::SimpleDebugger(Params& params) :
             "\t  interactive, printTrace, checkpoint, set <var> <val>, printStatus, or shutdown" },
         { "watch", "<trigger>: adds watchpoint to the watchlist; breaks into interactive console when triggered\n"
                    "\tExample: watch var1 > 90 && var2 < 100 || var3 changed" },
-        { "trace", "<trigger> : <bufferSize> <postDelay> : <var1> ... <varN> : <action>\n"
-                   "\tAdds watchpoint to the watchlist with a trace buffer of <bufferSize> and a post trigger delay of "
-                   "<postDelay>\n"
-                   "\tTraces all of the variables specified in the var list and invokes the <action> after postDelay "
-                   "when triggered\n"
-                   "\tAvailable actions include: \n"
-                   "\t  interactive, printTrace, checkpoint, set <var> <val>, printStatus, or shutdown\n"
-                   "\t  Note: checkpoint action must be enabled at startup via the '--checkpoint-enable' command line option\n"
-                   "\tExample: trace var1 > 90 || var2 == 100 : 32 4 : size count state : printTrace" },
+        { "trace",
+            "<trigger> : <bufferSize> <postDelay> : <var1> ... <varN> : <action>\n"
+            "\tAdds watchpoint to the watchlist with a trace buffer of <bufferSize> and a post trigger delay of "
+            "<postDelay>\n"
+            "\tTraces all of the variables specified in the var list and invokes the <action> after postDelay "
+            "when triggered\n"
+            "\tAvailable actions include: \n"
+            "\t  interactive, printTrace, checkpoint, set <var> <val>, printStatus, or shutdown\n"
+            "\t  Note: checkpoint action must be enabled at startup via the '--checkpoint-enable' command line option\n"
+            "\tExample: trace var1 > 90 || var2 == 100 : 32 4 : size count state : printTrace" },
         { "watchlist", "prints the current list of watchpoints and their associated indices" },
         { "addtracevar", "<watchpointIndex> <var1> ... <varN> : adds the specified variables to the specified "
                          "watchpoint's trace buffer" },
@@ -161,12 +160,12 @@ SimpleDebugger::SimpleDebugger(Params& params) :
                      "\tUp/Down keys: navigate command history\n"
                      "\tLeft/Right keys: navigate command string\n"
                      "\tbackspace: delete characters to the left\n"
-	                 "\ttab: auto-completion\n"
+                     "\ttab: auto-completion\n"
                      "\tctrl-a: move cursor to beginning of line\n"
                      "\tctrl-b: move cursor to the left\n"
                      "\tctrl-d: delete character at cursor\n"
                      "\tctrl-e: move cursor to end of line\n"
-	                 "\tctrl-f: move cursor to the right\n" },
+                     "\tctrl-f: move cursor to the right\n" },
     };
 
     // Command autofill strings
@@ -176,10 +175,10 @@ SimpleDebugger::SimpleDebugger(Params& params) :
         cmdStrings.emplace_back(c.str_short());
     }
     cmdStrings.sort();
-    cmdLineEditor.set_cmd_strings(cmdStrings);  // could also realize as callback to generalize
+    cmdLineEditor.set_cmd_strings(cmdStrings); // could also realize as callback to generalize
 
     // Callback for directory listing strings
-    cmdLineEditor.set_listing_callback([this](std::list<std::string>& vec) { get_listing_strings(vec); } );
+    cmdLineEditor.set_listing_callback([this](std::list<std::string>& vec) { get_listing_strings(vec); });
 }
 
 SimpleDebugger::~SimpleDebugger()
@@ -229,7 +228,7 @@ SimpleDebugger::execute(const std::string& msg)
                 // Standard Input
                 if ( !std::cin ) std::cin.clear(); // fix corrupted input after process resumed
                 std::cout.flush();
-                if (autoCompleteEnable && isatty(STDIN_FILENO))
+                if ( autoCompleteEnable && isatty(STDIN_FILENO) )
                     cmdLineEditor.getline(cmdHistoryBuf.getBuffer(), line);
                 else
                     std::getline(std::cin, line);
@@ -358,37 +357,37 @@ SimpleDebugger::cmd_help(std::vector<std::string>& tokens)
         std::string c = tokens[1];
         if ( cmdHelp.find(c) != cmdHelp.end() ) {
             std::cout << c << " " << cmdHelp.at(c) << std::endl;
-        } else {
-            for (auto& creg : cmdRegistry) {
-                if (creg.match(c)) 
-                    std::cout << creg << std::endl;
+        }
+        else {
+            for ( auto& creg : cmdRegistry ) {
+                if ( creg.match(c) ) std::cout << creg << std::endl;
             }
         }
     }
 }
 
 void
-SimpleDebugger::cmd_verbose(std::vector<std::string>& tokens) {
-    if ( tokens.size()>1) {
+SimpleDebugger::cmd_verbose(std::vector<std::string>& tokens)
+{
+    if ( tokens.size() > 1 ) {
         try {
             verbosity = SST::Core::from_string<uint32_t>(tokens[1]);
-        } catch (std::invalid_argument& e) {
+        }
+        catch ( std::invalid_argument& e ) {
             std::cout << "Invalid mask " << tokens[1] << std::endl;
         }
     }
-    #if 1
+#if 1
     // This messes up the auto-complete keyboard input
     std::cout << "verbose=0x" << std::hex << verbosity << std::endl;
-    #else
+#else
     std::cout << "verbose=" << verbosity << std::endl;
-    #endif
+#endif
 
     // update watchpoint verbosity
     for ( auto& x : watch_points_ ) {
-        if (x.first)
-            x.first->setVerbosity(verbosity);
+        if ( x.first ) x.first->setVerbosity(verbosity);
     }
-
 }
 
 // pwd: print current working directory
@@ -414,8 +413,7 @@ SimpleDebugger::cmd_ls(std::vector<std::string>& UNUSED(tokens))
     auto& vars = obj_->getVariables();
     for ( auto& x : vars ) {
         if ( x.second->isFundamental() ) {
-            std::cout << x.first << " = " << x.second->get() <<
-                " (" <<  x.second->getType() << ")" << std::endl;
+            std::cout << x.first << " = " << x.second->get() << " (" << x.second->getType() << ")" << std::endl;
         }
         else {
             std::cout << x.first.c_str() << "/ (" << x.second->getType() << ")\n";
@@ -424,14 +422,15 @@ SimpleDebugger::cmd_ls(std::vector<std::string>& UNUSED(tokens))
 }
 
 // callback for autofill of object string (similar to ls)
-void SimpleDebugger::get_listing_strings(std::list<std::string>& list) {
+void
+SimpleDebugger::get_listing_strings(std::list<std::string>& list)
+{
     list.clear();
     auto& vars = obj_->getVariables();
     for ( auto& x : vars ) {
         std::stringstream s;
         s << x.first;
-        if (! x.second->isFundamental())
-            s << "/";
+        if ( !x.second->isFundamental() ) s << "/";
         list.emplace_back(s.str());
     }
     list.sort();
@@ -449,7 +448,7 @@ SimpleDebugger::cmd_cd(std::vector<std::string>& tokens)
 
     // Allow for trailing '/'
     std::string selection = tokens[1];
-    if (!selection.empty() && selection.back() == '/') selection.pop_back();
+    if ( !selection.empty() && selection.back() == '/' ) selection.pop_back();
 
     // Check for ..
     if ( selection == ".." ) {
@@ -470,7 +469,7 @@ SimpleDebugger::cmd_cd(std::vector<std::string>& tokens)
     bool                                 loop_detected = false;
     SST::Core::Serialization::ObjectMap* new_obj       = obj_->selectVariable(selection, loop_detected);
     assert(new_obj);
-    if ( !new_obj || (new_obj==obj_) ) {
+    if ( !new_obj || (new_obj == obj_) ) {
         printf("Unknown object in cd command: %s\n", selection.c_str());
         return;
     }
@@ -575,7 +574,7 @@ SimpleDebugger::cmd_set(std::vector<std::string>& tokens)
     bool  loop_detected = false;
     auto* var           = obj_->selectVariable(tokens[1], loop_detected);
     assert(var);
-    if ( !var || (var==obj_) ) {
+    if ( !var || (var == obj_) ) {
         printf("Unknown object in set command: %s\n", tokens[1].c_str());
         return;
     }
@@ -968,7 +967,7 @@ void
 SimpleDebugger::cmd_clear(std::vector<std::string>& UNUSED(tokens))
 {
     // clear screen and move cursor to (0,0)
-    std::cout << "\033[2J\033[1;1H"; 
+    std::cout << "\033[2J\033[1;1H";
 }
 
 // gdb helper. Recommended SST configuration
@@ -1093,7 +1092,7 @@ parseAction(std::vector<std::string>& tokens, size_t& index, Core::Serialization
         return new WatchPoint::PrintTraceWPAction();
     }
     else if ( action == "checkpoint" ) {
-        if (Simulation_impl::getSimulation()->checkpoint_directory_ == "") {
+        if ( Simulation_impl::getSimulation()->checkpoint_directory_ == "" ) {
             std::cout << "Invalid action: checkpointing not enabled (use --checkpoint-enable cmd line option)\n";
             return nullptr;
         }
@@ -1187,7 +1186,7 @@ SimpleDebugger::cmd_watch(std::vector<std::string>& tokens)
             return;
         }
         size_t wpIndex = watch_points_.size();
-        auto* pt = new WatchPoint(wpIndex, name, c);
+        auto*  pt      = new WatchPoint(wpIndex, name, c);
 
 #if 0 // watch variables currently don't trace, but they could automatically
       // trace test vars
@@ -1240,7 +1239,7 @@ SimpleDebugger::cmd_watch(std::vector<std::string>& tokens)
 
         // Get the top level component to set the watch point
         BaseComponent* comp = static_cast<BaseComponent*>(base_comp_->getAddr());
-        if (comp) {
+        if ( comp ) {
             comp->addWatchPoint(pt);
             watch_points_.emplace_back(pt, comp);
             std::cout << "Added watchpoint #" << wpIndex << std::endl;
@@ -1370,7 +1369,7 @@ parseTraceBuffer(std::vector<std::string>& tokens, size_t& index, Core::Serializ
     // Get buffer config
     if ( tokens[index++] != ":" ) {
         std::cout << "Invalid format: trace <trigger> : <bufsize> <postdelay> : <v1> ... "
-               "<vN> : <action>\n";
+                     "<vN> : <action>\n";
         return nullptr;
     }
     // Could check for ":" here and assume that means they just want default
@@ -1403,7 +1402,7 @@ parseTraceBuffer(std::vector<std::string>& tokens, size_t& index, Core::Serializ
 
     if ( tokens[index++] != ":" ) {
         std::cout << "Invalid format: trace <var> <op> <value> : <bufsize> <postdelay> : "
-               "<v1> ... <vN> : <action>\n";
+                     "<v1> ... <vN> : <action>\n";
         return nullptr;
     }
 
@@ -1429,8 +1428,7 @@ parseTraceVar(std::string& tvar, Core::Serialization::ObjectMap* obj, Core::Seri
 
     // Is variable fundamental
     if ( !map->isFundamental() ) {
-        std::cout << "Traces can only be placed on fundamental types; " << tvar <<
-               "is not fundamental\n";
+        std::cout << "Traces can only be placed on fundamental types; " << tvar << "is not fundamental\n";
         return nullptr;
     }
     std::string name = obj->getFullName() + "/" + tvar;
@@ -1461,7 +1459,7 @@ SimpleDebugger::cmd_trace(std::vector<std::string>& tokens)
         return;
     }
     size_t wpIndex = watch_points_.size();
-    auto* pt = new WatchPoint(wpIndex, name, c);
+    auto*  pt      = new WatchPoint(wpIndex, name, c);
 
     // Add additional comparisons and logical ops
     while ( index < tokens.size() ) {
@@ -1593,7 +1591,7 @@ CommandHistoryBuffer::append(std::string s)
 void
 CommandHistoryBuffer::print(int num)
 {
-    if (sz_==0) return;
+    if ( sz_ == 0 ) return;
     int n   = num < sz_ ? num : sz_;
     n       = n <= 0 ? sz_ : n;
     int idx = (nxt_ - n) % sz_;
@@ -1609,8 +1607,8 @@ CommandHistoryBuffer::getBuffer()
 {
     // TODO: combine for print
     stringBuffer_.clear();
-    if (sz_==0) return stringBuffer_;
-    int n  = sz_;
+    if ( sz_ == 0 ) return stringBuffer_;
+    int n   = sz_;
     int idx = (nxt_ - n) % sz_;
     if ( idx < 0 ) idx += sz_;
     for ( int i = 0; i < n; i++ ) {
@@ -1783,7 +1781,7 @@ CommandHistoryBuffer::searchAny(const std::string& s, std::string& newcmd)
 void
 SimpleDebugger::msg(VERBOSITY_MASK mask, std::string message)
 {
-    if ((! static_cast<uint32_t>(mask)) & verbosity ) return;
+    if ( (!static_cast<uint32_t>(mask)) & verbosity ) return;
     std::cout << message << std::endl;
 }
 
