@@ -27,18 +27,13 @@ CmdLineEditor::CmdLineEditor()
 #endif
 }
 
-CmdLineEditor::~CmdLineEditor()
-{
-    if ( dbgFile.is_open() ) dbgFile.close();
-}
-
 int
 CmdLineEditor::checktty(int rc)
 {
     if ( rc == -1 ) {
         std::string msg("input error: ");
         msg = msg + strerror(errno) + "\n";
-        write(STDOUT_FILENO, msg.c_str(), msg.size());
+        writeStr(msg);
         errno = 0;
     }
     return rc;
@@ -58,6 +53,7 @@ CmdLineEditor::setRawMode()
     rc = checktty(tcsetattr(STDIN_FILENO, TCSANOW, &rawTerm));
     return rc;
 }
+
 int
 CmdLineEditor::restoreTermMode()
 {
@@ -65,8 +61,9 @@ CmdLineEditor::restoreTermMode()
     int rc = checktty(tcsetattr(STDIN_FILENO, TCSANOW, &originalTerm));
     return rc;
 }
+
 bool
-CmdLineEditor::read2chars(char seq[3])
+CmdLineEditor::read2chars(char (&seq)[3])
 {
     auto nbytes = read(STDIN_FILENO, &seq[0], 1);
     if ( !nbytes ) {
@@ -90,15 +87,16 @@ void
 CmdLineEditor::move_cursor_left()
 {
     if ( curpos > (int)prompt.size() + 1 ) {
-        write(STDOUT_FILENO, move_left_ctl.c_str(), move_left_ctl.size());
+        writeStr(move_left_ctl);
         curpos--;
     }
 }
+
 void
 CmdLineEditor::move_cursor_right(int slen)
 {
     if ( curpos < (int)prompt.size() + slen + 1 ) {
-        write(STDOUT_FILENO, move_right_ctl.c_str(), move_right_ctl.size());
+        writeStr(move_right_ctl);
         curpos++;
     }
 }
@@ -122,12 +120,12 @@ CmdLineEditor::selectMatches(const std::list<std::string>& list, const std::stri
     }
     else if ( matches.size() > 0 ) {
         // list all matching strings
-        write(STDOUT_FILENO, "\n", 1);
+        writeStr("\n");
         for ( const std::string& s : matches ) {
-            write(STDOUT_FILENO, s.c_str(), s.size());
-            write(STDOUT_FILENO, " ", 1);
+            writeStr(s);
+            writeStr(" ");
         }
-        write(STDOUT_FILENO, "\n", 1);
+        writeStr("\n");
     }
     return false;
 }
@@ -157,12 +155,12 @@ CmdLineEditor::auto_complete(std::string& cmd)
     if ( tokens.size() == 0 ) {
         // list all command strings
         if ( cmdStrings.size() > 0 ) {
-            write(STDOUT_FILENO, "\n", 1);
+            writeStr("\n");
             for ( const std::string& s : cmdStrings ) {
-                write(STDOUT_FILENO, s.c_str(), s.size());
-                write(STDOUT_FILENO, " ", 1);
+                writeStr(s);
+                writeStr(" ");
             }
-            write(STDOUT_FILENO, "\n", 1);
+            writeStr("\n");
         }
     }
     else if ( tokens.size() == 1 && !hasTrailingSpace ) {
@@ -186,12 +184,12 @@ CmdLineEditor::auto_complete(std::string& cmd)
         if ( listing.size() == 0 ) return;
         if ( hasTrailingSpace ) {
             // list everything
-            write(STDOUT_FILENO, "\n", 1);
+            writeStr("\n");
             for ( const std::string& s : listing ) {
-                write(STDOUT_FILENO, s.c_str(), s.size());
-                write(STDOUT_FILENO, " ", 1);
+                writeStr(s);
+                writeStr(" ");
             }
-            write(STDOUT_FILENO, "\n", 1);
+            writeStr("\n");
         }
         else {
             std::vector<std::string> matches;
@@ -210,13 +208,12 @@ CmdLineEditor::auto_complete(std::string& cmd)
     }
 }
 
-
 void
 CmdLineEditor::redraw_line(const std::string& s)
 {
     std::stringstream line;
     line << prompt_clear << s << esc_ctl << curpos << 'G';
-    write(STDOUT_FILENO, line.str().c_str(), line.str().size());
+    writeStr(line.str());
 #ifdef _KEYB_DEBUG_
 // dbgFile << curpos << " " << s.length() << std::endl;
 #endif
@@ -238,7 +235,7 @@ CmdLineEditor::getline(const std::vector<std::string>& cmdHistory, std::string& 
     // initial empty prompt
     std::stringstream prompt_line;
     prompt_line << prompt_clear << history[index];
-    write(STDOUT_FILENO, prompt_line.str().c_str(), prompt_line.str().size());
+    writeStr(prompt_line.str());
     curpos = history[index].size() + prompt.size() + 1;
 
     // Start checking for keys
@@ -261,13 +258,13 @@ CmdLineEditor::getline(const std::vector<std::string>& cmdHistory, std::string& 
                 if ( key == arrow_up ) {
                     if ( index > 0 ) index--;
                     oline << prompt_clear << history[index];
-                    write(STDOUT_FILENO, oline.str().c_str(), oline.str().size());
+                    writeStr(oline.str());
                     curpos = history[index].size() + prompt.size() + 1;
                 }
                 else if ( key == arrow_dn ) {
                     if ( index < max ) index++;
                     oline << prompt_clear << history[index];
-                    write(STDOUT_FILENO, oline.str().c_str(), oline.str().size());
+                    writeStr(oline.str());
                     curpos = history[index].size() + prompt.size() + 1;
                 }
                 else if ( key == arrow_lf ) {
@@ -296,7 +293,7 @@ CmdLineEditor::getline(const std::vector<std::string>& cmdHistory, std::string& 
             int position = history[index].size() == 0 ? 0 : curpos - 1 - prompt.size();
             if ( position < 0 || position > (int)history[index].size() ) {
                 oline << prompt_clear << position;
-                write(STDOUT_FILENO, oline.str().c_str(), oline.str().size());
+                writeStr(oline.str());
                 continue; // something went wrong
             }
             history[index].insert(position, 1, c);
@@ -332,7 +329,7 @@ CmdLineEditor::getline(const std::vector<std::string>& cmdHistory, std::string& 
             // move cursor to the end of the line
             curpos = history[index].size() + prompt.size() + 1;
             oline << prompt_clear << history[index];
-            write(STDOUT_FILENO, oline.str().c_str(), oline.str().size());
+            writeStr(oline.str());
         }
         else if ( c == ctrl_k ) {
             // remove characters from the cursor to the end of the line
@@ -344,7 +341,7 @@ CmdLineEditor::getline(const std::vector<std::string>& cmdHistory, std::string& 
             history[index].erase(position);
             curpos = history[index].size() + prompt.size() + 1;
             oline << prompt_clear << history[index];
-            write(STDOUT_FILENO, oline.str().c_str(), oline.str().size());
+            writeStr(oline.str());
         }
         else if ( c == ctrl_b ) {
             move_cursor_left();
@@ -365,7 +362,7 @@ CmdLineEditor::getline(const std::vector<std::string>& cmdHistory, std::string& 
 
     if ( bytesRead == -1 ) {
         oline << "input error: " << strerror(errno);
-        write(STDOUT_FILENO, oline.str().c_str(), oline.str().size());
+        writeStr(oline.str());
         errno = 0;
     }
 
@@ -374,5 +371,5 @@ CmdLineEditor::getline(const std::vector<std::string>& cmdHistory, std::string& 
 
     // set the new line info
     newcmd = history[index];
-    write(STDOUT_FILENO, "\n", 1);
+    writeStr("\n");
 }
