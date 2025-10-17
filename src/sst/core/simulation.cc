@@ -318,8 +318,9 @@ Simulation_impl::Simulation_impl(
             &config, my_rank.rank, this, timeLord.getTimeConverter(config.heartbeat_sim_period()));
     }
     if ( config.checkpoint_sim_period() != "" ) {
-        sim_output.output("# Creating simulation checkpoint at simulated time period of %s.\n",
-            config.checkpoint_sim_period().c_str());
+        if ( my_rank.rank == 0 && my_rank.thread == 0 )
+            sim_output.output("# Creating simulation checkpoint at simulated time period of %s.\n",
+                config.checkpoint_sim_period().c_str());
         checkpoint_action_ =
             new CheckpointAction(&config, my_rank, this, timeLord.getTimeConverter(config.checkpoint_sim_period()));
         checkpoint_action_->insertIntoTimeVortex(this);
@@ -1675,8 +1676,8 @@ Simulation_impl::scheduleCheckpoint()
 
 
 void
-Simulation_impl::checkpoint_write_globals(
-    int checkpoint_id, const std::string& registry_filename, const std::string& globals_filename)
+Simulation_impl::checkpoint_write_globals(int checkpoint_id, const std::string& checkpoint_directory,
+    const std::string& registry_filename, const std::string& globals_filename)
 {
     uint64_t local_event_id;
     uint64_t max_event_id;
@@ -1696,7 +1697,8 @@ Simulation_impl::checkpoint_write_globals(
         return;
     }
 
-    std::ofstream fs = filesystem.ofstream(globals_filename, std::ios::out | std::ios::binary);
+    std::ofstream fs =
+        filesystem.ofstream(checkpoint_directory + "/" + globals_filename, std::ios::out | std::ios::binary);
 
     // TODO: Add error checking for file open
 
@@ -1790,7 +1792,7 @@ Simulation_impl::checkpoint_write_globals(
     fs.close();
 
 
-    std::ofstream fs_reg = filesystem.ofstream(registry_filename, std::ios::out);
+    std::ofstream fs_reg = filesystem.ofstream(checkpoint_directory + "/" + registry_filename, std::ios::out);
 
     /* Section 1: Checkpoint info */
     fs_reg << "## Checkpoint #" << checkpoint_id << " at time " << currentSimCycle << " ("
@@ -1911,6 +1913,8 @@ Simulation_impl::restart()
 {
     std::ifstream fs(config.configFile());
 
+    std::string checkpoint_directory = config.configFile().substr(0, config.configFile().find_last_of("/"));
+
     std::string line;
 
     std::string globals_filename;
@@ -1919,7 +1923,7 @@ Simulation_impl::restart()
         size_t pos = line.find(search_str);
         if ( pos == 0 ) {
             // Get the file name
-            globals_filename = line.substr(search_str.length());
+            globals_filename = checkpoint_directory + "/" + line.substr(search_str.length());
             break;
         }
     }
@@ -1982,7 +1986,7 @@ Simulation_impl::restart()
                 size_t pos = line.find(search_str);
                 if ( pos == 0 ) {
                     // Get the file name
-                    blob_filenames.push_back(line.substr(search_str.length()));
+                    blob_filenames.push_back(checkpoint_directory + "/" + line.substr(search_str.length()));
                     break;
                 }
             }
