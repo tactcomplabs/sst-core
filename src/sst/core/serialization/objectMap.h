@@ -312,7 +312,8 @@ public:
      */
     void decRefCount()
     {
-        if ( !--refCount_ ) delete this;
+        if ( !--refCount_ ) 
+            delete this;
     }
 
     /**
@@ -591,7 +592,9 @@ public:
     ~ObjectMapWithChildren() override
     {
         for ( auto& obj : variables_ ) {
-            if ( obj.second != nullptr ) obj.second->decRefCount();
+            if ( obj.second != nullptr ) { 
+                obj.second->decRefCount();
+            }
         }
     }
 
