@@ -12,7 +12,9 @@
 #include "sst/core/impl/interactive/cmdLineEditor.h"
 
 #include <cctype>
+#include <cerrno>
 #include <cstring>
+#include <iterator>
 #include <sstream>
 #include <unistd.h>
 

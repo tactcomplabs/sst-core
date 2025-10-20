@@ -18,8 +18,10 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <iostream>
 #include <map>
+#include <ostream>
 #include <string>
 #include <type_traits>
 #include <typeinfo>

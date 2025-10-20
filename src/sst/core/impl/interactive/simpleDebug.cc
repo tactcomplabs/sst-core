@@ -19,11 +19,13 @@
 #include "sst/core/stringize.h"
 #include "sst/core/timeConverter.h"
 
+#include <cstddef>
 #include <cstdio>
 #include <iostream>
 #include <list>
 #include <sstream>
 #include <stdexcept>
+#include <utility>
 #include <unistd.h>
 
 #include "simpleDebug.h"

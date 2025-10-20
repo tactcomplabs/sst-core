@@ -18,7 +18,13 @@
 #include "sst/core/simulation_impl.h"
 #include "sst/core/sst_types.h"
 
+#include <cstddef>
 #include <cstdint>
+#include <cstdio>
+#include <ios>
+#include <iostream>
+#include <ostream>
+#include <sstream>
 #include <string>
 //clang-format on
 
