@@ -25,8 +25,8 @@
 #include <list>
 #include <sstream>
 #include <stdexcept>
-#include <utility>
 #include <unistd.h>
+#include <utility>
 
 #include "simpleDebug.h"
 
@@ -564,11 +564,11 @@ SimpleDebugger::cmd_set(std::vector<std::string>& tokens)
         printf("Invalid format for set command (set <obj> <value>)\n");
         return;
     }
-    //kg It may be safer to check for  exactly 3 params but because
-    //   of strings we allow for more (until parser handled quoted strings)
-    //   If var->selectParent() is not used prior to returning we 
-    //   can get a segmentation fault on a subsequent command. Address
-    //   Sanitizer indicated use of previously freed memory. 
+    // kg It may be safer to check for  exactly 3 params but because
+    //    of strings we allow for more (until parser handled quoted strings)
+    //    If var->selectParent() is not used prior to returning we
+    //    can get a segmentation fault on a subsequent command. Address
+    //    Sanitizer indicated use of previously freed memory.
     //
 
     if ( obj_->isContainer() ) {
@@ -577,16 +577,16 @@ SimpleDebugger::cmd_set(std::vector<std::string>& tokens)
         obj_->set(tokens[1], tokens[2], found, read_only);
         if ( !found ) printf("Unknown object in set command for container: %s\n", tokens[1].c_str());
         if ( read_only ) printf("Object specified in set command is read-only for container: %s\n", tokens[1].c_str());
-        //TODO do we need var->selectParent() here?
+        // TODO do we need var->selectParent() here?
         return;
     }
 
     bool  loop_detected = false;
     auto* var           = obj_->selectVariable(tokens[1], loop_detected);
-    assert(var); 
+    assert(var);
     if ( !var || (var == obj_) ) {
         printf("Unknown object in set command: %s\n", tokens[1].c_str());
-        //TODO make sure selectVariable hasn't altered any state.
+        // TODO make sure selectVariable hasn't altered any state.
         return;
     }
 

@@ -315,8 +315,7 @@ public:
      */
     void decRefCount()
     {
-        if ( !--refCount_ )
-            delete this;
+        if ( !--refCount_ ) delete this;
     }
 
     /**
