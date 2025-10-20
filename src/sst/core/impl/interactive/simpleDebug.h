@@ -14,6 +14,9 @@
 
 // clang-format off
 #include "sst/core/eli/elementinfo.h"
+#include <cstdint>
+#include <ostream>
+#include <sstream>
 #include <sst/core/interactiveConsole.h>
 #include "sst/core/serialization/objectMapDeferred.h"
 #include "sst/core/impl/interactive/cmdLineEditor.h"

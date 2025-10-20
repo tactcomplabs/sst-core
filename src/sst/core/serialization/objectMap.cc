@@ -58,8 +58,8 @@ ObjectMap::selectParent()
 ObjectMap*
 ObjectMap::selectVariable(std::string name, bool& loop_detected)
 {
-    //kg maybe there is a way we can go through this to detect problems
-    //   before changing objmap state to avoid memory corruption bugs.
+    // kg maybe there is a way we can go through this to detect problems
+    //    before changing objmap state to avoid memory corruption bugs.
     loop_detected  = false;
     ObjectMap* var = findVariable(name);
 
