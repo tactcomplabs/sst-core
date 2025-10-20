@@ -19,6 +19,7 @@
 #include "sst/core/stringize.h"
 #include "sst/core/timeConverter.h"
 
+#include <cstdio>
 #include <iostream>
 #include <list>
 #include <sstream>

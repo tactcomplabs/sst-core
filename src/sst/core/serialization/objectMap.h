@@ -15,7 +15,8 @@
 #include "sst/core/from_string.h"
 #include "sst/core/warnmacros.h"
 
-#include <assert.h>
+#include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <iostream>
 #include <map>
@@ -312,7 +313,7 @@ public:
      */
     void decRefCount()
     {
-        if ( !--refCount_ ) 
+        if ( !--refCount_ )
             delete this;
     }
 
@@ -592,7 +593,7 @@ public:
     ~ObjectMapWithChildren() override
     {
         for ( auto& obj : variables_ ) {
-            if ( obj.second != nullptr ) { 
+            if ( obj.second != nullptr ) {
                 obj.second->decRefCount();
             }
         }
