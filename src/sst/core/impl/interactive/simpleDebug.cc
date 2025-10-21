@@ -1450,7 +1450,7 @@ parseTraceVar(std::string& tvar, Core::Serialization::ObjectMap* obj, Core::Seri
 
 // trace <trigger> : <bufsize> <postdelay> : <v1> ... <vN> :  <action>
 // <trigger> is defined in cmd_watch above
-// <action> is optional - default is break to interactive console
+// <action> to execute on trigger
 // Could also consider having multiple actions and/or default buffer config
 // TODO check at each step that we haven't exceeded token size
 void

@@ -817,8 +817,8 @@ private:
 
 /**
     Templated compareType implementations
+    Variables are currently cast to matching types before being passed to this function
 */
-#if 1
 template <typename V1>
 bool
 cmp(V1 v, ObjectMapComparison::Op op, V1 w)
@@ -848,7 +848,6 @@ cmp(V1 v, ObjectMapComparison::Op op, V1 w)
         break;
     }
 }
-#endif
 
 // Comparison of two variables of the same type
 template <typename U1, typename U2, std::enable_if_t<std::is_same_v<U1, U2>, int> = true>
@@ -856,7 +855,7 @@ bool
 compareType(U1 v, ObjectMapComparison::Op op, U2 w)
 {
     // Handle same type - just compare
-    printf("  CMP: Same type\n");
+    //printf("  CMP: Same type\n");
     return cmp(v, op, w);
 }
 
@@ -871,14 +870,14 @@ compareType(U1 v, ObjectMapComparison::Op op, U2 w)
     if ( std::is_integral_v<U1> && std::is_integral_v<U2> ) {
         // both unsigned integrals - cast to unsigned long long
         if ( std::is_unsigned_v<U1> && std::is_unsigned_v<U2> ) {
-            printf("  CMP: Both unsigned integrals\n");
+            //printf("  CMP: Both unsigned integrals\n");
             unsigned long long v1 = static_cast<unsigned long long>(v);
             unsigned long long w1 = static_cast<unsigned long long>(w);
             return cmp(v1, op, w1);
         }
         // both integers but at least one signed - cast to signed long long
         else {
-            printf("  CMP: Not both unsigned integrals\n");
+            //printf("  CMP: Not both unsigned integrals\n");
             long long v1 = static_cast<long long>(v);
             long long w1 = static_cast<long long>(w);
             return cmp(v1, op, w1);
@@ -886,13 +885,13 @@ compareType(U1 v, ObjectMapComparison::Op op, U2 w)
     }
     // Handle float/double combinations - cast to long double
     else if ( std::is_floating_point_v<U1> && std::is_floating_point_v<U2> ) {
-        printf("  CMP: Both fp\n");
+        //printf("  CMP: Both fp\n");
         long double v1 = static_cast<long double>(v);
         long double w1 = static_cast<long double>(w);
         return cmp(v1, op, w1);
     }
     else { // Integral and FP comparison - cast integral to fp
-        printf("  CMP: integral and fp\n");
+        //printf("  CMP: integral and fp\n");
         if ( std::is_integral_v<U1> ) {
             if ( std::is_same_v<U2, float> ) {
                 float v1 = static_cast<float>(v);
@@ -1361,15 +1360,16 @@ public:
             return nullptr;
         }
 
-#if 1
+        std::string type = var2->getType();
+#if 0
         std::cout << "In ObjectMapComparison_var: " << name << " " << name2 << std::endl;
         // std::cout << "typeid(T): " << demangle_name(typeid(T).name()) << std::endl;
         std::string type1 = getType();
         std::cout << "getType(v1): " << type1 << std::endl;
-        std::string type = var2->getType();
         std::cout << "getType(v2): " << type << std::endl;
 #endif
 
+        // Create ObjectMapComparison_var which compares two variables
         // Only support arithmetic types for now
         if ( std::is_arithmetic_v<T> ) {
             if ( type == "int" ) {

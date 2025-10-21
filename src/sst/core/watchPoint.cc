@@ -93,7 +93,6 @@ WatchPoint::ShutdownWPAction::invokeAction(WatchPoint* wp)
 WatchPoint::WatchPoint(size_t index, const std::string& name, Core::Serialization::ObjectMapComparison* obj) :
     Clock::HandlerBase::AttachPoint(),
     Event::HandlerBase::AttachPoint(),
-    // obj_(obj),
     name_(name),
     wpIndex(index)
 {
@@ -102,7 +101,6 @@ WatchPoint::WatchPoint(size_t index, const std::string& name, Core::Serializatio
 
 WatchPoint::~WatchPoint()
 {
-    delete obj_;
 }
 
 void

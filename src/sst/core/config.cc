@@ -532,9 +532,8 @@ Config::insertOptions()
         interactive_console_, true, false, false);
     DEF_ARG_OPTVAL("interactive-start", 0, "TIME",
         "[EXPERIMENTAL] Drop into interactive mode at specified simulated time.  If no time is specified, or the time "
-        "is 0, then it will "
-        "drop into interactive mode before any events are processed in the main run loop. This option is ignored if no "
-        "interactive console was set. NOTE: This currently only works for serial jobs and this option will be ignored "
+        "is 0, then it will drop into interactive mode before any events are processed in the main run loop. "
+        "NOTE: This currently only works for serial jobs and this option will be ignored "
         "for parallel runs.",
         interactive_start_time_, true, false, false);
     DEF_ARG("replay-file", 0, "FILE", "Specify file for replaying an interactive debug console session.", replay_file_,

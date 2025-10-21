@@ -195,7 +195,6 @@ protected:
     void      simulationShutdown();
 
 private:
-    Core::Serialization::ObjectMapComparison*              obj_;
     size_t                                                 numCmpObj_ = 0;
     std::vector<Core::Serialization::ObjectMapComparison*> cmpObjects_;
     std::vector<LogicOp>                                   logicOps_;
