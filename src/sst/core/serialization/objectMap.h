@@ -315,7 +315,8 @@ public:
      */
     void decRefCount()
     {
-        if ( !--refCount_ ) delete this;
+        if ( !--refCount_ ) 
+            delete this;
     }
 
     /**
@@ -524,8 +525,21 @@ public:
     virtual ObjectMap* findVariable(const std::string& name)
     {
         auto& variables = getVariables();
+        #if 0
         for ( auto [it, end] = variables.equal_range(name); it != end; ++it )
             return it->second; // For now, we return only the first match if multiple matches
+        #else
+        std::vector<ObjectMap*> matches = {};
+        for ( auto [it, end] = variables.equal_range(name); it != end; ++it )
+            matches.emplace_back(it->second);
+        if (matches.size()>1) {
+            std::cout << "Error: Found more than 1 instance of " << name << std::endl;
+            assert(false); // until we understand how we generate/handle multiple names
+            return matches[0];
+        } else if (matches.size()==1) {
+            return matches[0];
+        }
+        #endif
         return nullptr;
     }
 

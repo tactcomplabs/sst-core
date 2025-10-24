@@ -479,7 +479,7 @@ SimpleDebugger::cmd_cd(std::vector<std::string>& tokens)
 
     if ( new_obj->isFundamental() ) {
         printf("Object %s is a fundamental type so you cannot cd into it\n", selection.c_str());
-        new_obj->selectParent();
+        // new_obj->selectParent(); // what's the point? new_obj is a local variable
         return;
     }
 

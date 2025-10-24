@@ -181,7 +181,9 @@ public:
     /*********  Static Core-only Functions *********/
 
     /** Return a pointer to the singleton instance of the Simulation */
-    static Simulation_impl* getSimulation() { return instanceMap.at(std::this_thread::get_id()); }
+    static Simulation_impl* getSimulation() { 
+        return instanceMap.at(std::this_thread::get_id());
+    }
 
     /** Return the TimeLord associated with this Simulation */
     static TimeLord* getTimeLord() { return &timeLord; }

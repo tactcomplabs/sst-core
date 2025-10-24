@@ -72,6 +72,9 @@ REENABLE_WARNING
 #include "sst/core/configGraphOutput.h"
 #include "sst/core/eli/elementinfo.h"
 
+// DO NOT PUSH THIS!!!
+#include "sst/core/tcldbg.h"
+
 using namespace SST::Core;
 using namespace SST::Partition;
 using namespace SST;
@@ -800,6 +803,8 @@ main(int argc, char* argv[])
 {
     using SST::Util::BasicPerfTracker;
 
+    tcldbg::spinner("SST_SPINNER");
+    
 #ifdef SST_CONFIG_HAVE_MPI
     // Initialize MPI
     MPI_Init(&argc, &argv);
