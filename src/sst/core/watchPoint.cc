@@ -99,9 +99,7 @@ WatchPoint::WatchPoint(size_t index, const std::string& name, Core::Serializatio
     addComparison(obj);
 }
 
-WatchPoint::~WatchPoint()
-{
-}
+WatchPoint::~WatchPoint() {}
 
 void
 WatchPoint::beforeHandler(uintptr_t UNUSED(key), const Event* UNUSED(ev))

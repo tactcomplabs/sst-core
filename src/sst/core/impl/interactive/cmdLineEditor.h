@@ -34,9 +34,9 @@ writeStr(const std::string& msg)
  * The command line editor uses termios to detect key presses
  * and perform auto-completions. Upon entering the editor,
  * the current terminal settings are saved and we enter a
- * "raw" terminal mode. While in raw terminal mode it is 
+ * "raw" terminal mode. While in raw terminal mode it is
  * critical to ensure that exclusivel use read and write commands
- * for std:out access. Mixing iostream access can corrupt the 
+ * for std:out access. Mixing iostream access can corrupt the
  * buffers.
  */
 class CmdLineEditor
