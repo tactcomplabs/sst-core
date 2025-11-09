@@ -19,9 +19,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <exception>
+#include <functional>
 #include <iostream>
 #include <map>
 #include <ostream>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <typeinfo>
@@ -32,10 +35,29 @@
 
 namespace SST::Core::Serialization {
 
+// Comparison of two keys: If both keys are integers, use numeric comparison, else lexicographic
+struct ObjectMultimapCmp
+{
+    bool operator()(const std::string& a, const std::string& b) const
+    {
+        if ( *a.c_str() && *b.c_str() ) {
+            char* ea;
+            long  na = strtol(a.c_str(), &ea, 10);
+            if ( !*ea ) {
+                char* eb;
+                long  nb = strtol(b.c_str(), &eb, 10);
+                if ( !*eb ) return na < nb;
+            }
+        }
+        return std::less<>()(a, b);
+    }
+};
+
 class ObjectMap;
 class TraceBuffer;
 class ObjectBuffer;
 
+using ObjectMultimap = std::multimap<std::string, ObjectMap*, ObjectMultimapCmp>;
 
 // class ObjectMapComparison_impl<T>;
 /**
@@ -159,14 +181,6 @@ class ObjectMap
 {
 protected:
     /**
-       Static empty variable map for use by versions that don't have
-       variables (i.e. are fundamentals or classes treated as
-       fundamentals.  This is needed because getVariables() returns a
-       reference to the map.
-    */
-    static const std::multimap<std::string, ObjectMap*> emptyVars;
-
-    /**
        Metadata object for walking the object hierarchy.  When this
        object is selected by a parent object, a metadata object will
        be added.  The metadata contains a pointer to the parent and
@@ -218,7 +232,7 @@ private:
        longer needed and the object will delete itself if refCount_
        reaches 0.
      */
-    int32_t refCount_ = 1;
+    size_t refCount_ = 1;
 
 public:
     /**
@@ -297,7 +311,17 @@ public:
        ObjectMap's child variables. Fundamental types will return the
        same empty map.
      */
-    virtual const std::multimap<std::string, ObjectMap*>& getVariables() { return emptyVars; }
+    virtual const ObjectMultimap& getVariables()
+    {
+        /**
+           Static empty variable map for use by versions that don't have
+           variables (i.e. are fundamentals or classes treated as
+           fundamentals.  This is needed because getVariables() returns a
+           reference to the map.
+        */
+        static ObjectMultimap emptyVars;
+        return emptyVars;
+    }
 
     /**
        Increment the reference counter for this ObjectMap. When
@@ -399,7 +423,7 @@ public:
        templated child classes for fundamentals will know how to
        convert the string to a value of the approproprite type.  NOTE:
        this function is only valid for ObjectMaps that represent
-       fundamental types or classes treated as fundamentatl types
+       fundamental types or classes treated as fundamental types
        (i.e. isFundamental() returns true).
 
        @param value Value to set the object to, represented as a string
@@ -577,7 +601,7 @@ protected:
     /**
        Map that child ObjectMaps are stored in
      */
-    std::multimap<std::string, ObjectMap*> variables_;
+    ObjectMultimap variables_;
 
     /**
        Default constructor
@@ -623,7 +647,7 @@ public:
        child variables. pair.first is the name of the variable in the
        context of this object. pair.second is a pointer to the ObjectMap.
      */
-    const std::multimap<std::string, ObjectMap*>& getVariables() override { return variables_; }
+    const ObjectMultimap& getVariables() override { return variables_; }
 };
 
 
@@ -1280,21 +1304,14 @@ public:
 
     virtual bool checkValue(const std::string& value) override
     {
-        bool ret = false;
         try {
-            T v = SST::Core::from_string<T>(value);
-            ret = static_cast<bool>(v);
+            SST::Core::from_string<T>(value);
+            return true;
         }
-        catch ( const std::invalid_argument& e ) {
-            std::cerr << "Error: Invalid value: " << value << std::endl;
+        catch ( const std::exception& e ) {
+            std::cerr << e.what() << ": " << value << std::endl;
             return false;
         }
-        catch ( const std::out_of_range& e ) {
-            std::cerr << "Error: Value is out of range: " << value << std::endl;
-            return false;
-        }
-        ret = true;
-        return ret;
     }
 
     /**
@@ -1314,7 +1331,7 @@ public:
 
        @return Address of variable
      */
-    void* getAddr() override { return (void*)addr_; }
+    void* getAddr() override { return addr_; }
 
     explicit ObjectMapFundamental(T* addr) :
         addr_(addr)
@@ -1489,6 +1506,30 @@ public:
         size(size)
     {}
     ~ObjectMapArray() override = default;
+};
+
+// Object Map for bit references represented by std::bitset<N>::reference and std::vector<bool>::reference
+template <typename REF>
+class ObjectMapBitReference : public ObjectMapFundamental<bool>
+{
+    REF ref;
+
+public:
+    explicit ObjectMapBitReference(REF ref) :
+        ObjectMapFundamental(nullptr),
+        ref(ref)
+    {}
+    std::string get() override { return ref ? "1" : "0"; }
+    void        set_impl(const std::string& value) override
+    {
+        try {
+            ref = from_string<bool>(value);
+        }
+        catch ( const std::exception& e ) {
+            std::cerr << e.what() << std::endl;
+        }
+    }
+    ~ObjectMapBitReference() override = default;
 };
 
 

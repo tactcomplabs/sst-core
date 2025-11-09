@@ -22,6 +22,7 @@
 #undef SST_INCLUDING_SERIALIZE_H
 
 #include <atomic>
+#include <bitset>
 #include <cstdint>
 #include <iostream>
 #include <type_traits>
@@ -86,9 +87,22 @@ struct SerOption
 namespace Core::Serialization {
 
 namespace pvt {
+
 template <typename T>
 void sst_ser_object(serializer& ser, T&& obj, ser_opt_t options, const char* name);
-}
+
+// Proxy struct which represents a std::bitset<N>::reference bit reference wrapper similar to std::reference_wrapper.
+// This proxy is needed in order for us to partially specialize serialize_impl for the std::bitset<N>::reference type.
+template <size_t N>
+struct bitset_reference_wrapper
+{
+    typename std::bitset<N>::reference ref;
+    explicit bitset_reference_wrapper(typename std::bitset<N>::reference ref) :
+        ref(std::move(ref))
+    {}
+};
+
+} // namespace pvt
 
 // get_ptr() returns reference to argument if it's a pointer, else address of argument
 template <typename T>
@@ -100,7 +114,6 @@ get_ptr(T& t)
     else
         return &t;
 }
-
 
 /**
    Base serialize class.
