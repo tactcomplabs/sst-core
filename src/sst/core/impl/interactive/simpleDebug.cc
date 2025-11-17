@@ -1855,8 +1855,4 @@ SimpleDebugger::msg(VERBOSITY_MASK mask, std::string message)
     std::cout << message << std::endl;
 }
 
-void
-SimpleDebugger::cli_dump()
-{}
-
 } // namespace SST::IMPL::Interactive
