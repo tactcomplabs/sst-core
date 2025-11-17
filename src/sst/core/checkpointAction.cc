@@ -341,7 +341,7 @@ initializeCheckpointInfrastructure(Config* cfg, bool rt_can_ckpt, int myRank)
         // Create checkpoint directory path
         SST::Util::Filesystem& fs = Simulation_impl::getSimulation()->filesystem;
         checkpoint_dir_name       = fs.createUniqueDirectory(cfg->checkpoint_prefix());
-        //std::cout << "Checkpoint directory: " << checkpoint_dir_name << std::endl;
+        // std::cout << "Checkpoint directory: " << checkpoint_dir_name << std::endl;
     }
 
 #ifdef SST_CONFIG_HAVE_MPI
