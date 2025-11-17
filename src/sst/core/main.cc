@@ -468,6 +468,11 @@ start_simulation(uint32_t tid, SimThreadInfo_t& info, Core::ThreadSafe::Barrier&
         Simulation_impl::createSimulation(info.myRank, info.world_size, restart, currentSimCycle, currentPriority);
     double start_run = 0.0;
 
+    // Setup the real time actions (all of these have to be defined on
+    // the command-line or SDL file, they will not be checkpointed and
+    // restored
+    sim->setupSimActions();
+
     // Thread zero needs to initialize the checkpoint data structures
     // if any checkpointing options were turned on.  This will return
     // an empty string if checkpointing was not enabled.
@@ -528,12 +533,13 @@ start_simulation(uint32_t tid, SimThreadInfo_t& info, Core::ThreadSafe::Barrier&
 
     } // if ( restart )
 
-
+#if 0  // skk Move this before checkpoint infrastructure setup
     // Setup the real time actions (all of these have to be defined on
     // the command-line or SDL file, they will not be checkpointed and
     // restored
     sim->setupSimActions();
-
+    printf(" After setupSimActions, realtime can checkpoint = %d\n", sim->real_time_->canInitiateCheckpoint());
+#endif
 
     if ( !restart ) {
 
