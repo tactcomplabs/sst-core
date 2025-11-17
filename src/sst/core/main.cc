@@ -533,7 +533,7 @@ start_simulation(uint32_t tid, SimThreadInfo_t& info, Core::ThreadSafe::Barrier&
 
     } // if ( restart )
 
-#if 0  // skk Move this before checkpoint infrastructure setup
+#if 0 // skk Move this before checkpoint infrastructure setup
     // Setup the real time actions (all of these have to be defined on
     // the command-line or SDL file, they will not be checkpointed and
     // restored

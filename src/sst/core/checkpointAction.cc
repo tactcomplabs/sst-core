@@ -332,11 +332,10 @@ initializeCheckpointInfrastructure(Config* cfg, bool rt_can_ckpt, int myRank)
 
     if ( myRank == 0 ) {
         // Verify prefix format (no '/')
-        const std::string prefix = cfg->checkpoint_prefix();
-        size_t foundPos = prefix.find('/');
-        if (foundPos != std::string::npos) {
-            throw std::invalid_argument(
-                "Invalid checkpoint prefix: " + prefix);
+        const std::string prefix   = cfg->checkpoint_prefix();
+        size_t            foundPos = prefix.find('/');
+        if ( foundPos != std::string::npos ) {
+            throw std::invalid_argument("Invalid checkpoint prefix: " + prefix);
         }
 
         // Create checkpoint directory path
