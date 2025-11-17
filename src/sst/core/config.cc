@@ -660,10 +660,6 @@ Config::canInitiateCheckpoint()
     if ( checkpoint_enable_.value == true ) return true;
     if ( checkpoint_wall_period_.value != 0 ) return true;
     if ( checkpoint_sim_period_.value != "" ) return true;
-    printf("checkpoint_enable_.value = %d\n", checkpoint_enable_.value);
-    printf("sigalrm_.value = %s\n", sigalrm_.value.c_str());
-    printf("sigusr1_.value = %s\n", sigusr1_.value.c_str());
-    // Needs to check for sigusr, sigalrm
     return false;
 }
 
