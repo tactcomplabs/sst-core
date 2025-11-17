@@ -64,7 +64,7 @@ SimpleDebugger::SimpleDebugger(Params& params) :
         { "set", "s", "var value: set value for a variable at the current level", ConsoleCommandGroup::STATE,
             [this](std::vector<std::string>& tokens) { cmd_set(tokens); } },
         { "examine", "e", "<obj> prints object in the current scope. See SimpleDebugger::cmd_examine",
-            ConsoleCommandGroup::STATE, [this](std::vector<std::string>& tokens) { cmd_examine(tokens); } },      
+            ConsoleCommandGroup::STATE, [this](std::vector<std::string>& tokens) { cmd_examine(tokens); } },
         { "watch", "w", "<trig>: adds watchpoint to the watchlist", ConsoleCommandGroup::WATCH,
             [this](std::vector<std::string>& tokens) { cmd_watch(tokens); } },
         { "trace", "t", "<trig> : <bufSize> <postDelay> : <v1> ... <vN> : <action>", ConsoleCommandGroup::WATCH,
