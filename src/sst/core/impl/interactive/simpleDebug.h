@@ -191,6 +191,7 @@ private:
     void cmd_time(std::vector<std::string>& tokens);
     void cmd_watch(std::vector<std::string>& tokens);
     void cmd_unwatch(std::vector<std::string>& tokens);
+    void cmd_examine(std::vector<std::string>& tokens);
 
     // Simulation Control
     void cmd_run(std::vector<std::string>& tokens);

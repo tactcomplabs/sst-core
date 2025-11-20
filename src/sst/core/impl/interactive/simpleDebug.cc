@@ -30,6 +30,8 @@
 
 #include "simpleDebug.h"
 
+using namespace SST::Core;
+
 namespace SST::IMPL::Interactive {
 
 SimpleDebugger::SimpleDebugger(Params& params) :
@@ -61,6 +63,8 @@ SimpleDebugger::SimpleDebugger(Params& params) :
             [this](std::vector<std::string>& tokens) { cmd_print(tokens); } },
         { "set", "s", "var value: set value for a variable at the current level", ConsoleCommandGroup::STATE,
             [this](std::vector<std::string>& tokens) { cmd_set(tokens); } },
+        { "examine", "e", "<obj> prints object in the current scope. See SimpleDebugger::cmd_examine",
+            ConsoleCommandGroup::STATE, [this](std::vector<std::string>& tokens) { cmd_examine(tokens); } },
         { "watch", "w", "<trig>: adds watchpoint to the watchlist", ConsoleCommandGroup::WATCH,
             [this](std::vector<std::string>& tokens) { cmd_watch(tokens); } },
         { "trace", "t", "<trig> : <bufSize> <postDelay> : <v1> ... <vN> : <action>", ConsoleCommandGroup::WATCH,
@@ -114,6 +118,7 @@ SimpleDebugger::SimpleDebugger(Params& params) :
         { "set", "<obj> <value>: sets an object in the current scope to the provided value\n"
                  "\tobject must be a 'fundamental type' (arithmetic or string)\n"
                  "\t e.g. set mystring hello world" },
+        { "examine", "[e][<obj>]: prints object in the current scope\n" },
         { "watchpoints",
             "Manage watchpoints (with or without tracing)\n"
             "\tA <trigger> can be a <comparison> or a sequence of comparisons combined with a <logicOp>\n"
@@ -554,6 +559,58 @@ SimpleDebugger::cmd_print(std::vector<std::string>& tokens)
     else {
         printf("%s", listing.c_str());
     }
+}
+
+static void
+recursive_examine(
+    SimpleDebugger& debugger, SST::Core::Serialization::ObjectMap& self, std::string const& name, int level)
+{
+    std::string ret;
+    std::string indent = std::string(level, ' ');
+    if ( self.isFundamental() ) {
+        printf("%s%s = %s (%s)\n", indent.c_str(), name.c_str(), self.get().c_str(), self.getType().c_str());
+        return;
+    }
+
+    printf("%s%s = (%s)\n", indent.c_str(), name.c_str(), self.get().c_str());
+    auto vars = self.getVariables();
+
+    for ( auto var : vars ) {
+        if ( nullptr == var.second->mdata_ ) {
+            var.second->activate(&self, var.first);
+            recursive_examine(debugger, *var.second, var.first, level + 1);
+            var.second->deactivate();
+        }
+    }
+}
+
+/*
+ * feature to assist with debugging serialization - recursively prints the contents
+ * of the object map to make sure what is in the object map is consistent with expectations
+ * we've had issues previously with serialization not supporting specific types and this
+ * feature provides the foundation to simplify the object map's verification process. this
+ * feature avoids creating a situation where the team needs to create an exhaustive list
+ * of bash scripts to perform the verification of the object map.
+ *
+ * [examine,e] [<obj>] : prints object in the current scope
+ */
+
+void
+SimpleDebugger::cmd_examine(std::vector<std::string>& tokens)
+{
+    if ( tokens.size() < 2 ) {
+        printf("Invalid format for set command (examine <obj>)\n");
+        return;
+    }
+
+    if ( obj_ == nullptr ) {
+        printf("objectMap is null\n");
+        return;
+    }
+
+    recursive_examine(*this, *obj_, tokens[1], 0);
+
+    return;
 }
 
 // set <obj> <value>: set object to value

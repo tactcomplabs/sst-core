@@ -183,7 +183,7 @@ protected:
  */
 class ObjectMap
 {
-protected:
+public:
     /**
        Metadata object for walking the object hierarchy.  When this
        object is selected by a parent object, a metadata object will
@@ -201,6 +201,8 @@ protected:
        that path to the current path will be erased.
      */
     ObjectMapMetaData* mdata_ = nullptr;
+
+protected:
 
     /**
        Indicates whether or not the variable is read-only
@@ -550,7 +552,9 @@ public:
         return nullptr;
     }
 
-private:
+    ObjectMapMetaData* getMetadata() { return mdata_; }
+
+public:
     /**
        Called to activate this ObjectMap.  This will create the
        metadata object and call activate_callback().
