@@ -19,8 +19,17 @@
 
 namespace SST::Core::Serialization {
 
+// Static variable instantiation
+const std::multimap<std::string, ObjectMap*> ObjectMap::emptyVars;
+
 std::string
-ObjectMap::getFullName() const
+ObjectMap::getName()
+{
+    return mdata_ ? mdata_->name : "";
+}
+
+std::string
+ObjectMap::getFullName()
 {
     if ( !mdata_ ) return "";
 

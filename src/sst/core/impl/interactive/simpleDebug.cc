@@ -63,8 +63,10 @@ SimpleDebugger::SimpleDebugger(Params& params) :
             [this](std::vector<std::string>& tokens) { cmd_print(tokens); } },
         { "set", "s", "var value: set value for a variable at the current level", ConsoleCommandGroup::STATE,
             [this](std::vector<std::string>& tokens) { cmd_set(tokens); } },
+#ifdef __CT_RECURSE__
         { "examine", "e", "<obj> prints object in the current scope. See SimpleDebugger::cmd_examine",
             ConsoleCommandGroup::STATE, [this](std::vector<std::string>& tokens) { cmd_examine(tokens); } },
+#endif
         { "watch", "w", "<trig>: adds watchpoint to the watchlist", ConsoleCommandGroup::WATCH,
             [this](std::vector<std::string>& tokens) { cmd_watch(tokens); } },
         { "trace", "t", "<trig> : <bufSize> <postDelay> : <v1> ... <vN> : <action>", ConsoleCommandGroup::WATCH,
@@ -561,6 +563,7 @@ SimpleDebugger::cmd_print(std::vector<std::string>& tokens)
     }
 }
 
+#ifdef __CT_RECURSE__
 static void
 recursive_examine(
     SimpleDebugger& debugger, SST::Core::Serialization::ObjectMap& self, std::string const& name, int level)
@@ -583,6 +586,7 @@ recursive_examine(
         }
     }
 }
+#endif
 
 /*
  * feature to assist with debugging serialization - recursively prints the contents
@@ -595,6 +599,7 @@ recursive_examine(
  * [examine,e] [<obj>] : prints object in the current scope
  */
 
+#ifdef __CT_RECURSE__
 void
 SimpleDebugger::cmd_examine(std::vector<std::string>& tokens)
 {
@@ -612,6 +617,7 @@ SimpleDebugger::cmd_examine(std::vector<std::string>& tokens)
 
     return;
 }
+#endif
 
 // set <obj> <value>: set object to value
 void
