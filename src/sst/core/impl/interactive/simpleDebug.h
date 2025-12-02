@@ -51,7 +51,7 @@ enum class VERBOSITY_MASK : uint32_t {
     WATCHPOINTS = 0b0001'0000 // 0x10
 };
 
-enum class LINE_ENTRY_MODE: int {
+enum class LINE_ENTRY_MODE : int {
     NORMAL,   // line is executed as a command
     DEFINE,   // line is captured in user defined command sequence
     DOCUMENT, // documenting a user defined command
@@ -68,21 +68,23 @@ public:
         str_short_(str_short),
         str_help_(str_help),
         group_(group),
-        func_(func) {}
-    // Constructor for user-defined commands 
+        func_(func)
+    {}
+    // Constructor for user-defined commands
     ConsoleCommand(std::string str_long) :
         str_long_(str_long),
         str_short_(str_long),
         str_help_("user defined command"),
-        group_(ConsoleCommandGroup::USER) {}
+        group_(ConsoleCommandGroup::USER)
+    {}
     ConsoleCommand() {}; // default constructor
-    const std::string&         str_long() const { return str_long_; }
-    const std::string&         str_short() const { return str_short_; }
-    const std::string&         str_help() const { return str_help_; }
-    void setUserHelp(std::string& help) {  str_help_ = help; }
+    const std::string& str_long() const { return str_long_; }
+    const std::string& str_short() const { return str_short_; }
+    const std::string& str_help() const { return str_help_; }
+    void               setUserHelp(std::string& help) { str_help_ = help; }
 
     // Command Execution
-    void                       exec(std::vector<std::string>& tokens) { return func_(tokens); }
+    void exec(std::vector<std::string>& tokens) { return func_(tokens); }
 
     const ConsoleCommandGroup& group() const { return group_; }
     bool                       match(const std::string& token)
@@ -109,8 +111,8 @@ private:
         std::transform(s.begin(), s.end(), s.begin(), ::tolower);
         return s;
     }
-    
-}; //class ConsoleCommand
+
+}; // class ConsoleCommand
 
 class CommandHistoryBuffer
 {
@@ -122,7 +124,7 @@ public:
     std::vector<std::string>& getBuffer();
     enum BANG_RC { INVALID, ECHO_ONLY, EXEC, NOP };
     BANG_RC bang(const std::string& token, std::string& newcmd);
-    void enable(bool en) { en_ = en; }
+    void    enable(bool en) { en_ = en; }
 
 private:
     bool                                             en_    = true;
@@ -139,83 +141,93 @@ private:
     bool                     searchAny(const std::string& s, std::string& newcmd);
 };
 
-class CommandRegistry {
+class CommandRegistry
+{
 
-    public:
+public:
     // Construction
     CommandRegistry() {}
-    CommandRegistry(const std::vector<ConsoleCommand> in) : registry(in) {}
+    CommandRegistry(const std::vector<ConsoleCommand> in) :
+        registry(in)
+    {}
     // Access
     std::vector<ConsoleCommand>& getRegistryVector() { return registry; }
     std::vector<ConsoleCommand>& getUserRegistryVector() { return user_registry; }
     enum SEARCH_TYPE { ALL, BUILTIN, USER };
     std::pair<ConsoleCommand, bool> const seek(std::string token, SEARCH_TYPE search_type);
     // User defined command entry
-    bool beginUserCommand(std::string name);
-    void appendUserCommand(std::string token0, std::string line);
-    void commitUserCommand();
-    std::vector<std::string>* userCommandInsts(std::string key) {
-        if (user_defined_commands.find(key) == user_defined_commands.end())
-            return nullptr;
+    bool                                  beginUserCommand(std::string name);
+    void                                  appendUserCommand(std::string token0, std::string line);
+    void                                  commitUserCommand();
+    std::vector<std::string>*             userCommandInsts(std::string key)
+    {
+        if ( user_defined_commands.find(key) == user_defined_commands.end() ) return nullptr;
         return &user_defined_commands[key];
     }
     // User defined command help doc entry
     bool beginDocCommand(std::string name);
     void appendDocCommand(std::string line);
     void commitDocCommand();
-    bool commandIsEmpty(const std::string key) {
-        if (user_defined_commands.find(key) == user_defined_commands.end())
-            return true;
-        if (user_defined_commands[key].size() == 0) return true;
+    bool commandIsEmpty(const std::string key)
+    {
+        if ( user_defined_commands.find(key) == user_defined_commands.end() ) return true;
+        if ( user_defined_commands[key].size() == 0 ) return true;
         return false;
-    }; 
+    };
 
     // User defined command help from vector
-    void addHelp(std::string key, std::vector<std::string>& vec);
+    void                               addHelp(std::string key, std::vector<std::string>& vec);
     // Detailed Command Help (public for now)
     std::map<std::string, std::string> cmdHelp;
 
 private:
     // built-in commands
-    std::vector<ConsoleCommand> registry = {};
+    std::vector<ConsoleCommand>                     registry              = {};
     // user defined commands
-    std::vector<ConsoleCommand> user_registry = {};
+    std::vector<ConsoleCommand>                     user_registry         = {};
     std::map<std::string, std::vector<std::string>> user_defined_commands = {};
-    std::string user_command_wip = "";
-    std::vector<std::string> user_doc_wip = {};
+    std::string                                     user_command_wip      = "";
+    std::vector<std::string>                        user_doc_wip          = {};
 
-    // Last searched command with valid indicator 
-    std::pair<ConsoleCommand, bool> last_seek_command = {}; 
-};// class CommandRegistry
+    // Last searched command with valid indicator
+    std::pair<ConsoleCommand, bool> last_seek_command = {};
+}; // class CommandRegistry
 
 // Support for nesting user defined commands
-class ExecState {
+class ExecState
+{
 public:
     // Constructor for entering a new user command
-    ExecState(ConsoleCommand cmd, std::vector<std::string> tokens, std::vector<std::string>* insts)
-        : cmd_(cmd), tokens_(tokens), insts_(insts), index_(0), user_(true) {
-            assert(insts_->size()>0);
-        };
+    ExecState(ConsoleCommand cmd, std::vector<std::string> tokens, std::vector<std::string>* insts) :
+        cmd_(cmd),
+        tokens_(tokens),
+        insts_(insts),
+        index_(0),
+        user_(true)
+    {
+        assert(insts_->size() > 0);
+    };
     ExecState() {};
-    bool ret() { return ret_; }
+    bool        ret() { return ret_; }
     // Advance state and return the next user instruction
-    std::string next() {
+    std::string next()
+    {
         assert(user_);
         assert(!ret_);
         assert(insts_);
-        assert(index_<insts_->size());
-        ret_ =  (index_+1) == insts_->size();
+        assert(index_ < insts_->size());
+        ret_ = (index_ + 1) == insts_->size();
         return insts_->at(index_++);
     }
 
 private:
-    ConsoleCommand cmd_ = {};                    // user command in progress
-    std::vector<std::string> tokens_ = {};       // command args
-    std::vector<std::string>* insts_ = nullptr;  // command sequence
-    size_t index_ = 0;                           // command pointer
-    bool user_ = false;                          // in user command
-    bool ret_ = false;                           // user command complete, return to caller
-}; //class ExecState
+    ConsoleCommand            cmd_    = {};      // user command in progress
+    std::vector<std::string>  tokens_ = {};      // command args
+    std::vector<std::string>* insts_  = nullptr; // command sequence
+    size_t                    index_  = 0;       // command pointer
+    bool                      user_   = false;   // in user command
+    bool                      ret_    = false;   // user command complete, return to caller
+}; // class ExecState
 
 class SimpleDebugger : public SST::InteractiveConsole
 {
@@ -270,7 +282,7 @@ private:
     std::stringstream injectedCommand;
 
     // execution state management for nested user commands
-    ExecState eState = {};
+    ExecState             eState = {};
     std::stack<ExecState> eStack = {};
 
     // Keep a pointer to the ObjectMap for the top level Component
@@ -343,7 +355,7 @@ private:
     CommandHistoryBuffer cmdHistoryBuf;
 
     // Command Line Editor
-    CmdLineEditor cmdLineEditor;
+    CmdLineEditor   cmdLineEditor;
     LINE_ENTRY_MODE line_entry_mode = LINE_ENTRY_MODE::NORMAL;
 
     // Verbosity controlled console printing

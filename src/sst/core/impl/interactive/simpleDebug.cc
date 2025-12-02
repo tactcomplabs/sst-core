@@ -185,14 +185,13 @@ SimpleDebugger::SimpleDebugger(Params& params) :
                         "an external debug to attach. The debugger can clear the spin\n"
                         "condition and continue execution. On entry, the process id will\n"
                         "be printed. Once in the the debugger, set the breakpoint in\n"
-                        "SimpleDebugger::cmd_spinThread (see code comments for more info)\n"
-        },
+                        "SimpleDebugger::cmd_spinThread (see code comments for more info)\n" },
         { "define", "<cmd-name>: enter a command sequence for a user defined command.\n"
-                    "Terminate the sequence by typing \"end\"\n"},
-        { "document","<cmd-name>: provide help documentation for a user defined command.\n"
-                    "The first line will be summarized in the short help text.\n"
-                    "Remaining lines will be provided in detailed help\n"
-                    "Terminate the sequence by typing \"end\"\n"},
+                    "Terminate the sequence by typing \"end\"\n" },
+        { "document", "<cmd-name>: provide help documentation for a user defined command.\n"
+                      "The first line will be summarized in the short help text.\n"
+                      "Remaining lines will be provided in detailed help\n"
+                      "Terminate the sequence by typing \"end\"\n" },
     };
 
     // Command autofill strings
@@ -230,9 +229,8 @@ SimpleDebugger::execute(const std::string& msg)
     while ( !done ) {
         try {
             // User input prompt (except during user command)
-            if (eStack.size()==0)
-                std::cout << "> " << std::flush;
-            
+            if ( eStack.size() == 0 ) std::cout << "> " << std::flush;
+
             // Logging disable has edge cases for stack push/pop
             bool squashLogging = false;
 
@@ -241,18 +239,20 @@ SimpleDebugger::execute(const std::string& msg)
                 line = injectedCommand.str();
                 injectedCommand.str("");
                 std::cout << line << std::endl;
-            } else if ( eStack.size()>0) {
+            }
+            else if ( eStack.size() > 0 ) {
                 // Do no log internals of user defined command
                 squashLogging = true;
                 // Execute next instruction in a user defined command
-                line = eState.next();
-                if (eState.ret()) {
+                line          = eState.next();
+                if ( eState.ret() ) {
                     eState = eStack.top();
                     eStack.pop();
                     // back to normal command entry
-                    if (eStack.size() == 0 ) cmdHistoryBuf.enable(true);
+                    if ( eStack.size() == 0 ) cmdHistoryBuf.enable(true);
                 }
-            } else if ( replayFile.is_open() ) {
+            }
+            else if ( replayFile.is_open() ) {
                 // Replay commands from file
                 if ( std::getline(replayFile, line) ) {
                     std::cout << line << std::endl;
@@ -264,7 +264,8 @@ SimpleDebugger::execute(const std::string& msg)
                         std::cout << "An error occured reading from " << replayFilePath << std::endl;
                     replayFile.close();
                 }
-            } else {
+            }
+            else {
                 // Standard Input
                 if ( !std::cin ) std::cin.clear(); // fix corrupted input after process resumed
                 std::cout.flush();
@@ -278,7 +279,7 @@ SimpleDebugger::execute(const std::string& msg)
             dispatch_cmd(line);
 
             // Log commands if enabled and not executing a user defined command
-            if ( enLogging  && !squashLogging) loggingFile << line.c_str() << std::endl;
+            if ( enLogging && !squashLogging ) loggingFile << line.c_str() << std::endl;
             // This prevents logging the 'logging' command
             if ( loggingFile.is_open() ) enLogging = true;
         }
@@ -331,10 +332,10 @@ SimpleDebugger::dispatch_cmd(std::string& cmd)
     }
 
     // Check for 'end' string to terminate special line entry modes
-    if ((line_entry_mode != LINE_ENTRY_MODE::NORMAL) && (cmd == "end")) {
-        if (line_entry_mode == LINE_ENTRY_MODE::DEFINE)
+    if ( (line_entry_mode != LINE_ENTRY_MODE::NORMAL) && (cmd == "end") ) {
+        if ( line_entry_mode == LINE_ENTRY_MODE::DEFINE )
             cmdRegistry.commitUserCommand();
-        else if (line_entry_mode == LINE_ENTRY_MODE::DOCUMENT)
+        else if ( line_entry_mode == LINE_ENTRY_MODE::DOCUMENT )
             cmdRegistry.commitDocCommand();
         else {
             std::cout << "Error: unknown line entry mode" << std::endl;
@@ -347,30 +348,29 @@ SimpleDebugger::dispatch_cmd(std::string& cmd)
     }
 
     // Do the right thing based on the entry mode
-    switch (line_entry_mode) {
+    switch ( line_entry_mode ) {
     case LINE_ENTRY_MODE::NORMAL:
     {
         // normal execution
-        auto consoleCommand = cmdRegistry.seek(tokens[0], CommandRegistry::SEARCH_TYPE::BUILTIN); 
-        if (consoleCommand.second) {
+        auto consoleCommand = cmdRegistry.seek(tokens[0], CommandRegistry::SEARCH_TYPE::BUILTIN);
+        if ( consoleCommand.second ) {
             consoleCommand.first.exec(tokens);
             cmdHistoryBuf.append(cmd);
-            return;           
+            return;
         }
         // user defined entry
-        consoleCommand = cmdRegistry.seek(tokens[0], CommandRegistry::SEARCH_TYPE::USER); 
-        if (consoleCommand.second) {
+        consoleCommand = cmdRegistry.seek(tokens[0], CommandRegistry::SEARCH_TYPE::USER);
+        if ( consoleCommand.second ) {
             cmdHistoryBuf.append(cmd);
             // Do nothing if user command is empty
-            if (cmdRegistry.commandIsEmpty(tokens[0]))
-                return;
+            if ( cmdRegistry.commandIsEmpty(tokens[0]) ) return;
             // save current context
             eStack.push(eState);
             // new context for user call
-            eState = { consoleCommand.first, tokens, cmdRegistry.userCommandInsts(tokens[0])};
+            eState = { consoleCommand.first, tokens, cmdRegistry.userCommandInsts(tokens[0]) };
             // History capture disabled when stack size > 0
             cmdHistoryBuf.enable(false);
-            return;           
+            return;
         }
 
         // No matching command found but keep in history so we can fix it
@@ -388,8 +388,7 @@ SimpleDebugger::dispatch_cmd(std::string& cmd)
     default:
         std::cout << "ERROR: unhandled line entry mode" << std::endl;
         assert(false);
-    } //switch (line_entry_mode)
-
+    } // switch (line_entry_mode)
 }
 
 //
@@ -422,12 +421,13 @@ SimpleDebugger::cmd_help(std::vector<std::string>& tokens)
     // First check for specific command help
     if ( tokens.size() == 1 ) {
         for ( const auto& g : GroupText ) {
-            if (g.first != ConsoleCommandGroup::USER) {
+            if ( g.first != ConsoleCommandGroup::USER ) {
                 std::cout << "--- " << g.second << " ---" << std::endl;
                 for ( const auto& c : cmdRegistry.getRegistryVector() ) {
                     if ( g.first == c.group() ) std::cout << c << std::endl;
                 }
-            } else if (cmdRegistry.getUserRegistryVector().size() > 0 ) {
+            }
+            else if ( cmdRegistry.getUserRegistryVector().size() > 0 ) {
                 std::cout << "--- " << g.second << " ---" << std::endl;
                 for ( const auto& c : cmdRegistry.getUserRegistryVector() ) {
                     if ( g.first == c.group() ) {
@@ -1137,24 +1137,23 @@ SimpleDebugger::cmd_clear(std::vector<std::string>& UNUSED(tokens))
 void
 SimpleDebugger::cmd_define(std::vector<std::string>& UNUSED(tokens))
 {
-    if (tokens.size() != 2 ) {
+    if ( tokens.size() != 2 ) {
         std::cout << "Invalid\nsyntax: define <cmd_name>" << std::endl;
         return;
     }
 
     // Create a user command entry (or clear existing one)
-    if (cmdRegistry.beginUserCommand(tokens[1])) 
-        line_entry_mode = LINE_ENTRY_MODE::DEFINE;
+    if ( cmdRegistry.beginUserCommand(tokens[1]) ) line_entry_mode = LINE_ENTRY_MODE::DEFINE;
 }
 
 void
-SimpleDebugger::cmd_document(std::vector<std::string>& tokens) {
-    if (tokens.size() != 2 ) {
+SimpleDebugger::cmd_document(std::vector<std::string>& tokens)
+{
+    if ( tokens.size() != 2 ) {
         std::cout << "Invalid\nsyntax: document <cmd_name>" << std::endl;
         return;
     }
-    if (cmdRegistry.beginDocCommand(tokens[1])) 
-        line_entry_mode = LINE_ENTRY_MODE::DOCUMENT;
+    if ( cmdRegistry.beginDocCommand(tokens[1]) ) line_entry_mode = LINE_ENTRY_MODE::DOCUMENT;
 }
 
 // gdb helper. Recommended SST configuration
@@ -1769,7 +1768,7 @@ SimpleDebugger::cmd_shutdown(std::vector<std::string>& UNUSED(tokens))
 void
 CommandHistoryBuffer::append(std::string s)
 {
-    if (! en_ ) return;
+    if ( !en_ ) return;
     buf_[nxt_] = std::make_pair(count_++, s);
     sz_        = sz_ < MAX_CMDS - 1 ? sz_ + 1 : MAX_CMDS;
     cur_       = nxt_;
@@ -1977,19 +1976,19 @@ std::pair<ConsoleCommand, bool> const
 CommandRegistry::seek(std::string token, SEARCH_TYPE search_type)
 {
     last_seek_command.second = false;
-    if ( search_type == SEARCH_TYPE::ALL || search_type == SEARCH_TYPE::BUILTIN) {
+    if ( search_type == SEARCH_TYPE::ALL || search_type == SEARCH_TYPE::BUILTIN ) {
         for ( auto consoleCommand : registry ) {
             if ( consoleCommand.match(token) ) {
-                last_seek_command.first = consoleCommand;
+                last_seek_command.first  = consoleCommand;
                 last_seek_command.second = true;
                 return last_seek_command;
             }
         }
     }
-    if ( search_type == SEARCH_TYPE::ALL || search_type == SEARCH_TYPE::USER) {
+    if ( search_type == SEARCH_TYPE::ALL || search_type == SEARCH_TYPE::USER ) {
         for ( auto consoleCommand : user_registry ) {
             if ( consoleCommand.match(token) ) {
-                last_seek_command.first = consoleCommand;
+                last_seek_command.first  = consoleCommand;
                 last_seek_command.second = true;
                 return last_seek_command;
             }
@@ -2004,11 +2003,11 @@ CommandRegistry::beginUserCommand(std::string name)
 {
     // Make sure not a built-in command
     auto res = seek(name, CommandRegistry::SEARCH_TYPE::BUILTIN);
-    if (res.second) {
+    if ( res.second ) {
         std::cout << "Cannot overwrite built-in command \"" << name << "\"" << std::endl;
         return false;
     }
-    user_command_wip = name;
+    user_command_wip                        = name;
     // Create or overwrite existing user defined command
     user_defined_commands[user_command_wip] = {};
     std::cout << "Enter commands for \"" << user_command_wip << "\" terminated by \"end\"" << std::endl;
@@ -2019,14 +2018,14 @@ void
 CommandRegistry::appendUserCommand(std::string token0, std::string line)
 {
     // No recursion
-    if (token0 == user_command_wip) {
+    if ( token0 == user_command_wip ) {
         std::cout << token0 << " cannot call itself" << std::endl;
         return;
     }
 
     // Commands not allowed: define, document, replay
     std::pair<ConsoleCommand, bool> res = seek(token0, CommandRegistry::SEARCH_TYPE::BUILTIN);
-    if (res.second) {
+    if ( res.second ) {
         // Disallow nested `define` or `document` since these change user_command_wip
         if ( res.first.str_long() == "define" || res.first.str_long() == "document" ) {
             std::cout << "Ignoring entry: " << res.first.str_long() << "/" << res.first.str_short() << std::endl;
@@ -2037,7 +2036,6 @@ CommandRegistry::appendUserCommand(std::string token0, std::string line)
             std::cout << "Ignoring entry: " << res.first.str_long() << "/" << res.first.str_short() << std::endl;
             return;
         }
-
     }
     user_defined_commands[user_command_wip].emplace_back(line);
 }
@@ -2055,19 +2053,19 @@ CommandRegistry::beginDocCommand(std::string name)
 {
     // Make sure not a built-in command
     auto res = seek(name, CommandRegistry::SEARCH_TYPE::BUILTIN);
-    if (res.second) {
+    if ( res.second ) {
         std::cout << "Cannot overwrite built-in command \"" << name << "\"" << std::endl;
         return false;
     }
     // Make sure user command is defined
     res = seek(name, CommandRegistry::SEARCH_TYPE::USER);
-    if (! res.second) {
+    if ( !res.second ) {
         std::cout << "\"" << name << "\" must be defined before documenting" << std::endl;
-        return false; 
+        return false;
     }
 
     user_command_wip = name;
-    user_doc_wip = {};
+    user_doc_wip     = {};
     std::cout << "Enter documentation for \"" << user_command_wip << "\" terminated by \"end\"" << std::endl;
     return true;
 }
@@ -2086,16 +2084,17 @@ CommandRegistry::commitDocCommand()
         if ( consoleCommand.match(user_command_wip) ) {
             std::cout << "Committing documentation for " << user_command_wip << std::endl;
             consoleCommand.setUserHelp(user_doc_wip[0]);
-            addHelp(user_command_wip,user_doc_wip);
-            found=true; 
+            addHelp(user_command_wip, user_doc_wip);
+            found = true;
         }
     }
 
-    if (! found )
-        std::cout << "Unable to commit documentation. Could not locate definition for " << user_command_wip << std::endl;
+    if ( !found )
+        std::cout << "Unable to commit documentation. Could not locate definition for " << user_command_wip
+                  << std::endl;
 
     user_command_wip = "";
-    user_doc_wip = {};
+    user_doc_wip     = {};
 }
 
 void
@@ -2104,7 +2103,8 @@ CommandRegistry::addHelp(std::string key, std::vector<std::string>& vec)
     std::stringstream s;
     for ( const auto& line : vec )
         s << line << "\n";
-    cmdHelp[key] = s.str();;
+    cmdHelp[key] = s.str();
+    ;
 }
 
 
