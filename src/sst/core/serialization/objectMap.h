@@ -1433,7 +1433,7 @@ template <class T>
 class ObjectMapContainer : public ObjectMapWithChildren
 {
 protected:
-    T* addr_;
+    T* addr_ = nullptr;
 
 public:
     explicit ObjectMapContainer(T* addr) :
