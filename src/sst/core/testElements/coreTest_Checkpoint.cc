@@ -300,7 +300,7 @@ coreTestCheckpoint::serialize_order(SST::Core::Serialization::serializer& ser)
     SST_SER(stat_rng);
     SST_SER(stat_dist);
     SST_SER(stat_null);
-    // Temporary workaround for tactcomplabs/sst-core issue #28
+    // Temporary disable mapping for iconsole branch verification (see tactcomplabs/sst-core issue #28). Do not merge into sst-core/devel branch
     #define NOMAP SerOption::no_map 
     SST_SER(shared_array, NOMAP);
     SST_SER(shared_array_uninit, NOMAP);
