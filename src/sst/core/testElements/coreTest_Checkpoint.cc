@@ -300,12 +300,14 @@ coreTestCheckpoint::serialize_order(SST::Core::Serialization::serializer& ser)
     SST_SER(stat_rng);
     SST_SER(stat_dist);
     SST_SER(stat_null);
-    SST_SER(shared_array);
-    SST_SER(shared_array_uninit);
-    SST_SER(shared_set);
-    SST_SER(shared_set_uninit);
-    SST_SER(shared_map);
-    SST_SER(shared_map_uninit);
+    // Temporary workaround for tactcomplabs/sst-core issue #28
+    #define NOMAP SerOption::no_map 
+    SST_SER(shared_array, NOMAP);
+    SST_SER(shared_array_uninit, NOMAP);
+    SST_SER(shared_set, NOMAP);
+    SST_SER(shared_set_uninit, NOMAP);
+    SST_SER(shared_map, NOMAP);
+    SST_SER(shared_map_uninit, NOMAP);
 }
 
 
