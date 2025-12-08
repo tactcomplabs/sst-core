@@ -481,9 +481,9 @@ public:
     void signalShutdown(bool abnormal);
 
     /** Set Shutdown
-    * Called when action needs to terminate SST 
-    * sets a flag to trigger shutdown at sync, but doesn't endSim
-    */
+     * Called when action needs to terminate SST
+     * sets a flag to trigger shutdown at sync, but doesn't endSim
+     */
     void setEndSim();
 
     /** Normal Shutdown

@@ -46,8 +46,8 @@ SimpleDebugger::SimpleDebugger(Params& params) :
             [this](std::vector<std::string>& tokens) { cmd_help(tokens); } },
         { "verbose", "v", "[mask]: set verbosity mask or print if no mask specified", ConsoleCommandGroup::GENERAL,
             [this](std::vector<std::string>& tokens) { cmd_verbose(tokens); } },
-        { "info", "info", "\"current\"|\"all\" print summary for current thread or all threads", ConsoleCommandGroup::GENERAL,
-            [this](std::vector<std::string>& tokens) { cmd_info(tokens); } },
+        { "info", "info", "\"current\"|\"all\" print summary for current thread or all threads",
+            ConsoleCommandGroup::GENERAL, [this](std::vector<std::string>& tokens) { cmd_info(tokens); } },
         { "thread", "thd", "[threadID]: switch to specified thread ID", ConsoleCommandGroup::GENERAL,
             [this](std::vector<std::string>& tokens) { cmd_thread(tokens); } },
         { "confirm", "cfm", "<true/false>: set confirmation requests on (default) or off", ConsoleCommandGroup::GENERAL,
@@ -137,9 +137,9 @@ SimpleDebugger::SimpleDebugger(Params& params) :
             "\t'watch' creates a default watchpoint that breaks into an interactive console when triggered\n"
             "\t'trace' creates a watchpoint with a trace buffer to trace a set of variables and trigger an <action>\n"
             "\tAvailable actions include: \n"
-            "\t  interactive, printTrace, checkpoint, set <var> <val>, printStatus, or shutdown" 
-            "\t  Note: checkpoint action must be enabled at startup via the '--checkpoint-enable' command line option\n"
-},
+            "\t  interactive, printTrace, checkpoint, set <var> <val>, printStatus, or shutdown"
+            "\t  Note: checkpoint action must be enabled at startup via the '--checkpoint-enable' command line "
+            "option\n" },
         { "watch", "<trigger>: adds watchpoint to the watchlist; breaks into interactive console when triggered\n"
                    "\tExample: watch var1 > 90 && var2 < 100 || var3 changed" },
         { "trace",
@@ -226,7 +226,7 @@ SimpleDebugger::summary()
         << ")\n";
     std::cout << " -- Trigger Status\n";
 #endif
-    
+
     std::cout << " -- Component Summary\n";
 #if 0
     std::vector<std::string> tokens;
@@ -236,9 +236,9 @@ SimpleDebugger::summary()
     cmd_ls(tokens);
 #else
     SST::Core::Serialization::ObjectMap* baseObj = getComponentObjectMap();
-    auto& vars = baseObj->getVariables();
-    for (auto& x : vars) {
-        if (x.second->isFundamental()) {
+    auto&                                vars    = baseObj->getVariables();
+    for ( auto& x : vars ) {
+        if ( x.second->isFundamental() ) {
             std::cout << x.first << " = " << x.second->get() << " (" << x.second->getType() << ")" << std::endl;
         }
         else {
@@ -251,17 +251,18 @@ SimpleDebugger::summary()
 int
 SimpleDebugger::execute(const std::string& msg)
 {
-    RankInfo info = getRank();
+    RankInfo info   = getRank();
     RankInfo nRanks = getNumRanks();
-    printf("\n---- Rank%d:Thread%d: Entering interactive mode at time %" PRI_SIMTIME " \n", info.rank, info.thread, getCurrentSimCycle());
+    printf("\n---- Rank%d:Thread%d: Entering interactive mode at time %" PRI_SIMTIME " \n", info.rank, info.thread,
+        getCurrentSimCycle());
     printf("%s\n", msg.c_str());
 
     if ( nullptr == obj_ ) {
         obj_ = getComponentObjectMap();
     }
-    done = false;
+    done     = false;
     retState = -1;
-    
+
 
     // Select the input source and next command line
     std::string line;
@@ -532,28 +533,29 @@ SimpleDebugger::cmd_verbose(std::vector<std::string>& tokens)
 }
 
 void
-SimpleDebugger::cmd_info(std::vector<std::string>& UNUSED(tokens)) {
+SimpleDebugger::cmd_info(std::vector<std::string>& UNUSED(tokens))
+{
 
-    if (tokens.size() != 2) {
+    if ( tokens.size() != 2 ) {
         printf("Invalid format for info command (info \"current\"|\"all\")\n");
         return;
     }
 
-    RankInfo info = getRank();
+    RankInfo info   = getRank();
     RankInfo nRanks = getNumRanks();
-    if (tokens[1] == "current") {
-        std::cout << "Rank " << info.rank << "/" << nRanks.rank
-            << ", Thread " << info.thread << "/" << nRanks.thread << std::endl;
+    if ( tokens[1] == "current" ) {
+        std::cout << "Rank " << info.rank << "/" << nRanks.rank << ", Thread " << info.thread << "/" << nRanks.thread
+                  << std::endl;
     }
-    else if (tokens[1] == "all") {
-        if (nRanks.rank == 1 && nRanks.thread == 1) {
-            std::cout << "Rank " << info.rank << "/" << nRanks.rank
-                << ", Thread " << info.thread << "/" << nRanks.thread << std::endl;
+    else if ( tokens[1] == "all" ) {
+        if ( nRanks.rank == 1 && nRanks.thread == 1 ) {
+            std::cout << "Rank " << info.rank << "/" << nRanks.rank << ", Thread " << info.thread << "/"
+                      << nRanks.thread << std::endl;
         }
         else {
             // Return to syncmanager to print summary for all threads
             retState = -2; // summary info
-            done = true;
+            done     = true;
         }
     }
     else {
@@ -564,40 +566,41 @@ SimpleDebugger::cmd_info(std::vector<std::string>& UNUSED(tokens)) {
 
 // thread <threadID> : switches to new thread
 void
-SimpleDebugger::cmd_thread(std::vector<std::string>& tokens) {
+SimpleDebugger::cmd_thread(std::vector<std::string>& tokens)
+{
 
-    if (tokens.size() != 2) {
+    if ( tokens.size() != 2 ) {
         printf("Invalid format for thread command (thread <threadID>)\n");
         return;
     }
 
-    RankInfo info = getRank();
+    RankInfo info   = getRank();
     RankInfo nRanks = getNumRanks();
-    int threadID;
+    int      threadID;
 
     // Get threadID
     try {
         threadID = std::stoi(tokens[1]);
     }
-    catch (const std::invalid_argument& e) {
+    catch ( const std::invalid_argument& e ) {
         std::cout << "Invalid argument for threadID: " << tokens[1] << std::endl;
         return;
     }
-    catch (const std::out_of_range& e) {
+    catch ( const std::out_of_range& e ) {
         std::cout << "Out of range for threadID: " << tokens[1] << std::endl;
         return;
     }
 
     // Check if valid threadID
-    if (threadID < 0 || threadID >= nRanks.thread) {
-        printf("ThreadID %d out of range (0:%d)\n", threadID, nRanks.thread-1);
+    if ( threadID < 0 || threadID >= nRanks.thread ) {
+        printf("ThreadID %d out of range (0:%d)\n", threadID, nRanks.thread - 1);
         return;
     }
-    
+
     // If not current thread, set retState and done flag
-    if (threadID != info.thread) {
+    if ( threadID != info.thread ) {
         retState = threadID;
-        done = true;
+        done     = true;
     }
     return;
 }
@@ -661,7 +664,7 @@ SimpleDebugger::cmd_cd(std::vector<std::string>& tokens)
     }
 #else
     // skk This works but doesn't delete/deactivate like objmap selectParent
-    if (tokens.size() == 1) {
+    if ( tokens.size() == 1 ) {
         obj_ = getComponentObjectMap();
         return;
     }
@@ -919,20 +922,19 @@ SimpleDebugger::cmd_run(std::vector<std::string>& tokens)
             return;
         }
     }
-    else if (tokens.size() == 3) {
+    else if ( tokens.size() == 3 ) {
         std::string time = tokens[1] + tokens[2];
         try {
-            TimeConverter* tc = getTimeConverter(time);
+            TimeConverter* tc  = getTimeConverter(time);
             std::string    msg = format_string("Running clock %" PRI_SIMTIME " sim cycles", tc->getFactor());
             schedule_interactive(tc->getFactor(), msg);
         }
-        catch (std::exception& e) {
+        catch ( std::exception& e ) {
             printf("Unknown time in call to run: %s\n", time.c_str());
             return;
         }
-
     }
-    else if (tokens.size() != 1) {
+    else if ( tokens.size() != 1 ) {
         printf("Too many arguments for 'run <time>'\n");
     }
 

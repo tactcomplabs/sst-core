@@ -250,7 +250,7 @@ public:
     explicit SimpleDebugger(Params& params);
     ~SimpleDebugger();
 
-    int execute(const std::string& msg) override;
+    int  execute(const std::string& msg) override;
     void summary() override;
 
     // Callbacks from command line completions
@@ -264,8 +264,8 @@ private:
     // directory as far as we can.
     std::vector<std::string> name_stack;
 
-    SST::Core::Serialization::ObjectMap* obj_ = nullptr;
-    bool                                 done = false;
+    SST::Core::Serialization::ObjectMap* obj_     = nullptr;
+    bool                                 done     = false;
     int                                  retState = -1; // -1 done, positive number is threadID
 
     bool autoCompleteEnable = true;
@@ -299,7 +299,7 @@ private:
 
     // Navigation
     void cmd_help(std::vector<std::string>& UNUSED(tokens));
-    void cmd_verbose(std::vector<std::string>& (tokens));
+    void cmd_verbose(std::vector<std::string>&(tokens));
     void cmd_info(std::vector<std::string>& UNUSED(tokens));
     void cmd_thread(std::vector<std::string>& tokens);
     void cmd_pwd(std::vector<std::string>& UNUSED(tokens));

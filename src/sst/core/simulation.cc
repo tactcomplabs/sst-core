@@ -938,26 +938,27 @@ Simulation_impl::prepare_for_run()
 }
 
 void
-Simulation_impl::setup_interactive_mode() {
+Simulation_impl::setup_interactive_mode()
+{
 
-    
+
     // Start just with multithreading right now
-    if (num_ranks.rank == 1) { 
-        //std::cout << "skk: run: setup interactive\n";
-        if (interactive_type_ != "") {
+    if ( num_ranks.rank == 1 ) {
+        // std::cout << "skk: run: setup interactive\n";
+        if ( interactive_type_ != "" ) {
             // --interactive-console used to override default
             initialize_interactive_console(interactive_type_);
         }
-        else if ((interactive_start_ != "") || (config.sigusr1() == "sst.rt.interactive") ||
-            (config.sigusr2() == "sst.rt.interactive")) {
+        else if ( (interactive_start_ != "") || (config.sigusr1() == "sst.rt.interactive") ||
+                  (config.sigusr2() == "sst.rt.interactive") ) {
             // use default interactive console
             interactive_type_ = "sst.interactive.simpledebug";
             initialize_interactive_console(interactive_type_);
         }
 
-        if (interactive_start_ != "") {
-            //std::cout << "skk: run: interactive start\n";
-            if (nullptr == interactive_) { // Should never get here
+        if ( interactive_start_ != "" ) {
+            // std::cout << "skk: run: interactive start\n";
+            if ( nullptr == interactive_ ) { // Should never get here
                 sim_output.fatal(CALL_INFO, 1,
                     "ERROR: Specified --interactive-start, but did not specify --interactive-mode to set the "
                     "interactive action that should be used.\n");
@@ -966,24 +967,23 @@ Simulation_impl::setup_interactive_mode() {
             try {
                 UnitAlgebra time(interactive_start_);
                 printf("%s\n", time.toStringBestSI().c_str());
-                
-                if (time.isValueZero()) {
+
+                if ( time.isValueZero() ) {
                     offset = 0;
                 }
                 else {
                     TimeConverter* tc = timeLord.getTimeConverter(time);
-                    offset = tc->getFactor();
-                } 
+                    offset            = tc->getFactor();
+                }
             }
-            catch (std::exception& e) {
+            catch ( std::exception& e ) {
                 sim_output.fatal(CALL_INFO, 1, "Invalid format for time in interactive start: %s\n", e.what());
             }
 
             // Special case, invoke interactive console now rather than wait for sync
-            if (num_ranks.thread > 1 && offset == 0) {
+            if ( num_ranks.thread > 1 && offset == 0 ) {
                 enter_interactive_ = true;
                 syncManager->handleInteractiveConsole();
-
             }
             else {
                 InteractiveAction* act =
@@ -1052,10 +1052,10 @@ Simulation_impl::run()
                 real_time_->notifySignal();
             }
             // If serial execution (1 rank, 1 thread)
-            if ((num_ranks.rank == 1) && (num_ranks.thread == 1)) {
-                if (enter_interactive_) {
+            if ( (num_ranks.rank == 1) && (num_ranks.thread == 1) ) {
+                if ( enter_interactive_ ) {
                     enter_interactive_ = false;
-                    if (interactive_ != nullptr) interactive_->execute(interactive_msg_);
+                    if ( interactive_ != nullptr ) interactive_->execute(interactive_msg_);
                 }
             } // Otherwise handled in sync manager
         }
@@ -1143,7 +1143,7 @@ Simulation_impl::signalShutdown(bool abnormal)
         shutdown_mode_ = SHUTDOWN_CLEAN;
     }
 
-    if (num_ranks.rank == 1 && num_ranks.thread == 1) {
+    if ( num_ranks.rank == 1 && num_ranks.thread == 1 ) {
         // Set endsim right away if serial
         endSim = true;
     }
@@ -1151,7 +1151,6 @@ Simulation_impl::signalShutdown(bool abnormal)
         // Otherwise handle shutdown in sync
         enter_shutdown_ = true;
     }
-
 }
 
 void
@@ -2179,9 +2178,9 @@ Simulation_impl::initialize_interactive_console(const std::string& type)
 void
 Simulation_impl::scheduleInteractiveConsole(const std::string& msg)
 {
-    //std::cout << "skk: scheduleIC\n";
+    // std::cout << "skk: scheduleIC\n";
     enter_interactive_ = true;
-    interactive_msg_ = msg;
+    interactive_msg_   = msg;
 }
 
 
