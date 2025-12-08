@@ -374,13 +374,13 @@ void
 SyncManager::handleShutdown() {
 
     //ic_barrier_.wait(); // SKK This one may not be necessary...
-    if (num_ranks_.thread > 1) {
 #if 0
         // Check for shutdown
         Output& out = sim_->getSimulationOutput();
-        out.output("skk:syncmgr:execute: T%d:endSim=%d, shutdown_mode=%d\n", rank_.thread, sim_->endSim, sim_->shutdown_mode_);
+        out.output("skk:syncmgr:handleShutdown:Before T%d:endSim=%d, shutdown_mode=%d, enter_shutdown=%d, \n", 
+            rank_.thread, sim_->endSim, sim_->shutdown_mode_, sim_->enter_shutdown_);
 #endif
-        //if (sim_->endSim == true) {
+        // If my thread enter_shutdown_ is true, then set shared enter_shutdown
         if (sim_->enter_shutdown_ == true) {
             enter_shutdown_.fetch_or(true);
             endSim_.fetch_or(true);
@@ -390,9 +390,9 @@ SyncManager::handleShutdown() {
         }
         ic_barrier_.wait();
         if (endSim_ == true) {
-            sim_->signalShutdown(shutdown_mode_.load());
+            sim_->setEndSim();
+
         }
-    }
 }
 
 void
@@ -403,7 +403,7 @@ SyncManager::handleInteractiveConsole()
     // Handle interactive console
     if (num_ranks_.thread > 1) {
 
-        // 1) Check enter interactive and set mask if needed
+        // 1) Check enter interactive and set mask if needed (could use mask to show triggers)
         if (sim_->enter_interactive_ == true) {
             unsigned bit = 1UL << rank_.thread;
             enter_interactive_mask_.fetch_or(bit);
@@ -412,8 +412,11 @@ SyncManager::handleInteractiveConsole()
 
         // If enter interactive set for any thread
         unsigned ic_mask = enter_interactive_mask_.load();
-        //out.output("skk:syncmgr:execute: T%d: check enter_interactive_=%d\n", rank_.thread, sim_->enter_interactive_);
-        //out.output("skk:syncmgr:execute: T%d: enter_interactive_mask_=0x%x\n", rank_.thread, ic_mask);
+#if 0
+        Output& out = sim_->getSimulationOutput();
+        out.output("skk:syncmgr:execute: T%d: check enter_interactive_=%d\n", rank_.thread, sim_->enter_interactive_);
+        out.output("skk:syncmgr:execute: T%d: enter_interactive_mask_=0x%x\n", rank_.thread, ic_mask);
+#endif
         if (ic_mask) {
             // 2) Print list of threads and whether triggered
             for (uint32_t tindex = 0; tindex < num_ranks_.thread; tindex++) {
@@ -429,7 +432,7 @@ SyncManager::handleInteractiveConsole()
                     else {
                         std::cout << " (Not Triggered)\n";
                     }
-#if 0                       // Print component summary - will be at whatever level was last (maybe print PWD instead?)
+#if 0               // Print component summary? - will be at whatever level was last (maybe print PWD instead?)
                     if (sim_->interactive_ != nullptr) {
                         sim_->interactive_->summary();
                     }
@@ -456,13 +459,14 @@ SyncManager::handleInteractiveConsole()
 #endif
 
             // 4) Tj: Invoke IC for current thread, with ability to change to new thread
-            int tid = current_ic_thread_.load();
+            unsigned int tid = current_ic_thread_.load();
             int ic_state = 0;// interactive_state_.load();
             while (ic_state != -1) {
                 if ((rank_.thread == tid) && (sim_->interactive_ != nullptr)) {
+                    // Invoke IC for the thread
                     int result = sim_->interactive_->execute(sim_->interactive_msg_);
 
-                    if (result >= 0) { // change thread
+                    if (result >= 0) { // change thread to threadID <result>
                         current_ic_thread_.store(result);
                         current_ic_state_.store(0);
                     }
@@ -471,6 +475,7 @@ SyncManager::handleInteractiveConsole()
                     }
                 }
                 ic_barrier_.wait();
+                handleShutdown();  // Check if console issued shutdown command
                 tid = current_ic_thread_.load();
                 ic_state = current_ic_state_.load();
                 //out.output("T%d: tid %d, ic_state %d\n", rank_.thread, tid, ic_state);
@@ -611,7 +616,7 @@ SyncManager::execute()
         // Handle signals for multi-threaded runs/no MPI
         if ( num_ranks_.rank == 1 ) {
             signals_received = threadSync_->getSignals(sig_end, sig_usr, sig_alrm);
-#if 0
+#if 1
             Output& out = sim_->getSimulationOutput();
             out.output("skk:syncmgr:execute: T%d: sig_end=%d, sig_usr=%d, sig_alrm=%d, received=%d\n", 
                rank_.thread, sig_end, sig_usr, sig_alrm, signals_received);

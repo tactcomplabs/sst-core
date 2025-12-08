@@ -1142,29 +1142,23 @@ Simulation_impl::signalShutdown(bool abnormal)
     else {
         shutdown_mode_ = SHUTDOWN_CLEAN;
     }
-#if 1
-    endSim = true;
-#else
+
     if (num_ranks.rank == 1 && num_ranks.thread == 1) {
+        // Set endsim right away if serial
         endSim = true;
     }
     else {
-        // skk
+        // Otherwise handle shutdown in sync
         enter_shutdown_ = true;
     }
-#endif
+
 }
 
 void
-Simulation_impl::setShutdown(bool abnormal)
+Simulation_impl::setEndSim()
 {
-    if (abnormal) {
-        shutdown_mode_ = SHUTDOWN_SIGNAL;
-    }
-    else {
-        shutdown_mode_ = SHUTDOWN_CLEAN;
-    }
-    enter_shutdown_ = true;
+    // Called from sync
+    endSim = true;
 }
 
 // If this version is called, we need to set the end time in the exit

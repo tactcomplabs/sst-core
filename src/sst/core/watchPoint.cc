@@ -408,7 +408,9 @@ void
 WatchPoint::simulationShutdown()
 {
     //Simulation_impl::getSimulation()->signalShutdown(false);  // only works for serial mode
-    Simulation_impl::getSimulation()->setShutdown(false);
+    Simulation_impl::getSimulation()->signalShutdown(false);
+    std::cout << "wp simulation shutdown\n";
+    //Simulation_impl::getSimulation()->setShutdown(false);
 }
 
 void

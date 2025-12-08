@@ -57,6 +57,10 @@ public:
     InteractiveConsole()          = default;
     virtual ~InteractiveConsole() = default;
 
+    enum ICretcode {
+        DONE = -1,
+        SUMMARY = -2
+    };
     /** Called by TimeVortex to trigger checkpoint on simulation clock interval - not used in parallel simulation */
     virtual int execute(const std::string& msg) = 0;
     /** Called by SyncManager to get summary info for each thread */

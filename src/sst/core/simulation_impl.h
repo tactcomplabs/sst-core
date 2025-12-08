@@ -484,7 +484,7 @@ public:
     * Called when action needs to terminate SST 
     * sets a flag to trigger shutdown at sync, but doesn't endSim
     */
-    void setShutdown(bool abnormal);
+    void setEndSim();
 
     /** Normal Shutdown
      */
