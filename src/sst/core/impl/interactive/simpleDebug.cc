@@ -261,7 +261,7 @@ SimpleDebugger::execute(const std::string& msg)
         obj_ = getComponentObjectMap();
     }
     done     = false;
-    retState = -1;
+    retState = DONE;
 
 
     // Select the input source and next command line
@@ -554,7 +554,7 @@ SimpleDebugger::cmd_info(std::vector<std::string>& UNUSED(tokens))
         }
         else {
             // Return to syncmanager to print summary for all threads
-            retState = -2; // summary info
+            retState = SUMMARY; // summary info
             done     = true;
         }
     }
@@ -592,13 +592,13 @@ SimpleDebugger::cmd_thread(std::vector<std::string>& tokens)
     }
 
     // Check if valid threadID
-    if ( threadID < 0 || threadID >= nRanks.thread ) {
+    if ( threadID < 0 || threadID >= static_cast<int>(nRanks.thread) ) {
         printf("ThreadID %d out of range (0:%d)\n", threadID, nRanks.thread - 1);
         return;
     }
 
     // If not current thread, set retState and done flag
-    if ( threadID != info.thread ) {
+    if ( threadID != static_cast<int>(info.thread) ) {
         retState = threadID;
         done     = true;
     }

@@ -34,6 +34,8 @@
 
 namespace SST {
 
+class InteractiveConsole;
+
 // Static data members
 RankSync*                 SyncManager::rankSync_ = nullptr;
 Core::ThreadSafe::Barrier SyncManager::RankExecBarrier_[5];
@@ -373,15 +375,13 @@ SyncManager::exchangeLinkInfo()
 void
 SyncManager::handleShutdown()
 {
-
-    // ic_barrier_.wait(); // SKK This one may not be necessary...
 #if 0
         // Check for shutdown
         Output& out = sim_->getSimulationOutput();
         out.output("skk:syncmgr:handleShutdown:Before T%d:endSim=%d, shutdown_mode=%d, enter_shutdown=%d, \n", 
             rank_.thread, sim_->endSim, sim_->shutdown_mode_, sim_->enter_shutdown_);
 #endif
-    // If my thread enter_shutdown_ is true, then set shared enter_shutdown
+    // If my thread's enter_shutdown_ is true, then set shared enter_shutdown
     if ( sim_->enter_shutdown_ == true ) {
         enter_shutdown_.fetch_or(true);
         endSim_.fetch_or(true);
@@ -400,17 +400,18 @@ SyncManager::handleInteractiveConsole()
 {
     ic_barrier_.wait(); // SKK This one may not be necessary...
 
-    // Handle interactive console
+    // Handle interactive console for multithreaded runs
+    // Serial execution handles this in simulation run so it happens right away
     if ( num_ranks_.thread > 1 ) {
 
-        // 1) Check enter interactive and set mask if needed (could use mask to show triggers)
+        // 1) Check local enter_interactive_ and set mask if needed (could use mask to show triggers)
         if ( sim_->enter_interactive_ == true ) {
             unsigned bit = 1UL << rank_.thread;
             enter_interactive_mask_.fetch_or(bit);
         }
         ic_barrier_.wait(); // Ensure everyone has written the mask before checking
 
-        // If enter interactive set for any thread
+        // If enter interactive set for any thread, set shared ic_mask
         unsigned ic_mask = enter_interactive_mask_.load();
 #if 0
         Output& out = sim_->getSimulationOutput();
@@ -418,13 +419,13 @@ SyncManager::handleInteractiveConsole()
         out.output("skk:syncmgr:execute: T%d: enter_interactive_mask_=0x%x\n", rank_.thread, ic_mask);
 #endif
         if ( ic_mask ) {
-            // 2) Print list of threads and whether triggered
+            // 2) Print list of threads (in order) and whether triggered
             for ( uint32_t tindex = 0; tindex < num_ranks_.thread; tindex++ ) {
-                // Actually, not true, we want them to print in order
                 if ( rank_.thread == tindex ) {
                     if ( rank_.thread == 0 ) std::cout << "\nINTERACTIVE CONSOLE\n";
-                    std::cout << "  Rank:" << rank_.rank << "/" << num_ranks_.rank << " Thread:" << rank_.thread << "/"
-                              << num_ranks_.thread;
+                    std::cout << "  Rank:" << rank_.rank << "/" << num_ranks_.rank 
+                        << " Thread:" << rank_.thread << "/"
+                        << num_ranks_.thread;
                     if ( sim_->enter_interactive_ ) {
                         std::cout << " (Triggered)\n";
                     }
@@ -440,8 +441,13 @@ SyncManager::handleInteractiveConsole()
                 ic_barrier_.wait();
             }
 
-            // 3) T0: Invoke IC for T0 (or Query which thread to inspect?)
-#if 0
+            // 3) T0: Invoke IC for T0 (or Query which thread to inspect?)    
+#if 1
+            if ( rank_.thread == 0 ) {
+                current_ic_thread_.store(0);
+            }
+            ic_barrier_.wait(); // Ensure store is complete before everyone checks
+#else
             if (rank_.thread == 0) {
                 current_ic_thread_ = num_ranks_.thread;
                 std::cout << "\n---- Enter thread ID (0 to " << num_ranks_.thread - 1 << ") to inspect in interactive console or "
@@ -450,35 +456,30 @@ SyncManager::handleInteractiveConsole()
                 std::cout << "skk: set tid to " << current_ic_thread_ << std::endl;
             }
             ic_barrier_.wait();
-#else
-            if ( rank_.thread == 0 ) {
-                current_ic_thread_.store(0);
-            }
-            ic_barrier_.wait(); // Ensure store is complete before everyone checks
 #endif
-
             // 4) Tj: Invoke IC for current thread, with ability to change to new thread
             unsigned int tid      = current_ic_thread_.load();
-            int          ic_state = 0; // interactive_state_.load();
-            while ( ic_state != -1 ) {
+            int          ic_state = 0;
+            while ( ic_state != InteractiveConsole::ICretcode::DONE ) {
                 if ( (rank_.thread == tid) && (sim_->interactive_ != nullptr) ) {
-                    // Invoke IC for the thread
+                    // Invoke IC for the thread and capture return state
                     int result = sim_->interactive_->execute(sim_->interactive_msg_);
 
                     if ( result >= 0 ) { // change thread to threadID <result>
                         current_ic_thread_.store(result);
                         current_ic_state_.store(0);
                     }
-                    else { // -1 done, -2 print summary
+                    else { // DONE (-1) or Print SUMMARY (-2)
                         current_ic_state_.store(result);
                     }
                 }
                 ic_barrier_.wait();
                 handleShutdown(); // Check if console issued shutdown command
+
                 tid      = current_ic_thread_.load();
                 ic_state = current_ic_state_.load();
                 // out.output("T%d: tid %d, ic_state %d\n", rank_.thread, tid, ic_state);
-                if ( ic_state == -2 ) { // Print thread info summary
+                if ( ic_state ==  InteractiveConsole::ICretcode::SUMMARY ) { // Print thread info summary
                     for ( uint32_t tindex = 0; tindex < num_ranks_.thread; tindex++ ) {
                         if ( rank_.thread == tindex ) {
                             std::cout << "Rank:" << rank_.rank << " Thread:" << rank_.thread;
@@ -490,7 +491,7 @@ SyncManager::handleInteractiveConsole()
                         ic_barrier_.wait();
                     }
                     current_ic_state_.store(0);
-                } // if state == -2, print thread info summary
+                } // if state == SUMMARY, print thread info summary
             }
 
             // 5) When done, clear interactive mask and enter interactive flags for next round
@@ -504,8 +505,7 @@ SyncManager::handleInteractiveConsole()
             // sim_->enter_interactive_); out.output("skk:syncmgr:execute: T%d: AFter: enter_interactive_mask_=0x%x\n",
             // rank_.thread, ic_mask);
         }
-    } // end if num_ranks_.thread > 1: Handle interactive console
-      // SKK Serial execution handles this in run so it happens right away
+    } // end if num_ranks_.thread > 1: Handle interactive console  
 }
 
 void
@@ -614,7 +614,7 @@ SyncManager::execute()
         // Handle signals for multi-threaded runs/no MPI
         if ( num_ranks_.rank == 1 ) {
             signals_received = threadSync_->getSignals(sig_end, sig_usr, sig_alrm);
-#if 1
+#if 0
             Output& out = sim_->getSimulationOutput();
             out.output("skk:syncmgr:execute: T%d: sig_end=%d, sig_usr=%d, sig_alrm=%d, received=%d\n", rank_.thread,
                 sig_end, sig_usr, sig_alrm, signals_received);
@@ -627,8 +627,8 @@ SyncManager::execute()
             }
             next_checkpoint_time = checkpoint_->check(getDeliveryTime());
 
-            handleShutdown();
-            handleInteractiveConsole();
+            handleShutdown();  // Check if any thread set shutdown
+            handleInteractiveConsole();  // Check of any thread set interactive console
 
         } // if num_ranks_.rank == 1 i.e. only multithreading
 

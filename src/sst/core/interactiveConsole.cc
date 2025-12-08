@@ -100,7 +100,6 @@ InteractiveConsole::getTimeConverter(const std::string& time)
 void
 InteractiveConsole::schedule_interactive(SimTime_t time_offset, const std::string& msg)
 {
-    // std::cout << "skk: IC: schedule_interactive\n";
     Simulation_impl*   sim = Simulation_impl::getSimulation();
     InteractiveAction* act = new InteractiveAction(sim, msg);
     sim->insertActivity(getCurrentSimCycle() + time_offset, act);
@@ -118,7 +117,6 @@ InteractiveConsole::simulationShutdown()
     // Simulation_impl::getSimulation()->endSimulation();  // Only works for single thread
     std::cout << "Simulation shutdown\n";
     Simulation_impl::getSimulation()->signalShutdown(false); // Works for single thread, hangs for multithread
-    // Simulation_impl::getSimulation()->setShutdown(false);  // doesn't work for single thread - just keeps running
 }
 
 
