@@ -275,7 +275,7 @@ SimpleDebugger::execute(const std::string& msg)
             bool squashLogging = false;
 
             // User input prompt
-            std::cout << "R" << info.rank << ":T" << info.thread << "> " << std::flush;
+            // std::cout << "R" << info.rank << ":T" << info.thread << "> " << std::flush;
 
             if ( !injectedCommand.str().empty() ) {
                 // Injected commands allow sst command line options to cause actions (currently only replay)
