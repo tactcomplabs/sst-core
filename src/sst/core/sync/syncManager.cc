@@ -31,6 +31,7 @@
 #include <atomic>
 #include <cinttypes>
 #include <sys/time.h>
+#include <unistd.h>
 
 namespace SST {
 
@@ -482,7 +483,8 @@ SyncManager::handleInteractiveConsole()
                 if ( ic_state ==  InteractiveConsole::ICretcode::SUMMARY ) { // Print thread info summary
                     for ( uint32_t tindex = 0; tindex < num_ranks_.thread; tindex++ ) {
                         if ( rank_.thread == tindex ) {
-                            std::cout << "Rank:" << rank_.rank << " Thread:" << rank_.thread;
+                            std::cout << "Rank:" << rank_.rank << " Thread:" << rank_.thread
+                                << " (Process:" << getppid() << ") ";
                             // Print component summary
                             if ( sim_->interactive_ != nullptr ) {
                                 sim_->interactive_->summary();

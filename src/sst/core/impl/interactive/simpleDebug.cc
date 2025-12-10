@@ -544,13 +544,17 @@ SimpleDebugger::cmd_info(std::vector<std::string>& UNUSED(tokens))
     RankInfo info   = getRank();
     RankInfo nRanks = getNumRanks();
     if ( tokens[1] == "current" ) {
-        std::cout << "Rank " << info.rank << "/" << nRanks.rank << ", Thread " << info.thread << "/" << nRanks.thread
-                  << std::endl;
+        std::cout << "Rank " << info.rank << "/" << nRanks.rank 
+            << ", Thread " << info.thread << "/" << nRanks.thread
+            << " (Process " << getppid() << ")"
+            << std::endl;
     }
     else if ( tokens[1] == "all" ) {
         if ( nRanks.rank == 1 && nRanks.thread == 1 ) {
-            std::cout << "Rank " << info.rank << "/" << nRanks.rank << ", Thread " << info.thread << "/"
-                      << nRanks.thread << std::endl;
+            std::cout << "Rank " << info.rank << "/" << nRanks.rank 
+                << ", Thread " << info.thread << "/"<< nRanks.thread
+                << " (Process " << getppid() << ")"
+                << std::endl;
         }
         else {
             // Return to syncmanager to print summary for all threads
