@@ -167,7 +167,7 @@ ObjectMap::demangle_name(const char* name)
 std::string
 ObjectMap::listVariable(std::string name, bool& found, int recurse)
 {
-    auto& vars = getVariables();
+    // auto& vars = getVariables();
     ObjectMap* var = findVariable(name);
     if ( nullptr == var ) {
         found = false;
