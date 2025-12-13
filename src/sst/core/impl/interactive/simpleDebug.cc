@@ -28,10 +28,6 @@
 #include <unistd.h>
 #include <utility>
 
-#include "simpleDebug.h"
-
-using namespace SST::Core;
-
 namespace SST::IMPL::Interactive {
 
 SimpleDebugger::SimpleDebugger(Params& params) :

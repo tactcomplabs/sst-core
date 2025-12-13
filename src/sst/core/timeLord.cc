@@ -24,6 +24,7 @@
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>
+#include <typeinfo>
 
 namespace SST {
 
@@ -278,9 +279,7 @@ serialize_impl<TimeConverter>::operator()(TimeConverter& s, serializer& ser, ser
     case serializer::MAP:
     {
         ObjectMap* obj_map = new ObjectMapFundamental<TimeConverter>(&s);
-        if ( options & SerOption::map_read_only ) {
-            ser.mapper().setNextObjectReadOnly();
-        }
+        if ( SerOption::is_set(options, SerOption::map_read_only) ) obj_map->setReadOnly();
         ser.mapper().map_primitive(ser.getMapName(), obj_map);
         break;
     }
@@ -321,9 +320,7 @@ serialize_impl<TimeConverter*>::operator()(TimeConverter*& s, serializer& ser, s
     case serializer::MAP:
     {
         ObjectMap* obj_map = new ObjectMapFundamental<TimeConverter*>(&s);
-        if ( options & SerOption::map_read_only ) {
-            ser.mapper().setNextObjectReadOnly();
-        }
+        if ( SerOption::is_set(options, SerOption::map_read_only) ) obj_map->setReadOnly();
         ser.mapper().map_primitive(ser.getMapName(), obj_map);
         break;
     }
