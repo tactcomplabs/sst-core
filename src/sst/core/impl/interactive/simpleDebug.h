@@ -266,7 +266,7 @@ private:
 
     SST::Core::Serialization::ObjectMap* obj_     = nullptr;
     bool                                 done     = false;
-    int                                  retState = -1; // -1 done, positive number is threadID
+    int                                  retState = -1; // -1 DONE, -2 SUMAMRY, positive number is threadID
 
     bool autoCompleteEnable = true;
 

@@ -480,9 +480,8 @@ public:
      */
     void signalShutdown(bool abnormal);
 
-    /** Set Shutdown
-     * Called when action needs to terminate SST
-     * sets a flag to trigger shutdown at sync, but doesn't endSim
+    /** Set EndSim
+     * Called by SyncMgr when interactive console ready to shutdown
      */
     void setEndSim();
 

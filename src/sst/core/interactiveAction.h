@@ -77,9 +77,6 @@ public:
 private:
     Simulation_impl* sim_;
     std::string      msg_;
-    
-    // Do I need flag here for break to interactive like ckptAction?
-    // Currently using sim_->enter_interactive_
 };
 
 } // namespace SST

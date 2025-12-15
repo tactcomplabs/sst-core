@@ -156,7 +156,6 @@ public:
     void before() override {}
     void after() override {}
     void execute() override {}
-    // void bwait() override {}
     void processLinkUntimedData() override {}
     void finalizeLinkConfigurations() override {}
     void prepareForComplete() override {}
@@ -575,13 +574,7 @@ SyncManager::execute()
 
 
 #if 1
-        // SKK Hmmm, should interactive check be before checkpoint in case it want to generate checkpoint?
-        // No it should have already scheduled the checkpoint when the watchpoint was hit
-
-        // Handle interactive console - Not even testable yet...
-        // SKK If we had an interactive_action, we could call check()
-        // interactive_action_->check(getDeliveryTime());
-        // Need barrier here
+        // Handle interactive console
         if ( rank_.thread == 0 ) {
             // std::cout << "skk: syncmgr rank: t0: interactive execute\n";
             if ( sim_->enter_interactive_ == true ) {
