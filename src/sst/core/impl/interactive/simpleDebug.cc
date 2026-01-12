@@ -30,6 +30,14 @@
 
 namespace SST::IMPL::Interactive {
 
+// Static Initialization
+bool          SimpleDebugger::autoCompleteEnable = true;
+std::ofstream SimpleDebugger::loggingFile; 
+std::ifstream SimpleDebugger::replayFile;
+std::string   SimpleDebugger::loggingFilePath = "sst-console.out";
+std::string   SimpleDebugger::replayFilePath = "sst-console.in";
+bool          SimpleDebugger::enLogging = false;
+bool          SimpleDebugger::confirm = true;
 SimpleDebugger::SimpleDebugger(Params& params) :
     InteractiveConsole()
 {
@@ -240,6 +248,7 @@ SimpleDebugger::summary()
             std::cout << x.first.c_str() << "/ (" << x.second->getType() << ")\n";
         }
     }
+    std::cout << std::endl;
 #endif
 }
 
@@ -1255,8 +1264,9 @@ getLogicOpFromString(const std::string& opStr)
 bool
 SimpleDebugger::cmd_watchlist(std::vector<std::string>& UNUSED(tokens))
 {
+    RankInfo info = getRank();
     // Print the watch points
-    printf("Current watch points:\n");
+    printf("R%d,T%d: Current watch points:\n", info.rank, info.thread);
     int count = 0;
     for ( auto& x : watch_points_ ) {
         // printf("  %d - %s\n", count++, x.first->getName().c_str());

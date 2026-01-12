@@ -270,17 +270,17 @@ private:
     void save_name_stack();
     void cd_name_stack();
 
-    bool autoCompleteEnable = true;
+    static bool autoCompleteEnable; //skk = true;
 
     // gdb/lldb thread spin support
     uint64_t spinner = 1;
 
     // logging support
-    std::ofstream loggingFile;
-    std::ifstream replayFile;
-    std::string   loggingFilePath = "sst-console.out";
-    std::string   replayFilePath  = "sst-console.in";
-    bool          enLogging       = false;
+    static std::ofstream loggingFile;
+    static std::ifstream replayFile;
+    static std::string   loggingFilePath; //skk = "sst-console.out";
+    static std::string   replayFilePath; //skk = "sst-console.in";
+    static bool          enLogging; //skk = false;
 
     // command injection (for sst --replay option)
     std::stringstream injectedCommand;
@@ -295,7 +295,7 @@ private:
     // Keep track of all the WatchPoints
     std::vector<std::pair<WatchPoint*, BaseComponent*>> watch_points_;
     bool                                                clear_watchlist();
-    bool                                                confirm = true; // Ask for confirmation to clear watchlist
+    static bool                                         confirm;//skk = true; // Ask for confirmation to clear watchlist
 
     std::vector<std::string> tokenize(std::vector<std::string>& tokens, const std::string& input);
 
