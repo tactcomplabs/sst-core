@@ -18,15 +18,20 @@
 #include "sst/core/serialization/objectMapDeferred.h"
 #include "sst/core/watchPoint.h"
 
+#include <atomic>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <fstream>
 #include <functional>
+#include <iostream>
 #include <list>
 #include <map>
 #include <ostream>
+#include <queue>
 #include <sstream>
+#include <stack>
 #include <string>
 #include <utility>
 #include <vector>
