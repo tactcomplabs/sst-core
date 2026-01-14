@@ -243,6 +243,10 @@ private:
     // Verbosity controlled console printing
     uint32_t verbosity = 0;
     void     msg(VERBOSITY_MASK mask, std::string message);
+
+    // Parse arguments in command
+    bool    containsArg(const std::string tok, const char arg);
+    size_t  containsArg(const std::vector<std::string> tokens, const std::string& arg );
 };
 
 } // namespace SST::IMPL::Interactive

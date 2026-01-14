@@ -554,19 +554,22 @@ SimpleDebugger::cmd_print(std::vector<std::string>& tokens)
     size_t var_index = 1;
 
     if ( tokens.size() < 2 ) {
-        printf("Invalid format for print command (print [-rN] [<obj>])\n");
+        printf("Invalid formatz for print command (print [-rN] [<obj>])\n");
         return false;
     }
 
     // See if have a -r or not
     int         recurse = 0;
     std::string tok     = tokens[1];
-    if ( tok.size() >= 2 && tok[0] == '-' && tok[1] == 'r' ) {
+    size_t pos = containsArg(tokens, "-r");
+    if ( tok.size() >= 2 && (std::string::npos != pos) ){
         // Got a -r
-        std::string num = tok.substr(2);
+        std::string num = tokens[pos+1];
+        printf("num = %s, size = %zu\n", num.c_str(), num.size());
         if ( num.size() != 0 ) {
             try {
                 recurse = SST::Core::from_string<int>(num);
+                printf("recurse set to = %d\n", recurse);
             }
             catch ( const std::invalid_argument& e ) {
                 printf("Invalid number format specified with -r: %s\n", tok.c_str());
@@ -577,7 +580,7 @@ SimpleDebugger::cmd_print(std::vector<std::string>& tokens)
             recurse = 4; // default -r depth
         }
 
-        var_index = 2;
+        var_index = pos+=2;
     }
 
     if ( tokens.size() == var_index ) {
@@ -587,7 +590,7 @@ SimpleDebugger::cmd_print(std::vector<std::string>& tokens)
     }
 
     if ( tokens.size() != (var_index + 1) ) {
-        printf("Invalid format for print command (print [-rN] [<obj>])\n");
+        printf("Invalid formaty for print command (print [-rN] [<obj>])\n");
         return false;
     }
 
@@ -603,6 +606,28 @@ SimpleDebugger::cmd_print(std::vector<std::string>& tokens)
     }
     return true;
 }
+
+bool
+SimpleDebugger::containsArg(const std::string tok, const char arg ){
+     for (size_t i = 0; i + 1 < tok.size(); ++i) {
+        if ((tok[i] == '-' && tok[i + 1] == arg) ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+size_t
+SimpleDebugger::containsArg(const std::vector<std::string> tokens, const std::string& arg ){
+    for (size_t i = 0; i < tokens.size(); ++i) {
+        printf("tok = %s\n", tokens[i].c_str());
+        if(tokens[i] == arg){
+            return i;
+        }
+    }
+    return std::string::npos;
+}
+
 
 // set <obj> <value>: set object to value
 bool
