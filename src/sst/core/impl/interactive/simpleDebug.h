@@ -84,10 +84,10 @@ public:
         group_(ConsoleCommandGroup::USER)
     {}
     ConsoleCommand() {}; // default constructor
-    const std::string& str_long() const { return str_long_; }
-    const std::string& str_short() const { return str_short_; }
-    const std::string& str_help() const { return str_help_; }
-    void               setUserHelp(std::string& help) { str_help_ = help; }
+    const std::string&         str_long() const { return str_long_; }
+    const std::string&         str_short() const { return str_short_; }
+    const std::string&         str_help() const { return str_help_; }
+    void                       setUserHelp(std::string& help) { str_help_ = help; }
     const ConsoleCommandGroup& group() const { return group_; }
     // Command Execution
     bool                       exec(std::vector<std::string>& tokens) { return func_(tokens); }
@@ -275,7 +275,7 @@ private:
     void save_name_stack();
     void cd_name_stack();
 
-    static bool autoCompleteEnable; //skk = true;
+    static bool autoCompleteEnable; // skk = true;
 
     // gdb/lldb thread spin support
     uint64_t spinner = 1;
@@ -283,9 +283,9 @@ private:
     // logging support
     static std::ofstream loggingFile;
     static std::ifstream replayFile;
-    static std::string   loggingFilePath; //skk = "sst-console.out";
-    static std::string   replayFilePath; //skk = "sst-console.in";
-    static bool          enLogging; //skk = false;
+    static std::string   loggingFilePath; // skk = "sst-console.out";
+    static std::string   replayFilePath;  // skk = "sst-console.in";
+    static bool          enLogging;       // skk = false;
 
     // command injection (for sst --replay option)
     std::stringstream injectedCommand;
@@ -300,7 +300,7 @@ private:
     // Keep track of all the WatchPoints
     std::vector<std::pair<WatchPoint*, BaseComponent*>> watch_points_;
     bool                                                clear_watchlist();
-    static bool                                         confirm;//skk = true; // Ask for confirmation to clear watchlist
+    static bool confirm; // skk = true; // Ask for confirmation to clear watchlist
 
     std::vector<std::string> tokenize(std::vector<std::string>& tokens, const std::string& input);
 

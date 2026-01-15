@@ -32,12 +32,12 @@ namespace SST::IMPL::Interactive {
 
 // Static Initialization
 bool          SimpleDebugger::autoCompleteEnable = true;
-std::ofstream SimpleDebugger::loggingFile; 
+std::ofstream SimpleDebugger::loggingFile;
 std::ifstream SimpleDebugger::replayFile;
 std::string   SimpleDebugger::loggingFilePath = "sst-console.out";
-std::string   SimpleDebugger::replayFilePath = "sst-console.in";
-bool          SimpleDebugger::enLogging = false;
-bool          SimpleDebugger::confirm = true;
+std::string   SimpleDebugger::replayFilePath  = "sst-console.in";
+bool          SimpleDebugger::enLogging       = false;
+bool          SimpleDebugger::confirm         = true;
 SimpleDebugger::SimpleDebugger(Params& params) :
     InteractiveConsole()
 {
@@ -267,7 +267,7 @@ SimpleDebugger::execute(const std::string& msg)
     // Descend into the name_stack
     cd_name_stack();
 
-    done = false;
+    done     = false;
     retState = DONE;
 
     // Select the input source and next command line
@@ -788,29 +788,30 @@ SimpleDebugger::cmd_print(std::vector<std::string>& tokens)
     int         recurse = 4; // default -r depth
     std::string tok     = tokens[1];
     if ( (tok.size() >= 2) && (tok[0] == '-') && (tok[1] == 'r') ) {
-      // Got a -r
-      std::string num = tok.substr(2);
-      if ( num.size() != 0 ) {
-	try {
-	  recurse = SST::Core::from_string<int>(num);
-	}
-	catch ( const std::invalid_argument& e ) {
-	  printf("Invalid number format specified with -r: %s\n", tok.c_str());
-	  return false;
-	}
-      } else {
-	std::string num = tok.substr(2);
-	if ( num.size() != 0 ) {
-	  try {
-	    recurse = SST::Core::from_string<int>(num);
-	  }
-	  catch ( std::invalid_argument& e ) {
-	    printf("Invalid number format specified with -r: %s\n", tok.c_str());
-	    return false;
-	  }
-	}
-      }
-      var_index = 2;
+        // Got a -r
+        std::string num = tok.substr(2);
+        if ( num.size() != 0 ) {
+            try {
+                recurse = SST::Core::from_string<int>(num);
+            }
+            catch ( const std::invalid_argument& e ) {
+                printf("Invalid number format specified with -r: %s\n", tok.c_str());
+                return false;
+            }
+        }
+        else {
+            std::string num = tok.substr(2);
+            if ( num.size() != 0 ) {
+                try {
+                    recurse = SST::Core::from_string<int>(num);
+                }
+                catch ( std::invalid_argument& e ) {
+                    printf("Invalid number format specified with -r: %s\n", tok.c_str());
+                    return false;
+                }
+            }
+        }
+        var_index = 2;
     }
 
     if ( tokens.size() == var_index ) {
@@ -1306,8 +1307,7 @@ SimpleDebugger::cmd_define(std::vector<std::string>& UNUSED(tokens))
     }
 
     // Create a user command entry (or clear existing one)
-    if ( cmdRegistry.beginUserCommand(tokens[1]) )
-        line_entry_mode = LINE_ENTRY_MODE::DEFINE;
+    if ( cmdRegistry.beginUserCommand(tokens[1]) ) line_entry_mode = LINE_ENTRY_MODE::DEFINE;
 
     return true;
 }
@@ -1319,8 +1319,7 @@ SimpleDebugger::cmd_document(std::vector<std::string>& tokens)
         std::cout << "Invalid\nsyntax: document <cmd_name>" << std::endl;
         return false;
     }
-    if ( cmdRegistry.beginDocCommand(tokens[1]) ) 
-        line_entry_mode = LINE_ENTRY_MODE::DOCUMENT;
+    if ( cmdRegistry.beginDocCommand(tokens[1]) ) line_entry_mode = LINE_ENTRY_MODE::DOCUMENT;
 
     return true;
 }
