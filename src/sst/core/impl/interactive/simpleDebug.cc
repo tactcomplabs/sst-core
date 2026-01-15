@@ -554,25 +554,22 @@ SimpleDebugger::cmd_print(std::vector<std::string>& tokens)
     size_t var_index = 1;
 
     if ( tokens.size() < 2 ) {
-        printf("Invalid formatz for print command (print [-rN] [<obj>])\n");
+        printf("Invalid format for print command (print [-rN] [<obj>])\n");
         return false;
     }
 
     // See if have a -r or not
-    int         recurse = 0;
-    std::string tok     = tokens[1];
+    int    recurse = 0;
     size_t pos = containsArg(tokens, "-r");
-    if ( tok.size() >= 2 && (std::string::npos != pos) ){
+    if ( std::string::npos != pos ){
         // Got a -r
         std::string num = tokens[pos+1];
-        printf("num = %s, size = %zu\n", num.c_str(), num.size());
         if ( num.size() != 0 ) {
             try {
                 recurse = SST::Core::from_string<int>(num);
-                printf("recurse set to = %d\n", recurse);
             }
             catch ( const std::invalid_argument& e ) {
-                printf("Invalid number format specified with -r: %s\n", tok.c_str());
+                printf("Invalid number format specified with -r: %s\n", num.c_str());
                 return false;
             }
         }
@@ -580,17 +577,37 @@ SimpleDebugger::cmd_print(std::vector<std::string>& tokens)
             recurse = 4; // default -r depth
         }
 
-        var_index = pos+=2;
+        var_index = (pos + 2 > var_index) ? pos+=2 : var_index;
+    }
+
+    //check for format specifier 
+    pos = containsArg(tokens, "-f");
+    std::string fmt = "dec";
+    if(std::string::npos != pos){
+        //found format specifier 
+        fmt = tokens[pos+1];
+
+        if("hex" == fmt){
+
+        }else if("oct" == fmt){
+
+        }else if("bin" == fmt){
+
+        }else{
+            //decimal it is...
+        }
+
+        var_index = (pos + 2 > var_index) ? pos+=2 : var_index;
     }
 
     if ( tokens.size() == var_index ) {
         // Print current object
-        obj_->list(recurse);
+        obj_->list(recurse, fmt);
         return true;
     }
 
     if ( tokens.size() != (var_index + 1) ) {
-        printf("Invalid formaty for print command (print [-rN] [<obj>])\n");
+        printf("Invalid format for print command (print [-rN] [<obj>])\n");
         return false;
     }
 

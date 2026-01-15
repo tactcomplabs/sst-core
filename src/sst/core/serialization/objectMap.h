@@ -538,7 +538,7 @@ public:
        @return String representing this object and any children
        included based on the value of recurse
      */
-    virtual std::string list(int recurse = 0);
+    virtual std::string list(int recurse = 0, const std::string& fmt = "dec");
 
     /**
        Find a variable in this object map
@@ -596,7 +596,7 @@ private:
 
        @param recurse Number of levels deep to recurse
     */
-    std::string listRecursive(const std::string& name, int level, int recurse);
+    std::string listRecursive(const std::string& name, int level, int recurse, const std::string& fmt = "dec");
 }; // class ObjectMap
 
 /**

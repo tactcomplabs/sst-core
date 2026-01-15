@@ -173,8 +173,22 @@ to_string(const T& input)
     }
     else if constexpr ( std::is_same_v<T, bool> )
         return input ? "true" : "false";
-    else if constexpr ( std::is_arithmetic_v<T> )
-        return std::to_string(input);
+    else if constexpr ( std::is_arithmetic_v<T> ){
+        std::ostringstream s;
+        unsigned base = 16;
+        switch(base){
+            case 16:
+                s << std::hex << input; break;
+            case 10:
+                s << std::dec << input; break;
+            case 8:
+                s << std::oct << input; break;
+            default:
+                s << input;
+        }
+        return s.str();
+        //return std::to_string(input);
+    }
     else
         return typeid(T).name(); // For now, return a string if the type isn't handled elsewhere
 }

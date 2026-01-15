@@ -189,14 +189,14 @@ ObjectMap::listVariable(std::string name, bool& found, int recurse)
 }
 
 std::string
-ObjectMap::list(int recurse)
+ObjectMap::list(int recurse, const std::string& fmt)
 {
-    return listRecursive(mdata_->name, 0, recurse);
+    return listRecursive(mdata_->name, 0, recurse, fmt);
 }
 
 // Private functions
 std::string
-ObjectMap::listRecursive(const std::string& name, int level, int recurse)
+ObjectMap::listRecursive(const std::string& name, int level, int recurse, const std::string& fmt )
 {
     std::string ret;
     std::string indent = std::string(level, ' ');
