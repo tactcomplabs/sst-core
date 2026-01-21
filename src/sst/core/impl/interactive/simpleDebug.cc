@@ -554,7 +554,7 @@ SimpleDebugger::cmd_print(std::vector<std::string>& tokens)
     size_t var_index = 1;
 
     if ( tokens.size() < 2 ) {
-        printf("Invalid format for print command (print [-rN] [<obj>])\n");
+        printf("Invalid format for print command (print [-r N] [-f <base>] [<obj>])\n");
         return false;
     }
 
@@ -578,6 +578,7 @@ SimpleDebugger::cmd_print(std::vector<std::string>& tokens)
         }
 
         var_index = (pos + 2 > var_index) ? pos+=2 : var_index;
+        printf("var_index = %d. size = %d\n", var_index, tokens.size());
     }
 
     //check for format specifier 
@@ -588,26 +589,25 @@ SimpleDebugger::cmd_print(std::vector<std::string>& tokens)
         fmt = tokens[pos+1];
 
         if("hex" == fmt){
-
+            SST::Core::string_flags.base = std::ios_base::hex;
         }else if("oct" == fmt){
-
-        }else if("bin" == fmt){
-
+            SST::Core::string_flags.base = std::ios_base::oct;
         }else{
-            //decimal it is...
+            SST::Core::string_flags.base = std::ios_base::dec;
         }
 
         var_index = (pos + 2 > var_index) ? pos+=2 : var_index;
+        printf("var_index = %d. size = %d\n", var_index, tokens.size());
     }
 
     if ( tokens.size() == var_index ) {
         // Print current object
-        obj_->list(recurse, fmt);
+        obj_->list(recurse);
         return true;
     }
 
     if ( tokens.size() != (var_index + 1) ) {
-        printf("Invalid format for print command (print [-rN] [<obj>])\n");
+        printf("Invalid format for print command (print [-r N] [-f <base>] [<obj>])\n");
         return false;
     }
 

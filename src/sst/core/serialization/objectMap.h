@@ -227,6 +227,8 @@ protected:
      */
     virtual void deactivate_callback() {}
 
+    virtual void* getActualAddr() {return nullptr;}
+
 private:
     /**
        Reference counter so the object knows when to delete itself.
@@ -538,7 +540,7 @@ public:
        @return String representing this object and any children
        included based on the value of recurse
      */
-    virtual std::string list(int recurse = 0, const std::string& fmt = "dec");
+    virtual std::string list(int recurse = 0 );
 
     /**
        Find a variable in this object map
@@ -596,7 +598,7 @@ private:
 
        @param recurse Number of levels deep to recurse
     */
-    std::string listRecursive(const std::string& name, int level, int recurse, const std::string& fmt = "dec");
+    std::string listRecursive(const std::string& name, int level, int recurse);
 }; // class ObjectMap
 
 /**
@@ -1282,6 +1284,8 @@ public:
      */
     void* getAddr() const override { return addr_; }
 
+    void* getActualAddr() override { return addr_; }
+
     explicit ObjectMapFundamental(REF* addr) :
         addr_(addr)
     {}
@@ -1336,6 +1340,9 @@ public:
         // Create ObjectMapComparison_var which compares two variables
         // Only support arithmetic types for now
         if constexpr ( std::is_arithmetic_v<T> ) {
+                return new ObjectMapComparison_var<REF, T>(
+                    name, addr_, op, name2, static_cast<T*>(var2->getAddr()));
+        }/*
             if ( type == "int" ) {
                 return new ObjectMapComparison_var<REF, int>(
                     name, addr_, op, name2, static_cast<int*>(var2->getAddr()));
@@ -1396,7 +1403,7 @@ public:
                 return new ObjectMapComparison_var<REF, long double>(
                     name, addr_, op, name2, static_cast<long double*>(var2->getAddr()));
             }
-        } // end if first var is arithmetic
+        } // end if first var is arithmetic*/
 
         std::cout << "Invalid type for comparison: " << name2 << "(" << type << ")\n";
         return nullptr;

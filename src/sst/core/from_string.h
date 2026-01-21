@@ -27,6 +27,19 @@
 
 namespace SST::Core {
 
+struct string_flags_t {
+    std::ios_base::fmtflags base = std::ios_base::dec;
+};
+
+inline thread_local string_flags_t string_flags;
+
+// Helper trait to detect tuple types
+template<typename T>
+struct is_tuple : std::false_type {};
+
+template<typename... Args>
+struct is_tuple<std::tuple<Args...>> : std::true_type {};
+
 template <class T>
 std::enable_if_t<std::is_integral_v<T>, T>
 from_string(const std::string& input)
@@ -165,7 +178,7 @@ to_string(const T& input)
     if constexpr ( std::is_floating_point_v<T> ) {
         std::ostringstream s;
         T                  abs_val = input < 0 ? -input : input;
-        if ( abs_val > (T)10e6 || abs_val < (T)10e-6 )
+        if ( abs_val > (T)1e6 || abs_val < (T)1e-6 )
             s << std::scientific << std::setprecision(std::numeric_limits<double>::max_digits10) << input;
         else
             s << std::fixed << std::setprecision(std::numeric_limits<double>::max_digits10) << input;
@@ -174,20 +187,21 @@ to_string(const T& input)
     else if constexpr ( std::is_same_v<T, bool> )
         return input ? "true" : "false";
     else if constexpr ( std::is_arithmetic_v<T> ){
-        std::ostringstream s;
-        unsigned base = 16;
-        switch(base){
-            case 16:
-                s << std::hex << input; break;
-            case 10:
-                s << std::dec << input; break;
-            case 8:
-                s << std::oct << input; break;
-            default:
-                s << input;
-        }
-        return s.str();
-        //return std::to_string(input);
+       std::ostringstream s;
+       switch (string_flags.base){
+       case std::ios_base::hex:
+            s << std::hex << input; break;
+        case std::ios_base::oct:
+            s << std::oct << input; break;
+        default:
+            s << std::dec << input; break;
+       }
+       return s.str();
+      //  return std::to_string(input);
+    }
+    else if constexpr ( is_tuple<std::decay_t<T>>::value ){
+        printf("Found a tuple\n");
+        return typeid(T).name(); // For now, return a string if the type isn't handled elsewhere
     }
     else
         return typeid(T).name(); // For now, return a string if the type isn't handled elsewhere
