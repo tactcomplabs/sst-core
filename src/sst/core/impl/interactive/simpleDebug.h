@@ -17,6 +17,7 @@
 #include "sst/core/interactiveConsole.h"
 #include "sst/core/serialization/objectMapDeferred.h"
 #include "sst/core/watchPoint.h"
+#include "sst/core/impl/interactive/ObjTree.h"
 
 #include <cstddef>
 #include <cstdint>
