@@ -197,6 +197,8 @@ SimpleDebugger::execute(const std::string& msg)
     // Create a new ObjectMap
     obj_ = getComponentObjectMap();
 
+   // getComponentInfoMap()
+
     // Descend into the name_stack
     cd_name_stack();
 

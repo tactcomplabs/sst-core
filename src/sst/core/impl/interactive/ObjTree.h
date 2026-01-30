@@ -65,6 +65,7 @@ namespace SST::Core::Serialization {
     class ObjTree : public ObjTreeCont
     {
         public:
+        ObjTree() = default;
         ObjTree(const ComponentInfoMap* compMap);
 
         Obj_T& getObj(){ return static_cast<Obj_T&>(*this);}
@@ -90,7 +91,7 @@ namespace SST::Core::Serialization {
         }
 
         protected:
-        std::multimap<std::string, ComponentObj> objects_;
+        std::multimap<std::string, ObjTreeCont> objects_;
 
     };
 
@@ -159,22 +160,22 @@ namespace SST::Core::Serialization {
     {
         
         private:
-        std::shared_ptr<SST::BaseComponent> val_ = nullptr;
+        BaseComponent* val_ = nullptr;
 
         public:
-        ComponentObj() = delete;
-        ComponentObj(std::shared_ptr<BaseComponent> v) : val_(std::move(v)) {}
+        ComponentObj() = default;
+        ComponentObj(BaseComponent* v) : val_(v) {}
 
-        BaseComponent* getVal() const{ return val_.get(); }
+        BaseComponent* getVal() const{ return val_; }
 
-        //void setVal(BaseComponent* v){ }
+        void setVal(BaseComponent* v){ }
 
         void apply() override {
             std::cout << "Processing component: " << val_->getName() << std::endl;
         }
     };
 
-        template<typename Obj_T>
+    template<typename Obj_T>
     ObjTree<Obj_T>::ObjTree(const ComponentInfoMap* compMap){
         for ( auto comp = compMap->begin(); comp != compMap->end(); comp++ ) {
         ComponentInfo* compinfo = *comp;
