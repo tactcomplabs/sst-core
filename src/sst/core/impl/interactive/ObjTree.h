@@ -4,6 +4,7 @@
 #include "sst/core/from_string.h"
 #include "sst/core/warnmacros.h"
 #include "sst/core/componentInfo.h"
+#include "sst/core/baseComponent.h"
 
 #include <cassert>
 #include <cctype>
@@ -154,17 +155,19 @@ namespace SST::Core::Serialization {
         }
     };
 
-        class ComponentObj : public ObjTree<ComponentObj> {
+    class ComponentObj : public ObjTree<ComponentObj> 
+    {
         
         private:
-        SST::BaseComponent* val_;
+        std::shared_ptr<SST::BaseComponent> val_ = nullptr;
 
         public:
-        ComponentObj(BaseComponent* v) { val_ = v;}
+        ComponentObj() = delete;
+        ComponentObj(std::shared_ptr<BaseComponent> v) : val_(std::move(v)) {}
 
-        BaseComponent* getVal() const{ return val_; }
+        BaseComponent* getVal() const{ return val_.get(); }
 
-        void setVal(BaseComponent* v){ val_ = v;}
+        //void setVal(BaseComponent* v){ }
 
         void apply() override {
             std::cout << "Processing component: " << val_->getName() << std::endl;
