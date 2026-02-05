@@ -27,6 +27,7 @@
 #include <utility>
 #include <vector>
 #include <any>
+#include <unordered_set>
 
 namespace SST::Core::Serialization {
 
@@ -60,13 +61,12 @@ namespace SST::Core::Serialization {
 
     };
 
-    class ComponentObj;
     template<typename Obj_T>
     class ObjTree : public ObjTreeCont
     {
         public:
         ObjTree() = default;
-        ObjTree(const ComponentInfoMap* compMap);
+        void BuildTree(const ComponentInfoMap& compMap);
 
         Obj_T& getObj(){ return static_cast<Obj_T&>(*this);}
         const Obj_T& getObj() const { return static_cast<const Obj_T&>(*this);}
@@ -91,7 +91,7 @@ namespace SST::Core::Serialization {
         }
 
         protected:
-        std::multimap<std::string, ObjTreeCont> objects_;
+        std::vector<std::unique_ptr<ObjTreeCont>> objects_;
 
     };
 
@@ -176,10 +176,11 @@ namespace SST::Core::Serialization {
     };
 
     template<typename Obj_T>
-    ObjTree<Obj_T>::ObjTree(const ComponentInfoMap* compMap){
-        for ( auto comp = compMap->begin(); comp != compMap->end(); comp++ ) {
+    void ObjTree<Obj_T>::BuildTree(const ComponentInfoMap& compMap){
+        for ( auto comp = compMap.begin(); comp != compMap.end(); comp++ ) {
         ComponentInfo* compinfo = *comp;
-        objects_.emplace(compinfo->getName(), ComponentObj(compinfo->getComponent()));
+        BaseComponent* c = compinfo->getComponent();
+        objects_.push_back(std::make_unique<ComponentObj>(c));
         }
     }
 

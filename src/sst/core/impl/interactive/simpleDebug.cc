@@ -180,12 +180,15 @@ SimpleDebugger::SimpleDebugger(Params& params) :
 
     // Callback for directory listing strings
     cmdLineEditor.set_listing_callback([this](std::list<std::string>& vec) { get_listing_strings(vec); });
+
+    objTree_ = new SST::Core::Serialization::ComponentObj();
 }
 
 SimpleDebugger::~SimpleDebugger()
 {
     if ( loggingFile.is_open() ) loggingFile.close();
     if ( replayFile.is_open() ) replayFile.close();
+    if ( objTree_ ) delete objTree_;
 }
 
 void
@@ -197,7 +200,7 @@ SimpleDebugger::execute(const std::string& msg)
     // Create a new ObjectMap
     obj_ = getComponentObjectMap();
 
-   // getComponentInfoMap()
+   objTree_->BuildTree(getComponentInfoMap());
 
     // Descend into the name_stack
     cd_name_stack();
