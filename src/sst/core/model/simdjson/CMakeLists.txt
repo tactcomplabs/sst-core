@@ -1,0 +1,26 @@
+# ~~~
+# SST-CORE src/sst/core/model/simdjson CMake
+#
+# Copyright 2009-2025 NTESS. Under the terms
+# of Contract DE-NA0003525 with NTESS, the U.S.
+# Government retains certain rights in this software.
+#
+# Copyright (c) 2009-2025, NTESS
+# All rights reserved.
+#
+# This file is part of the SST software package. For license
+# information, see the LICENSE file in the top level directory of the
+# distribution.
+# ~~~
+#
+
+add_library(modelsimdjson OBJECT simdjsonmodel.cc)
+
+target_include_directories(modelsimdjson PUBLIC ${SST_TOP_SRC_DIR}/src/)
+target_link_libraries(modelsimdjson PRIVATE sst-config-headers simdjson)
+
+if(MPI_FOUND)
+  target_link_libraries(modelsimdjson PRIVATE MPI::MPI_CXX)
+endif(MPI_FOUND)
+
+# EOF

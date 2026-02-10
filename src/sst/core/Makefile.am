@@ -342,6 +342,7 @@ sstinfo_x_LDFLAGS = \
 
 include ../../../external/tinyxml/Makefile.inc
 include ../../../external/nlohmann/Makefile.inc
+include ../../../external/simdjson/Makefile.inc
 include model/Makefile.inc
 include shared/Makefile.inc
 include impl/Makefile.inc
@@ -359,6 +360,7 @@ sst_core_sources += $(sst_core_python_sources)
 nobase_dist_sst_HEADERS += $(sst_core_python_headers)
 
 sst_core_sources += $(sst_core_json_sources)
+sst_core_sources += $(sst_core_simdjson_sources)
 
 if !SST_COMPILE_OSX
 sstsim_x_LDADD += -lrt

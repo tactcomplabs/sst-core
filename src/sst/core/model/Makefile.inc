@@ -58,5 +58,9 @@ sst_core_json_sources = \
   model/json/jsonmodel.h \
   model/json/jsonmodel.cc
 
+sst_core_simdjson_sources = \
+  model/simdjson/simdjsonmodel.h \
+  model/simdjson/simdjsonmodel.cc
+
 libexec_SCRIPTS = model/xmlToPython.py
 EXTRA_DIST += model/xmlToPython.py
