@@ -184,6 +184,15 @@ SSTSIMDJSONModelDefinition::parseStatOptions(dom::element& document)
     auto stat_opt = document["statistics_options"];
     if ( stat_opt.error() != NO_SUCH_FIELD ) {
         for ( auto [key, value] : document["statistics_options"].get_object() ) {
+            if ( value.is_null() ) {
+                output->fatal(
+                    CALL_INFO, 1, "Error discovering value for statistics_options key: %s\n", std::string(key).c_str());
+            }
+            else if ( std::string(value.get_string().value()).length() == 0 ) {
+                output->fatal(
+                    CALL_INFO, 1, "Error discovering value for statistics_options key: %s\n", std::string(key).c_str());
+            }
+
             if ( std::string(key) == "statisticLoadLevel" ) {
                 graph->setStatisticLoadLevel((int)(value.get_int64()));
             }
