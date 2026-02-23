@@ -200,7 +200,12 @@ SimpleDebugger::execute(const std::string& msg)
     // Create a new ObjectMap
     obj_ = getComponentObjectMap();
 
-   objTree_->BuildTree(getComponentInfoMap());
+    if(objTree_->isEmpty()){
+        objTree_->BuildTree(getComponentInfoMap());
+        curObj_ = objTree_;
+    }
+
+    
 
     // Descend into the name_stack
     cd_name_stack();
@@ -465,7 +470,7 @@ SimpleDebugger::cmd_pwd(std::vector<std::string>& UNUSED(tokens))
 bool
 SimpleDebugger::cmd_ls(std::vector<std::string>& UNUSED(tokens))
 {
-    auto& vars = obj_->getVariables();
+    /*auto& vars = obj_->getVariables();
     for ( auto& x : vars ) {
         if ( x.second->isFundamental() ) {
             std::cout << x.first << " = " << x.second->get() << " (" << x.second->getType() << ")" << std::endl;
@@ -473,7 +478,24 @@ SimpleDebugger::cmd_ls(std::vector<std::string>& UNUSED(tokens))
         else {
             std::cout << x.first.c_str() << "/ (" << x.second->getType() << ")\n";
         }
+    }*/
+
+    // Dump all the components
+    curObj_->applyRecursive([] (SST::Core::Serialization::ObjTreeCont* child) {
+        child->Dump(0);
+    });
+
+    //are we in a leaf node?
+    if( curObj_->getChildren().empty()){
+        Core::Serialization::ObjectMapToTree::addChildrenFromMap(curObj_, obj_->getVariables());
+        //auto tmpTree = Core::Serialization::ObjectMapToTree::convertTree(curObj_->getName(), obj_);
+        //tmpTree->applyRecursive([] (SST::Core::Serialization::ObjTreeCont* child) {
+            curObj_->applyRecursiveByType<SST::Core::Serialization::FloatObj>([] (SST::Core::Serialization::ObjTreeCont* child) {
+                child->Dump(0);
+            });
+        //});
     }
+
     return true;
 }
 
@@ -518,6 +540,11 @@ SimpleDebugger::cmd_cd(std::vector<std::string>& tokens)
         if ( dynamic_cast<Core::Serialization::ObjectMap*>(base_comp_) == obj_ ) base_comp_ = nullptr;
 
         obj_ = parent;
+
+        if(curObj_->getParent()){
+            curObj_ = static_cast<Core::Serialization::ComponentObj*>(curObj_->getParent());
+        }
+
         return true;
     }
 
@@ -540,6 +567,15 @@ SimpleDebugger::cmd_cd(std::vector<std::string>& tokens)
             new_obj->getFullName().c_str());
     }
     obj_ = new_obj;
+
+    Core::Serialization::ComponentObj* tmpObj = curObj_->find(selection);
+    if(tmpObj){
+        curObj_ = tmpObj;
+        Core::Serialization::ObjectMapToTree::serializeComponent(curObj_);
+    }else{
+        curObj_ = curObj_;
+    }
+
 
     // If we don't already have the top level component, check to see
     // if this is it

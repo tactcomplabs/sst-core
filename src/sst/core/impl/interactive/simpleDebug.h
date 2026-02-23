@@ -156,6 +156,9 @@ private:
     SST::Core::Serialization::ObjectMap* obj_ = nullptr;
     bool                                 done = false;
     SST::Core::Serialization::ComponentObj* objTree_  = nullptr;;
+    SST::Core::Serialization::ComponentObj* curObj_  = nullptr;;
+    SST::Core::Serialization::ObjTreeCont* objTreeRoot_ = nullptr;
+    SST::Core::Serialization::ObjTreeCont* curObjCont_ = nullptr;
 
     void save_name_stack();
     void cd_name_stack();

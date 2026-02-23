@@ -14,6 +14,7 @@
 
 #include "sst/core/from_string.h"
 #include "sst/core/warnmacros.h"
+//#include "sst/core/baseComponent.h"
 
 #include <cassert>
 #include <cctype>
@@ -184,6 +185,13 @@ protected:
  */
 class ObjectMap
 {
+    public:
+    enum class ObjectCategory : uint8_t {
+        Generic = 0,
+        Component,
+        SubComponent,
+        Module
+    };
 protected:
     /**
        Metadata object for walking the object hierarchy.  When this
@@ -202,6 +210,8 @@ protected:
        that path to the current path will be erased.
      */
     ObjectMapMetaData* mdata_ = nullptr;
+    ObjectCategory category_ = ObjectCategory::Generic;
+
 
     /**
        Indicates whether or not the variable is read-only
@@ -348,6 +358,9 @@ public:
        @return current value of reference counter for the object
      */
     size_t getRefCount() const { return refCount_; }
+
+    ObjectCategory getCategory() const { return category_; }
+    void setCategory(ObjectCategory cat) { category_ = cat; }
 
     /**
        Get a watch point for this object.  If it is not a valid object
