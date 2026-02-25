@@ -15,7 +15,7 @@
 #define SST_CORE_MODEL_RESTART_SSTCPTMODEL_H
 
 #include "sst/core/config.h"
-#include "sst/core/configGraph.h"
+#include "sst/core/model/configGraph.h"
 #include "sst/core/model/sstmodel.h"
 #include "sst/core/output.h"
 #include "sst/core/rankInfo.h"
@@ -44,7 +44,7 @@ public:
     SST_ELI_DOCUMENT_MODEL_SUPPORTED_EXTENSIONS(".sstcpt")
 
     SSTCPTModelDefinition(const std::string& script_file, int verbosity, Config* config, double start_time);
-    ~SSTCPTModelDefinition();
+    ~SSTCPTModelDefinition() = default;
 
     ConfigGraph* createConfigGraph() override;
 
@@ -54,6 +54,10 @@ protected:
     Config*      config_     = nullptr;
     ConfigGraph* graph_      = nullptr;
     double       start_time_ = 0.0;
+
+    std::string version_ = "";
+    std::string arch_    = "";
+    std::string os_      = "";
 };
 
 } // namespace SST::Core

@@ -22,6 +22,9 @@
 #include "sst/core/simulation_impl.h"
 #include "sst/core/warnmacros.h"
 
+#include <utility>
+#include <vector>
+
 namespace SST::Shared {
 
 namespace Private {
@@ -39,15 +42,10 @@ getNumRanks()
 
 } // namespace Private
 
-SharedObjectDataManager SharedObject::manager;
-std::mutex              SharedObjectDataManager::mtx;
-
-std::mutex SharedObjectDataManager::update_mtx;
-
 void
 SharedObjectDataManager::updateState(bool finalize)
 {
-    std::lock_guard<std::mutex> lock(update_mtx);
+    std::scoped_lock lock(update_mtx);
 
 #ifdef SST_CONFIG_HAVE_MPI
     // Exchange data between ranks

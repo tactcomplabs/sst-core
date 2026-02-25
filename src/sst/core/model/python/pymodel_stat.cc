@@ -15,7 +15,7 @@
 
 #include "sst/core/model/python/pymodel_stat.h"
 
-#include "sst/core/configGraph.h"
+#include "sst/core/model/configGraph.h"
 #include "sst/core/model/python/pymacros.h"
 #include "sst/core/model/python/pymodel.h"
 #include "sst/core/sst_types.h"
@@ -25,7 +25,7 @@ DISABLE_WARN_DEPRECATED_REGISTER
 #include <Python.h>
 REENABLE_WARNING
 
-#include <string.h>
+#include <cstring>
 
 using namespace SST::Core;
 extern SST::Core::SSTPythonModelDefinition* gModel;

@@ -26,6 +26,7 @@
 #include <mutex>
 #include <ostream>
 #include <string>
+#include <typeinfo>
 #include <vector>
 
 namespace SST {
@@ -73,14 +74,14 @@ public:
      * @param multiplier Value by which to multiply to get to this unit
      */
     Units(const std::string& units, sst_big_num& multiplier);
-    Units() {}
-    virtual ~Units() {}
+    Units()          = default;
+    virtual ~Units() = default;
 
     /** Copy constructor */
     Units(const Units&) = default;
 
     /** Assignment operator */
-    Units& operator=(const Units& v);
+    Units& operator=(const Units& v) = default;
     /** Self-multiplication operator */
     Units& operator*=(const Units& v);
     /** Self-division operator */
@@ -415,25 +416,25 @@ protected:
     UnitAlgebra* addr_ = nullptr;
 
 public:
-    std::string get() override { return addr_->toStringBestSI(); }
-    void        set_impl(const std::string& value) override { addr_->init(value); }
+    std::string get() const final override { return addr_->toStringBestSI(); }
+    void        set_impl(const std::string& value) final override { addr_->init(value); }
 
     // We'll act like we're a fundamental type
-    bool isFundamental() override { return true; }
+    bool isFundamental() const final override { return true; }
 
     /**
        Get the address of the variable represented by the ObjectMap
 
        @return Address of varaible
      */
-    void* getAddr() override { return addr_; }
+    void* getAddr() const final override { return addr_; }
 
     explicit ObjectMapFundamental(UnitAlgebra* addr) :
         ObjectMap(),
         addr_(addr)
     {}
 
-    std::string getType() override { return demangle_name(typeid(UnitAlgebra).name()); }
+    std::string getType() const override { return demangle_name(typeid(UnitAlgebra).name()); }
 };
 
 template <>
@@ -450,10 +451,8 @@ class serialize_impl<UnitAlgebra>
         case serializer::MAP:
         {
             ObjectMap* obj_map = new ObjectMapFundamental<UnitAlgebra>(&ua);
-            if ( options & SerOption::map_read_only ) {
-                ser.mapper().setNextObjectReadOnly();
-            }
-            ser.mapper().map_primitive(ser.getMapName(), obj_map);
+            if ( SerOption::is_set(options, SerOption::map_read_only) ) obj_map->setReadOnly();
+            ser.mapper().map_object(ser.getMapName(), obj_map);
             break;
         }
         }

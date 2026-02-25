@@ -12,12 +12,18 @@
 #ifndef SST_CORE_FROM_STRING_H
 #define SST_CORE_FROM_STRING_H
 
+#include <cctype>
+#include <cstdlib>
+#include <cstring>
 #include <iomanip>
 #include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
+#include <typeinfo>
+
+#include "sst_complex.h"
 
 namespace SST::Core {
 
@@ -82,13 +88,13 @@ from_string(const std::string& input)
     else if constexpr ( std::is_same_v<long double, T> ) {
         return stold(input);
     }
-    else { // make compiler happy
-        return stod(input);
+    else {
+        static_assert(sizeof(T) == 0, "from_string(): Unsupported type");
     }
 }
 
 template <class T>
-std::enable_if_t<std::is_class_v<T>, T>
+std::enable_if_t<std::is_class_v<T> && !complex_properties<T>::is_complex, T>
 from_string(const std::string& input)
 {
     static_assert(std::is_constructible_v<T, std::string>,
@@ -104,27 +110,76 @@ from_string(const std::string& input)
     return static_cast<T>(from_string<std::underlying_type_t<T>>(input));
 }
 
+// Parse complex numbers
+template <class T>
+std::enable_if_t<complex_properties<T>::is_complex, T>
+from_string(const std::string& input)
+{
+    using REAL = typename complex_properties<T>::real_t;
+    struct
+    {
+        REAL real, imag;
+    } cmplx = { 0, 0 };
+
+    const char* s = input.c_str();
+    while ( isspace(*s) || *s == '(' )
+        ++s;
+
+    char* e;
+    if constexpr ( std::is_same_v<float, REAL> )
+        cmplx.real = strtof(s, &e);
+    else if constexpr ( std::is_same_v<double, REAL> )
+        cmplx.real = strtod(s, &e);
+    else if constexpr ( std::is_same_v<long double, REAL> )
+        cmplx.real = strtold(s, &e);
+    else
+        static_assert(sizeof(REAL) == 0, "complex_from_string(): Unsupported REAL type");
+
+    s = e;
+    while ( isspace(*s) )
+        ++s;
+
+    if ( *s++ == ',' ) {
+        if constexpr ( std::is_same_v<float, REAL> )
+            cmplx.imag = strtof(s, &e);
+        else if constexpr ( std::is_same_v<double, REAL> )
+            cmplx.imag = strtod(s, &e);
+        else if constexpr ( std::is_same_v<long double, REAL> )
+            cmplx.imag = strtold(s, &e);
+        else
+            static_assert(sizeof(REAL) == 0, "complex_from_string(): Unsupported REAL type");
+    }
+
+    T ret;
+    memcpy(reinterpret_cast<char*>(&ret), &cmplx, sizeof(ret));
+    return ret;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
+// Arithmetic types or a default if no types match
 template <class T>
-std::enable_if_t<!std::is_enum_v<T>, std::string>
+std::enable_if_t<!std::is_enum_v<T> && !complex_properties<T>::is_complex, std::string>
 to_string(const T& input)
 {
     if constexpr ( std::is_floating_point_v<T> ) {
-        std::stringstream s;
-        T                 abs_val = input < 0 ? -input : input;
+        std::ostringstream s;
+        T                  abs_val = input < 0 ? -input : input;
         if ( abs_val > (T)10e6 || abs_val < (T)10e-6 )
             s << std::scientific << std::setprecision(std::numeric_limits<double>::max_digits10) << input;
         else
             s << std::fixed << std::setprecision(std::numeric_limits<double>::max_digits10) << input;
-        return s.str().c_str();
+        return s.str();
     }
+    else if constexpr ( std::is_same_v<T, bool> )
+        return input ? "true" : "false";
     else if constexpr ( std::is_arithmetic_v<T> )
         return std::to_string(input);
     else
         return typeid(T).name(); // For now, return a string if the type isn't handled elsewhere
 }
 
+// Enums
 template <class T>
 std::enable_if_t<std::is_enum_v<T>, std::string>
 to_string(const T& input)
@@ -139,6 +194,16 @@ to_string(std::string s)
     return s;
 }
 
-} // end namespace SST::Core
+// Complex numbers
+template <typename T>
+std::enable_if_t<complex_properties<T>::is_complex, std::string>
+to_string(const T& input)
+{
+    typename complex_properties<T>::real_t cmplx[2];
+    memcpy(cmplx, &input, sizeof(cmplx));
+    return "(" + to_string(cmplx[0]) + ", " + to_string(cmplx[1]) + ")";
+}
+
+} // namespace SST::Core
 
 #endif // SST_CORE_FROM_STRING_H

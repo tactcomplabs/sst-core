@@ -69,7 +69,7 @@ WatchPoint::SetVarWPAction::invokeAction(WatchPoint* wp)
     try {
         obj_->set(valStr_);
     }
-    catch ( std::exception& e ) {
+    catch ( const std::exception& e ) {
         printf("Invalid set var: %s\n", valStr_.c_str());
         return;
     }
@@ -98,8 +98,6 @@ WatchPoint::WatchPoint(size_t index, const std::string& name, Core::Serializatio
 {
     addComparison(obj);
 }
-
-WatchPoint::~WatchPoint() {}
 
 void
 WatchPoint::beforeHandler(uintptr_t UNUSED(key), const Event* UNUSED(ev))

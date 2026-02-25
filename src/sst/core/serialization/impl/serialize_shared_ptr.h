@@ -12,6 +12,15 @@
 #ifndef SST_CORE_SERIALIZATION_IMPL_SERIALIZE_SHARED_PTR_H
 #define SST_CORE_SERIALIZATION_IMPL_SERIALIZE_SHARED_PTR_H
 
+// libc++ versions before 15 define std::weak_ptr<T>::element_type as T instead of std::remove_extent_t<T>, so we must
+// disable serialization of std::weak_ptr arrays.
+// https://reviews.llvm.org/D112092  https://cplusplus.github.io/LWG/issue3001
+#if defined(_LIBCPP_VERSION) && _LIBCPP_VERSION < 150000
+#define SST_SERIALIZE_WEAK_PTR_ARRAY 0
+#else
+#define SST_SERIALIZE_WEAK_PTR_ARRAY 1
+#endif
+
 #ifndef SST_INCLUDING_SERIALIZE_H
 #warning \
     "The header file sst/core/serialization/impl/serialize_shared_ptr.h should not be directly included as it is not part of the stable public API.  The file is included in sst/core/serialization/serialize.h"
@@ -83,7 +92,10 @@ template <template <class> class PTR_TEMPLATE, class PTR_TYPE>
 std::pair<size_t, bool>
 get_shared_ptr_owner_tag(const PTR_TEMPLATE<PTR_TYPE>& ptr, serializer& ser)
 {
+
+#if SST_SERIALIZE_WEAK_PTR_ARRAY
     // Workaround for libstdc++ bug 120561 which prevents converting std::weak_ptr<array> to std::weak_ptr<const void>
+    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=120561
     if constexpr ( std::conjunction_v<is_same_template<PTR_TEMPLATE, std::weak_ptr>, std::is_array<PTR_TYPE>> ) {
         // We set weak_ptr on a separate statement so that ptr's shared_ptr refcount is restored before return statement
         std::weak_ptr<const void> weak_ptr = ptr.lock();
@@ -91,7 +103,10 @@ get_shared_ptr_owner_tag(const PTR_TEMPLATE<PTR_TYPE>& ptr, serializer& ser)
         // Return this function using the newly cast std::weak_ptr<const void> instead of std::weak_ptr<array>
         return get_shared_ptr_owner_tag(weak_ptr, ser);
     }
-    else {
+    else
+#endif // SST_SERIALIZE_WEAK_PTR_ARRAY
+
+    {
         if ( ser.mode() == serializer::SIZER )
             return ser.sizer().get_shared_ptr_owner_tag(ptr);
         else
@@ -127,7 +142,7 @@ pack_shared_ptr_address(
         const void* parent_addr = parent.get();
 
         if ( !parent_addr )
-            Output::getDefaultObject().fatal(__LINE__, __FILE__, __func__, 1,
+            Output::getDefaultObject().fatal(CALL_INFO, 1,
                 "Serialization Error: Serialized std::%s has a non-null stored pointer, but the parent specified by %s "
                 "has a null stored pointer.\nThere is no way to know how this raw pointer should be serialized.\n",
                 ptr_string<PTR_TEMPLATE>, wrapper_string<PTR_TEMPLATE, PARENT_TYPE>);
@@ -144,7 +159,7 @@ pack_shared_ptr_address(
 
         // Make sure that the address offset is inside of the parent or one byte past the end
         if ( offset < 0 || static_cast<size_t>(offset) > parent_size )
-            Output::getDefaultObject().fatal(__LINE__, __FILE__, __func__, 1,
+            Output::getDefaultObject().fatal(CALL_INFO, 1,
                 "Serialization Error: Serialized std::%s has a stored pointer outside of the bounds of the parent "
                 "specified by %s.\nThere is no way to know how this raw pointer should be serialized.\n",
                 ptr_string<PTR_TEMPLATE>, wrapper_string<PTR_TEMPLATE, PARENT_TYPE>);
@@ -158,7 +173,7 @@ pack_shared_ptr_address(
 // Pack the parent owner of a shared pointer, which is done the first time an ownership tag is seen
 template <class PARENT_TYPE>
 void
-pack_shared_ptr_parent(const std::shared_ptr<PARENT_TYPE>& parent, size_t* size, serializer& ser, ser_opt_t opt)
+pack_shared_ptr_parent(const std::shared_ptr<PARENT_TYPE>& parent, size_t* size, serializer& ser, ser_opt_t UNUSED(opt))
 {
     // OWNER_TYPE is PARENT_TYPE with cv-qualifiers removed so that it can be serialized
     using OWNER_TYPE = std::remove_cv_t<PARENT_TYPE>;
@@ -200,7 +215,8 @@ pack_shared_ptr_parent(const std::shared_ptr<PARENT_TYPE>& parent, size_t* size,
 // Unpack a shared pointer owner, finding or creating a std::shared_ptr owner with a particular tag
 template <class PARENT_TYPE>
 const std::shared_ptr<void>&
-unpack_shared_ptr_owner(size_t tag, std::shared_ptr<PARENT_TYPE>& parent, size_t* size, serializer& ser, ser_opt_t opt)
+unpack_shared_ptr_owner(
+    size_t tag, std::shared_ptr<PARENT_TYPE>& parent, size_t* size, serializer& ser, ser_opt_t UNUSED(opt))
 {
     // OWNER_TYPE is PARENT_TYPE with cv-qualifiers removed so that it can be deserialized
     using OWNER_TYPE = std::remove_cv_t<PARENT_TYPE>;
@@ -293,7 +309,7 @@ public:
 
             // If ptr is an expired std::weak_ptr, expect parent to be an empty pointer for the purposes of this test
             if ( ptr.use_count() ? owner_ne(parent, ptr) : owner_ne(parent, PTR_TEMPLATE<PTR_TYPE>()) )
-                Output::getDefaultObject().fatal(__LINE__, __FILE__, __func__, 1,
+                Output::getDefaultObject().fatal(CALL_INFO, 1,
                     "Serialization Error: Serialized std::%s does not have the same owning control block as the parent "
                     "specified by %s.\n",
                     ptr_string<PTR_TEMPLATE>, wrapper_string<PTR_TEMPLATE, PARENT_TYPE>);
@@ -356,7 +372,44 @@ public:
 
         case serializer::MAP:
         {
-            // TODO: Mapping std::shared_ptr or std::weak_ptr
+            // Reference class which holds a reference to ptr to be used for use_count() operations
+            // The parent ObjectMapFundamentalReference is read-only so this is only used for getting use_count()
+            class SharedPtrUseCount
+            {
+                PTR_TEMPLATE<PTR_TYPE>& ptr;
+
+            public:
+                explicit SharedPtrUseCount(PTR_TEMPLATE<PTR_TYPE>& ptr) :
+                    ptr(ptr)
+                {}
+                operator size_t() const { return ptr.use_count(); }
+                SharedPtrUseCount(const SharedPtrUseCount&) = default;
+                SharedPtrUseCount& operator=(size_t) { return *this; }
+            };
+
+            ser.mapper().map_hierarchy_start(
+                ser.getMapName(), new ObjectMapClass(&ptr, typeid(PTR_TEMPLATE<PTR_TYPE>).name()));
+
+            // Read-only ObjectMap representing the use_count()
+            ObjectMap* use_count = new ObjectMapFundamentalReference<size_t, SharedPtrUseCount>(SharedPtrUseCount(ptr));
+            use_count->setReadOnly();
+            ser.mapper().map_object("use_count", use_count);
+
+            // If this is a std::weak_ptr, we have to temporarily lock it to obtain the address
+            auto* ptr_value = [&] {
+                if constexpr ( is_same_template_v<PTR_TEMPLATE, std::weak_ptr> )
+                    return ptr.lock().get();
+                else
+                    return ptr.get();
+            }();
+
+            // Handle unbounded arrays with a size parameter, else handle type regularly
+            if constexpr ( is_unbounded_array_v<PTR_TYPE> )
+                SST_SER_NAME(SST::Core::Serialization::array(ptr_value, *size), "get");
+            else
+                SST_SER_NAME(*reinterpret_cast<PTR_TYPE*>(ptr_value), "get");
+
+            ser.mapper().map_hierarchy_end();
             break;
         }
         }
@@ -386,8 +439,13 @@ class serialize_impl<std::shared_ptr<PTR_TYPE>,
 // For std::weak_ptr to unbounded arrays with runtime size, the wrapper function must be used.
 // std::weak_ptr to functions is not supported.
 template <class PTR_TYPE>
-class serialize_impl<std::weak_ptr<PTR_TYPE>,
-    std::enable_if_t<!is_unbounded_array_v<PTR_TYPE> && !std::is_function_v<PTR_TYPE>>>
+class serialize_impl<std::weak_ptr<PTR_TYPE>, std::enable_if_t<
+#if SST_SERIALIZE_WEAK_PTR_ARRAY
+                                                  !is_unbounded_array_v<PTR_TYPE>
+#else
+                                                  !std::is_array_v<PTR_TYPE>
+#endif
+                                                  && !std::is_function_v<PTR_TYPE>>>
 {
     void operator()(std::weak_ptr<PTR_TYPE>& ptr, serializer& ser, ser_opt_t opt)
     {
@@ -519,6 +577,8 @@ shared_ptr(std::shared_ptr<PTR_TYPE>& ptr)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // std::weak_ptr wrappers
 
+#if SST_SERIALIZE_WEAK_PTR_ARRAY
+
 // SST_SER( SST::Core::Serialization::weak_ptr( std::weak_ptr&, std::shared:ptr& ) ) serializes a std::weak_ptr with a
 // parent std::shared_ptr managing the owned object.
 template <class PTR_TYPE, class PARENT_TYPE>
@@ -549,6 +609,20 @@ weak_ptr(std::weak_ptr<PTR_TYPE>& ptr, std::shared_ptr<PARENT_TYPE>& parent, SIZ
 {
     return { ptr, parent, size };
 }
+
+#else // SST_SERIALIZE_WEAK_PTR_ARRAY
+
+// SST_SER( SST::Core::Serialization::weak_ptr( std::weak_ptr&, std::shared:ptr& ) ) serializes a std::weak_ptr with a
+// parent std::shared_ptr managing the owned object.
+template <class PTR_TYPE, class PARENT_TYPE>
+std::enable_if_t<!std::is_array_v<PARENT_TYPE>, pvt::shared_ptr_wrapper<std::weak_ptr, PTR_TYPE, PARENT_TYPE>>
+weak_ptr(std::weak_ptr<PTR_TYPE>& ptr, std::shared_ptr<PARENT_TYPE>& parent)
+{
+    return { ptr, parent };
+}
+
+
+#endif // SST_SERIALIZE_WEAK_PTR_ARRAY
 
 // Identity operation for consistency -- SST_SER( SST::Core::Serialization::weak_ptr(ptr) ) is same as SST_SER(ptr).
 template <class PTR_TYPE>

@@ -2198,7 +2198,7 @@ def os_extract_tar(tarfilepath: str, targetdir: str = ".") -> bool:
         # The filter argument was added in 3.12, but some distributions
         # backport the addition, so a version check is not sufficient.
         if "filter" in signature(this_tar.extractall).parameters:
-            this_tar.extractall(targetdir, filter="data")  # type: ignore [call-arg]
+            this_tar.extractall(targetdir, filter="data")
         else:
             this_tar.extractall(targetdir)
         this_tar.close()
@@ -2257,7 +2257,7 @@ def _read_os_release(filepath: str) -> Tuple[str, str]:
     for line in lines:
         if line.strip() and not line.startswith("#"):
             key, value = line.strip().split("=", 1)
-            entries[key] = value
+            entries[key] = value.strip("\"")
     return entries["ID"], entries.get("VERSION_ID", "")
 
 

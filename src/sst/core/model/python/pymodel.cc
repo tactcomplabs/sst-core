@@ -16,11 +16,11 @@
 #include "sst/core/model/python/pymodel.h"
 
 #include "sst/core/component.h"
-#include "sst/core/configGraph.h"
 #include "sst/core/cputimer.h"
 #include "sst/core/factory.h"
 #include "sst/core/from_string.h"
 #include "sst/core/memuse.h"
+#include "sst/core/model/configGraph.h"
 #include "sst/core/model/element_python.h"
 #include "sst/core/model/python/pymacros.h"
 #include "sst/core/model/python/pymodel_comp.h"
@@ -1194,13 +1194,13 @@ SSTPythonModelDefinition::initModel(
                        "    found_loader = loader.find_module(fullname)\n"
                        "    if found_loader:  return importlib.machinery.ModuleSpec(fullname, found_loader)\n"
                        "    else: return None\n"
-                       "sys.meta_path.append(SSTModuleFinder())\n"
-                       "sys.path.append(\".\")");
+                       "sys.meta_path.append(SSTModuleFinder())\n");
 
+// https://github.com/sstsimulator/sst-core/issues/1531
 #if PY_MINOR_VERSION >= 11
-    // // For 3.11 and on, we need to append the current working
-    // // directory to the path
-    PyRun_SimpleString("sys.meta_path.append(sst.ModuleLoader())\n");
+    // For 3.11 and on, we need to append the current working
+    // directory to the path
+    PyRun_SimpleString("sys.path.append(\".\")");
 #endif
 
 
@@ -1216,7 +1216,7 @@ SSTPythonModelDefinition::initModel(
             try {
                 enablePythonCoverage = SST::Core::from_string<bool>(value);
             }
-            catch ( std::invalid_argument& e ) {
+            catch ( const std::invalid_argument& e ) {
                 output->fatal(CALL_INFO, 1,
                     "ERROR: Invalid format for SST_CONFIG_PYTHON_COVERAGE. Valid boolean pairs are true/false, t/f, "
                     "yes/no, y/n, on/off, or 1/0\n");

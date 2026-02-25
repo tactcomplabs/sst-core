@@ -32,7 +32,6 @@ REENABLE_WARNING
 #include "sst/core/activity.h"
 #include "sst/core/checkpointAction.h"
 #include "sst/core/config.h"
-#include "sst/core/configGraph.h"
 #include "sst/core/cputimer.h"
 #include "sst/core/exit.h"
 #include "sst/core/factory.h"
@@ -41,6 +40,7 @@ REENABLE_WARNING
 #include "sst/core/mempool.h"
 #include "sst/core/mempoolAccessor.h"
 #include "sst/core/memuse.h"
+#include "sst/core/model/configGraph.h"
 #include "sst/core/model/sstmodel.h"
 #include "sst/core/objectComms.h"
 #include "sst/core/rankInfo.h"
@@ -57,20 +57,20 @@ REENABLE_WARNING
 #include "sst/core/unitAlgebra.h"
 
 #include <cinttypes>
+#include <csignal>
+#include <ctime>
 #include <exception>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <signal.h>
 #include <sys/resource.h>
-#include <time.h>
 
 // Configuration Graph Generation Options
-#include "sst/core/cfgoutput/dotConfigOutput.h"
-#include "sst/core/cfgoutput/jsonConfigOutput.h"
-#include "sst/core/cfgoutput/pythonConfigOutput.h"
 #include "sst/core/configGraphOutput.h"
 #include "sst/core/eli/elementinfo.h"
+#include "sst/core/model/cfgoutput/dotConfigOutput.h"
+#include "sst/core/model/cfgoutput/jsonConfigOutput.h"
+#include "sst/core/model/cfgoutput/pythonConfigOutput.h"
 
 using namespace SST::Core;
 using namespace SST::Partition;
@@ -239,7 +239,7 @@ do_link_preparation(ConfigGraph* graph, SST::Simulation_impl* sim, const RankInf
 static std::string
 addRankToFileName(std::string& file_name, int rank)
 {
-    auto        index = file_name.find_last_of(".");
+    auto        index = file_name.find_last_of('.');
     std::string base;
     std::string ext;
     // If there is an extension, add it before the extension
@@ -326,13 +326,13 @@ start_graph_creation(ConfigGraph*& graph, const RankInfo& world_size, const Rank
 
     if ( cfg.configFile() != "NONE" ) {
         // Get the file extension by finding the last .
-        std::string extension = cfg.configFile().substr(cfg.configFile().find_last_of("."));
+        std::string extension = cfg.configFile().substr(cfg.configFile().find_last_of('.'));
 
         std::string model_name;
         try {
             model_name = extension_map.at(extension);
         }
-        catch ( std::exception& e ) {
+        catch ( const std::exception& e ) {
             std::cerr << "Unsupported SDL file type: \"" << extension << "\"" << std::endl;
             SST_Exit(EXIT_FAILURE);
         }
@@ -356,7 +356,7 @@ start_graph_creation(ConfigGraph*& graph, const RankInfo& world_size, const Rank
         try {
             graph = modelGen->createConfigGraph();
         }
-        catch ( std::exception& e ) {
+        catch ( const std::exception& e ) {
             g_output.fatal(CALL_INFO, -1, "Error encountered during config-graph generation: %s\n", e.what());
         }
     }
@@ -373,7 +373,7 @@ start_graph_creation(ConfigGraph*& graph, const RankInfo& world_size, const Rank
         try {
             Comms::broadcast(cfg, 0);
         }
-        catch ( std::exception& e ) {
+        catch ( const std::exception& e ) {
             g_output.fatal(CALL_INFO, -1, "Error encountered broadcasting configuration object: %s\n", e.what());
         }
     }
@@ -418,7 +418,7 @@ start_partitioning(const RankInfo& world_size, const RankInfo& myRank, Factory* 
                 delete pgraph;
             }
         }
-        catch ( std::exception& e ) {
+        catch ( const std::exception& e ) {
             g_output.fatal(CALL_INFO, -1, "Error encountered during graph partitioning phase: %s\n", e.what());
         }
 
@@ -1200,7 +1200,7 @@ main(int argc, char* argv[])
                 delete your_graph;
             }
         }
-        catch ( std::exception& e ) {
+        catch ( const std::exception& e ) {
             g_output.fatal(CALL_INFO, -1, "Error encountered during graph broadcast: %s\n", e.what());
         }
     }
@@ -1322,7 +1322,7 @@ main(int argc, char* argv[])
         }
 
         /* Unblock signals on thread 0 */
-        pthread_sigmask(SIG_UNBLOCK, &maskset, NULL);
+        pthread_sigmask(SIG_UNBLOCK, &maskset, nullptr);
         // Call start_simulation for the main thread
         start_simulation(0, threadInfo[0], mainBarrier, graph->cpt_currentSimCycle, graph->cpt_currentPriority);
 
@@ -1333,7 +1333,7 @@ main(int argc, char* argv[])
 
         Simulation_impl::shutdown();
     }
-    catch ( std::exception& e ) {
+    catch ( const std::exception& e ) {
         g_output.fatal(CALL_INFO, -1, "Error encountered during simulation: %s\n", e.what());
     }
     Simulation_impl::basicPerf.endRegion("execute");

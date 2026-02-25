@@ -463,10 +463,8 @@ SST::Core::Serialization::serialize_impl<Link*>::operator()(Link*& s, serializer
 class NullEvent : public Event
 {
 public:
-    NullEvent() :
-        Event()
-    {}
-    ~NullEvent() {}
+    NullEvent()  = default;
+    ~NullEvent() = default;
 
     void execute() override
     {
@@ -501,7 +499,7 @@ Link::Link() :
     current_time(Simulation_impl::getSimulation()->currentSimCycle),
     type(UNINITIALIZED),
     mode(INIT),
-    tag(-1),
+    tag(type_max<uint32_t>),
     attached_tools(nullptr)
 {}
 
