@@ -194,9 +194,11 @@ private:
     bool cmd_pwd(std::vector<std::string>& UNUSED(tokens));
     bool cmd_ls(std::vector<std::string>& UNUSED(tokens));
     bool cmd_cd(std::vector<std::string>& tokens);
+    bool cmd_cdn(std::vector<std::string>& tokens);
 
     // Variable Access
     bool cmd_print(std::vector<std::string>& tokens);
+    bool cmd_printn(std::vector<std::string>& tokens);
     bool cmd_set(std::vector<std::string>& tokens);
     bool cmd_time(std::vector<std::string>& tokens);
     bool cmd_watch(std::vector<std::string>& tokens);

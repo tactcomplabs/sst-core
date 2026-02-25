@@ -48,7 +48,7 @@ namespace SST::Core::Serialization {
         ObjTreeCont* getParent() const                       { return parent_;}
         const std::vector<std::unique_ptr<ObjTreeCont>>& getChildren() const { return children_; }
 
-        const std::string& getName() const { return name_; }
+        const std::string& getObjName() const { return name_; }
         const std::string& getType() const { return type_; }
         void setName(const std::string& name) { name_ = name; }
         void setType(const std::string& type) { type_ = type; }
@@ -77,6 +77,30 @@ namespace SST::Core::Serialization {
                 }
             }
             return nullptr;
+        }
+
+        ObjTreeCont* findByName(const std::string name) {
+      /*      for (auto& child : children_) {
+                if (auto* child_t = child.get()) {
+                    if (child_t->getName() == name) return child_t;
+                }
+            }
+            return nullptr;*/
+            ObjTreeCont* result = nullptr;
+            applyRecursive([&result, &name](ObjTreeCont* child) {
+                if (result) return;
+                if (child->getObjName() == name) {
+                    printf("found match\n");
+                    result = child;
+                    return;
+                }else{
+                    printf("name = %s\n", child->getObjName().c_str());
+                }
+            // Recurse into grandchildren
+           //     ObjTreeCont* found = child->findByName(name);
+           //     if (found) result = found;
+            });
+            return result;
         }
 
         virtual void apply() {};
@@ -291,7 +315,7 @@ public:
     ContainerObj(const std::string& name, const std::string& type, size_t size)
         : name_(name), type_(type), size_(size) {}
 
-    const std::string& getName() const { return name_; }
+    const std::string& getObjName() const { return name_; }
     const std::string& getContainerType() const { return type_; }
     size_t getSize() const { return size_; }
 

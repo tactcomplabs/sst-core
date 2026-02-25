@@ -51,12 +51,16 @@ SimpleDebugger::SimpleDebugger(Params& params) :
             [this](std::vector<std::string>& tokens) { return cmd_pwd(tokens); } },
         { "chdir", "cd", "change 1 directory level in the object map", ConsoleCommandGroup::NAVIGATION,
             [this](std::vector<std::string>& tokens) { return cmd_cd(tokens); } },
+        { "chdirn", "cdn", "change 1 directory level in the object map", ConsoleCommandGroup::NAVIGATION,
+            [this](std::vector<std::string>& tokens) { return cmd_cdn(tokens); } },
         { "list", "ls", "list the objects in the current level of the object map", ConsoleCommandGroup::NAVIGATION,
             [this](std::vector<std::string>& tokens) { return cmd_ls(tokens); } },
         { "time", "tm", "print current simulation time in cycles", ConsoleCommandGroup::STATE,
             [this](std::vector<std::string>& tokens) { return cmd_time(tokens); } },
         { "print", "p", "[-rN] [<obj>]: print objects at the current level", ConsoleCommandGroup::STATE,
             [this](std::vector<std::string>& tokens) { return cmd_print(tokens); } },
+        { "printn", "pn", "[-rN] [<obj>]: print objects at the current level", ConsoleCommandGroup::STATE,
+            [this](std::vector<std::string>& tokens) { return cmd_printn(tokens); } },
         { "set", "s", "var value: set value for a variable at the current level", ConsoleCommandGroup::STATE,
             [this](std::vector<std::string>& tokens) { return cmd_set(tokens); } },
         { "watch", "w", "<trig>: adds watchpoint to the watchlist", ConsoleCommandGroup::WATCH,
@@ -470,31 +474,10 @@ SimpleDebugger::cmd_pwd(std::vector<std::string>& UNUSED(tokens))
 bool
 SimpleDebugger::cmd_ls(std::vector<std::string>& UNUSED(tokens))
 {
-    /*auto& vars = obj_->getVariables();
-    for ( auto& x : vars ) {
-        if ( x.second->isFundamental() ) {
-            std::cout << x.first << " = " << x.second->get() << " (" << x.second->getType() << ")" << std::endl;
-        }
-        else {
-            std::cout << x.first.c_str() << "/ (" << x.second->getType() << ")\n";
-        }
-    }*/
-
     // Dump all the components
     curObj_->applyRecursive([] (SST::Core::Serialization::ObjTreeCont* child) {
         child->Dump(0);
     });
-
-    //are we in a leaf node?
-    if( curObj_->getChildren().empty()){
-        Core::Serialization::ObjectMapToTree::addChildrenFromMap(curObj_, obj_->getVariables());
-        //auto tmpTree = Core::Serialization::ObjectMapToTree::convertTree(curObj_->getName(), obj_);
-        //tmpTree->applyRecursive([] (SST::Core::Serialization::ObjTreeCont* child) {
-            curObj_->applyRecursiveByType<SST::Core::Serialization::FloatObj>([] (SST::Core::Serialization::ObjTreeCont* child) {
-                child->Dump(0);
-            });
-        //});
-    }
 
     return true;
 }
@@ -514,6 +497,43 @@ SimpleDebugger::get_listing_strings(std::list<std::string>& list)
     list.sort();
 }
 
+
+// cd <path>: change to new directory
+bool
+SimpleDebugger::cmd_cdn(std::vector<std::string>& tokens)
+{
+    if ( tokens.size() != 2 ) {
+        printf("Invalid format for cd command (cd <obj>)\n");
+        return false;
+    }
+
+    // Allow for trailing '/'
+    std::string selection = tokens[1];
+    if ( !selection.empty() && selection.back() == '/' ) selection.pop_back();
+
+    // Check for ..
+    if ( selection == ".." ) {
+        auto* parent = curObj_->getParent();
+        if(parent){
+            curObj_ = static_cast<Core::Serialization::ComponentObj*>(parent);
+        }else{
+            printf("Already at top of object hierarchy\n");
+            return false;
+        }
+        return true;
+    }
+
+    Core::Serialization::ComponentObj* tmpObj = curObj_->find(selection);
+    if(tmpObj){
+        curObj_ = tmpObj;
+        Core::Serialization::ObjectMapToTree::serializeComponent(curObj_);
+    }else{
+        printf("Unknown object in cd command: %s\n", selection.c_str());
+        curObj_ = curObj_;
+    }
+
+    return true;
+}
 
 // cd <path>: change to new directory
 bool
@@ -584,6 +604,91 @@ SimpleDebugger::cmd_cd(std::vector<std::string>& tokens)
             dynamic_cast<Core::Serialization::ObjectMapDeferred<BaseComponent>*>(obj_);
         if ( base_comp ) base_comp_ = base_comp;
     }
+    return true;
+}
+
+// print [-rN] [<obj>]: print object
+bool
+SimpleDebugger::cmd_printn(std::vector<std::string>& tokens)
+{
+    // Index in tokens array where we may find the variable name
+    size_t var_index = 1;
+
+    if ( tokens.size() < 2 ) {
+        printf("Invalid format for print command (print [-r N] [-f <base>] [<obj>])\n");
+        return false;
+    }
+
+    // See if have a -r or not
+    int    recurse = 0;
+    size_t pos = containsArg(tokens, "-r");
+    if ( std::string::npos != pos ){
+        // Got a -r
+        std::string num = tokens[pos+1];
+        if ( num.size() != 0 ) {
+            try {
+                recurse = SST::Core::from_string<int>(num);
+            }
+            catch ( const std::invalid_argument& e ) {
+                printf("Invalid number format specified with -r: %s\n", num.c_str());
+                return false;
+            }
+        }
+        else {
+            recurse = 4; // default -r depth
+        }
+
+        var_index = (pos + 2 > var_index) ? pos+=2 : var_index;
+        printf("var_index = %d. size = %d\n", var_index, tokens.size());
+    }
+
+    //check for format specifier 
+    pos = containsArg(tokens, "-f");
+    std::string fmt = "dec";
+    if(std::string::npos != pos){
+        //found format specifier 
+        fmt = tokens[pos+1];
+
+        if("hex" == fmt){
+            SST::Core::string_flags.base = std::ios_base::hex;
+        }else if("oct" == fmt){
+            SST::Core::string_flags.base = std::ios_base::oct;
+        }else{
+            SST::Core::string_flags.base = std::ios_base::dec;
+        }
+
+        var_index = (pos + 2 > var_index) ? pos+=2 : var_index;
+        printf("var_index = %d. size = %d\n", var_index, tokens.size());
+    }
+
+    if ( tokens.size() == var_index ) {
+        // Print current object
+        obj_->list(recurse);
+        return true;
+    }
+
+    if ( tokens.size() != (var_index + 1) ) {
+        printf("Invalid format for print command (print [-r N] [-f <base>] [<obj>])\n");
+        return false;
+    }
+
+    auto* target = curObj_->findByName(tokens[var_index]);
+    if(target){
+        target->Dump(0);
+    }else{
+        printf("Unknown object in print command: %s\n", tokens[1].c_str());
+        return false;
+    }
+    //bool        found;
+    //std::string listing = obj_->listVariable(tokens[var_index], found, recurse);
+
+   //if ( !found ) {
+    //    printf("Unknown object in print command: %s\n", tokens[1].c_str());
+    //    return false;
+   // }
+    //else {
+     //   printf("%s", listing.c_str());
+   // }
     return true;
 }
 
