@@ -3168,10 +3168,12 @@ SimpleDebugger::cmd_setConfirm(std::string& UNUSED(cmd_str))
 
     if ( (tokens[1] == "true") || (tokens[1] == "t") || (tokens[1] == "T") || (tokens[1] == "1") ) {
         confirm_ = true;
+        dout.setConfirm(true);
         return true;
     }
     else if ( (tokens[1] == "false") || (tokens[1] == "f") || (tokens[1] == "F") || (tokens[1] == "0") ) {
         confirm_ = false;
+        dout.setConfirm(false);
         return true;
     }
 
