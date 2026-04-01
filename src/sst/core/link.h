@@ -56,7 +56,7 @@ class SST::Core::Serialization::serialize_impl<Link*>
 class alignas(64) Link
 {
     enum Type_t : uint16_t { POLL, HANDLER, SYNC, UNINITIALIZED };
-    enum Mode_t : uint16_t { INIT, RUN, COMPLETE };
+    enum Mode_t : uint8_t { INIT, RUN, COMPLETE };
 
     friend class SST::Core::Serialization::serialize_impl<Link*>;
 
@@ -69,7 +69,7 @@ public:
        performance of sending events on Links and it is recommended
        that, if possible, Event::HandlerBase::AttachPoint or
        Event::HandlerBase::InterceptPoint be used instead.
-     */
+    */
     class AttachPoint
     {
     public:
@@ -84,17 +84,17 @@ public:
 
            @return Opaque key that will be passed back into
            eventSent() to identify the source of the call
-         */
+        */
         virtual uintptr_t registerLinkAttachTool(const AttachPointMetaData& mdata) = 0;
 
         /**
            Function that will be called when an event is sent on a
-           link with registered attach points.  If ev is set to
+           Link with registered attach points.  If ev is set to
            nullptr, then the event will not be delivered and the tool
            should delete the original event.
 
            @param key Opaque key returned from registerLinkAttachTool()
-         */
+        */
         virtual void eventSent(uintptr_t key, Event*& ev) = 0;
 
         /**
@@ -115,7 +115,7 @@ public:
            @param ser Serializer to use for serialization
 
            @param key Key that would be passed into the eventSent() function.
-         */
+        */
         virtual void serializeEventAttachPointKey(SST::Core::Serialization::serializer& ser, uintptr_t& key);
 
         virtual ~AttachPoint() = default;
@@ -127,65 +127,84 @@ public:
     friend class Simulation_impl;
     friend class SyncManager;
     friend class ComponentInfo;
+    friend class BaseComponent;
 
     ~Link();
 
-    /** Set additional Latency to be added to events being sent out of this link
-     * @param cycles Number of Cycles to be added
-     * @param timebase Base Units of cycles
-     */
+    /**
+       Set additional Latency to be added to events being sent out of this Link
+
+       @param cycles Number of cycles to be added
+
+       @param timebase Base units of cycles
+    */
     void addSendLatency(int cycles, const std::string& timebase);
 
-    /** Set additional Latency to be added to events being sent out of this link
-     * @param cycles Number of Cycles to be added
-     * @param timebase Base Units of cycles
-     */
+    /**
+       Set additional Latency to be added to events being sent out of this Link
+
+       @param cycles Number of cycles to be added
+
+       @param timebase Base units of cycles
+    */
     [[deprecated("Use of shared TimeConverter objects is deprecated. Use 'addSendLatency(SimTime_t cycles, "
                  "TimeConverter timebase)' (i.e., no pointer) instead.")]]
     void addSendLatency(SimTime_t cycles, TimeConverter* timebase);
     void addSendLatency(SimTime_t cycles, TimeConverter timebase);
 
-    /** Set additional Latency to be added on to events coming in on this link.
-     * @param cycles Number of Cycles to be added
-     * @param timebase Base Units of cycles
-     */
+    /**
+       Set additional latency to be added on to events coming in on this Link.
+
+       @param cycles Number of cycles to be added
+
+       @param timebase Base units of cycles
+    */
     void addRecvLatency(int cycles, const std::string& timebase);
 
-    /** Set additional Latency to be added on to events coming in on this link.
-     * @param cycles Number of Cycles to be added
-     * @param timebase Base Units of cycles
-     */
+    /**
+       Set additional latency to be added on to events coming in on this Link.
+
+       @param cycles Number of cycles to be added
+
+       @param timebase Base units of cycles
+    */
     [[deprecated("Use of shared TimeConverter objects is deprecated. Use 'addRecvLatency(SimTime_t cycles, "
                  "TimeConverter timebase)' (i.e., no pointer) instead.")]]
     void addRecvLatency(SimTime_t cycles, TimeConverter* timebase);
     void addRecvLatency(SimTime_t cycles, TimeConverter timebase);
 
-    /** Set the callback function to be called when a message is
-     * delivered. Not available for Polling links.
-     * @param functor Functor to call when message is delivered
-     */
+    /**
+       Set the callback function to be called when a message is delivered. Not available for Polling Links.
+
+       @param functor Functor to call when message is delivered
+    */
     void setFunctor(Event::HandlerBase* functor);
 
-    /** Replace the callback function to be called when a message is
-     * delivered. Any previous handler will be deleted.
-     * Not available for Polling links.
-     * @param functor Functor to call when message is delivered
-     */
+    /**
+       Replace the callback function to be called when a message is delivered. Any previous handler will be deleted.
+       Not available for Polling Links.
+
+       @param functor Functor to call when message is delivered
+    */
     void replaceFunctor(Event::HandlerBase* functor);
 
-    /** Get the callback function to be called when a message is
-     * delivered. Polling links will return nullptr.
-     */
+    /**
+       Get the callback function to be called when a message is delivered. Polling Links will return nullptr.
+
+       @return Functor used for event delivery
+    */
     Event::HandlerBase* getFunctor();
 
-    /** Send an event over the link with additional delay. Sends an event
-     * over a link with an additional delay specified with a
-     * TimeConverter. I.e. the total delay is the link's delay + the
-     * additional specified delay.
-     * @param delay - additional delay
-     * @param tc - time converter to specify units for the additional delay
-     * @param event - the Event to send
-     */
+    /**
+       Sends an Event over a Link with an additional delay specified with a TimeConverter. I.e. the total delay is the
+       Link's delay + the additional specified delay.
+
+       @param delay Additional delay
+
+       @param tc TimeConverter to specify timebase for the additional delay
+
+       @param event Event to send
+    */
     [[deprecated(
         "Use of shared TimeConverter objects is deprecated. Use 'send(SimTime_t delay, const TimeConverter& tc, "
         "Event* event)' instead.")]]
@@ -194,82 +213,109 @@ public:
         send(delay, *tc, event);
     }
 
-    /** Send an event over the link with additional delay. Sends an event
-     * over a link with an additional delay specified with a
-     * TimeConverter. I.e. the total delay is the link's delay + the
-     * additional specified delay.
-     * @param delay - additional delay
-     * @param tc - time converter to specify units for the additional delay
-     * @param event - the Event to send
-     */
+    /**
+       Sends an Event over a Link with an additional delay specified with a TimeConverter. I.e. the total delay is the
+       Link's delay + the additional specified delay.
+
+       @param delay Additional delay
+
+       @param tc TimeConverter to specify timebase for the additional delay
+
+       @param event Event to send
+    */
     inline void send(SimTime_t delay, TimeConverter tc, Event* event) { send_impl(tc.convertToCoreTime(delay), event); }
 
 
-    /** Send an event with additional delay. Sends an event over a link
-     * with additional delay specified by the Link's default
-     * timebase.
-     * @param delay The additional delay, in units of the default Link timebase
-     * @param event The event to send
-     */
+    /**
+       Sends an event over a Link with additional delay specified by the Link's
+       default timebase.
+
+       @param delay The additional delay, in units of the Link's default timebase
+
+       @param event Event to send
+    */
     inline void send(SimTime_t delay, Event* event) { send_impl(delay * defaultTimeBase, event); }
 
-    /** Send an event with the Link's default delay
-     * @param event The event to send
-     */
+    /**
+       Send an Event with no additional delay
+
+       @param event Event to send
+    */
     inline void send(Event* event) { send_impl(0, event); }
 
 
-    /** Retrieve a pending event from the Link. For links which do not
-     * have a set event handler, they can be polled with this function.
-     * Returns nullptr if there is no pending event.
-     * Not available for HANDLER-type links.
-     * @return Event if one is available
-     * @return nullptr if no Event is available
-     */
+    /**
+       Retrieve a pending Event from the Link. For Links which do not have a set event handler, they can be polled with
+       this function.  Returns nullptr if there is no pending Event.  Not available for HANDLER-type Links.
+
+       @return Event if one is available, nullptr if no Event is available
+    */
     Event* recv();
 
-    /** Manually set the default defaultTimeBase
-     * @param tc TimeConverter object for the timebase
-     */
+    /**
+       Manually set the default defaultTimeBase
+
+       @param tc TimeConverter object for the timebase
+    */
     [[deprecated("Use of shared TimeConverter objects is deprecated. Use 'setDefaultTimeBase(TimeConverter tc)', "
                  "(i.e., no pointer) instead.")]]
     void setDefaultTimeBase(TimeConverter* tc);
 
-    /** Manually set the default defaultTimeBase
-     * @param tc TimeConverter object for the timebase
-     */
+    /**
+       Manually set the default defaultTimeBase
+
+       @param tc TimeConverter object for the timebase
+    */
     void setDefaultTimeBase(TimeConverter tc);
 
-    /** Return the default Time Base for this link
-     * @return the default Time Base for this link
-     */
+    /**
+       Return the default timebase for this Link
+
+       @return the default timebase for this Link
+    */
     TimeConverter* getDefaultTimeBase();
 
-    /** Return the default Time Base for this link
-     * @return the default Time Base for this link
-     */
+    /**
+       Return the ID of this Link
+
+       @return the unique ID for this Link
+    */
+    LinkId_t getId()
+    {
+        if ( has_tool_list )
+            return (*attached_tools)[0].second;
+        else
+            return id;
+    }
+
+    /**
+       Return the default timebase for this Link
+
+       @return Default timebase for this Link
+    */
     const TimeConverter* getDefaultTimeBase() const;
 
-    /** Return the ID of this link
-     * @return the unique ID for this link
-     */
-    LinkId_t getId() { return tag; }
+    /**
+       Send data during the init() or complete() phase.
 
-    /** Send data during the init() or complete() phase.
-     * @param data event to send
-     */
+       @param Data event to send
+    */
     void sendUntimedData(Event* data);
 
-    /** Receive an event (if any) during the init() or complete() phase.
-     * @return Event if one is available
-     * @return nullptr if no Event is available
-     */
+    /**
+       Receive an Event (if any) during the init() or complete() phase.
+
+       @return Event if one is available, nullptr if no Event is available
+    */
     Event* recvUntimedData();
 
-    /** Return whether link has been configured
-     * @return whether link is configured
-     */
+    /**
+       Return whether Link has been configured
+
+       @return True if Link has been configured, false otherwise
+    */
     bool isConfigured() { return type != UNINITIALIZED; }
+
 
 #ifdef __SST_DEBUG_EVENT_TRACKING__
     void setSendingComponentInfo(const std::string& comp_in, const std::string& type_in, const std::string& port_in)
@@ -291,69 +337,109 @@ protected:
     void setAsSyncLink() { type = SYNC; }
 
     /**
-       Set the delivery_info for the link
-     */
+       Set the delivery_info for the Link
+    */
     void setDeliveryInfo(uintptr_t info) { delivery_info = info; }
 
-    /** Send an event over the link with additional delay. Sends an event
-     * over a link with an additional delay specified with a
-     * TimeConverter. I.e. the total delay is the link's delay + the
-     * additional specified delay.
-     * @param delay - additional total delay to add
-     * @param event - the Event to send
-     */
+    /**
+       Set the tag field for event link ordering
+
+       @param new_tag New order tag to use for the Link
+    */
+    void setTag(uint32_t new_tag)
+    {
+        if ( tag != bit_util::type_max<uint32_t> ) pair_link->tag = new_tag;
+
+        // Interleaved links
+        // pair_link->tag = new_tag;
+
+        // Ordered SelfLinks
+        // if ( tag != type_max<uint32_t> ) pair_link->tag = new_tag;
+        // else pair_link->tag = 0x80000000 | new_tag;
+    }
+
+    /**
+       Get the latency on the link in units of core atomic time base
+
+       NOTE: This is a core only API and not part of the public stable API
+    */
+    SimTime_t getLatency() { return latency; }
+
+    /**
+       Get the delivery_info for the link
+    */
+    uintptr_t getDeliveryInfo() { return delivery_info; }
+
+    /**
+       Get the pair_link
+    */
+    Link* getPairLink() { return pair_link; }
+
+    /**
+       Sends an Event over a Link with an additional delay specified with a TimeConverter. I.e. the total delay is the
+       Link's delay + the additional specified delay.
+
+       @param delay Additional total delay to add in units of the core timebase
+
+       @param event Event to send
+    */
     void send_impl(SimTime_t delay, Event* event);
 
     /**
-       Updates the delivery info in an event.  This is used during a
-       restart and is implemented here because Link is a friend of
-       event.
+       Updates the delivery info in an event.  This is used during a restart and is implemented here because Link is a
+       friend of Event.
 
-       @param event - Event to update
+       @param event Event to update
 
-       @param delivery_info New delivery info (pointer to handler cast
-       as uintptr_t)
-     */
+       @param delivery_info New delivery info (pointer to handler cast as uintptr_t)
+    */
     static void updateEventDeliveryInfo(Event* event, uintptr_t delivery_info)
     {
         event->updateDeliveryInfo(delivery_info);
     }
 
+    /**
+       Variable used by Link restarts to know whether stored rank data for remote links is still valid (i.e. did we
+       restart with the exact same rank/thread count or not).
+    */
+    static bool is_restart_same_parallelism;
+
     // Since Links are found in pairs, I will keep all the information
     // needed for me to send and deliver an event to the other side of
-    // the link.  That means, that I mostly keep my pair's
-    // information.  The one consequence, is that polling links will
+    // the Link.  That means, that I mostly keep my pair's
+    // information.  The one consequence, is that polling Links will
     // have to pull the data from the pair, but since this is a less
     // common case, that's okay (this decision makes the common case
     // faster and the less common case slower).
 
-    /** Queue of events to be received by the owning component */
+    /**
+       Queue of events to be received by the owning component
+    */
     ActivityQueue* send_queue;
 
-    /** Holds the delivery information.  This is stored as a
-      uintptr_t, but is actually a pointer converted using
-      reinterpret_cast.  For links connected to a
-      Component/SubComponent, this holds a pointer to the delivery
-      functor.  For links connected to a Sync object, this holds a
-      pointer to the remote link to send the event on after
-      synchronization.
+    /**
+       Holds the delivery information.  This is stored as a uintptr_t, but is actually a pointer converted using
+       reinterpret_cast.  For Links connected to a Component/SubComponent, this holds a pointer to the delivery functor.
+       For Links connected to a Sync object, this holds a pointer to the remote Link to send the event on after
+       synchronization.
     */
     uintptr_t delivery_info;
 
-    /** Timebase used if no other timebase is specified. Used to specify
-      the units for added delays when sending, such as in
-      Link::send(). Often set by the Component::registerClock()
-      function if the regAll argument is true.
-      */
+    /**
+       Timebase used if no other timebase is specified. Used to specify the units for added delays when sending, such as
+       in Link::send(). Often set by the Component::registerClock() function if the regAll argument is true.
+    */
     SimTime_t defaultTimeBase;
 
-    /** Latency of the link. It is used by the partitioner as the
-      weight. This latency is added to the delay put on the event by
-      the component.
+    /**
+       Latency of the Link. It is used by the partitioner as the weight. This latency is added to the delay put on the
+       event by the component.
     */
     SimTime_t latency;
 
-    /** Pointer to the opposite side of this link */
+    /**
+       Pointer to the opposite side of this Link
+    */
     Link* pair_link;
 
 private:
@@ -362,31 +448,30 @@ private:
     SimTime_t& current_time;
     Type_t     type;
     Mode_t     mode;
-    LinkId_t   tag;
+    bool       has_tool_list = false;
+    uint32_t   tag;
 
-    /** Create a new link with a given tag
+    /**
+       Create a new Link with a given tag
 
-        The tag is used for two different things depending on where
-        this link sends data:
+       The tag is used for two different things depending on where this Link sends data:
 
-        If it sends it to a Sync object, then it represents the
-        remote_tag used to lookup the correct link on the other side.
+       If it sends it to a Sync object, then it represents the remote_tag used to lookup the correct Link on the other
+       side.
 
-        If it sends to a TimeVortex (or DirectLinkQueue), it is the
-        value used for enforce_link_order (if that feature is
-        enabled).
-     */
-    explicit Link(LinkId_t tag);
+       If it sends to a TimeVortex (or DirectLinkQueue), it is the value used for enforce_link_order (if that feature is
+       enabled).
+    */
+    explicit Link(LinkId_t id);
 
-    Link(const Link& l);
-
-    /** Specifies that this link has no callback, and is poll-based only */
+    /**
+       Specifies that this Link has no callback, and is poll-based only
+    */
     void setPolling();
 
-    /** Causes an event to be delivered to the registered callback */
-    inline void deliverEvent(Event* event) const { (*reinterpret_cast<Event::HandlerBase*>(delivery_info))(event); }
-
-    /** Set minimum link latency */
+    /**
+       Set minimum Link latency
+    */
     void setLatency(Cycle_t lat);
 
     void sendUntimedData_sync(Event* data);
@@ -402,14 +487,55 @@ private:
 
 
     using ToolList = std::vector<std::pair<AttachPoint*, uintptr_t>>;
-    ToolList* attached_tools;
 
-    /** Manually set the default time base
-     * @param factor SimTime_T defining the timebase factor
-     */
+    /**
+       We need to keep the Link object to 64-bits so we need to keep the ID and the attached tools in the same 8-bytes.
+       This will normally hold the 64-bit id for the link, but if we have attached tools, then the id for the Link will
+       be stored in the first entry of the attached_tools list.
+
+       The has_tool_list member variable stores which data is currently stored in this union.  If has_tool_list is true,
+       then the union's attached_tools variable is currently active.  Otherwise, it is storing the Link id.
+    */
+    union {
+        /**
+           The Link id is a globally unique id.  For serial loads, the ids start at 1 and increment for each new Link.
+
+           On a parallel load, the top 32-bits is filled with the MPI rank and the bottom 32-bits start at 1 and
+           increment for each new rank.  The ids for links that cross a rank boundary need to be reconciled so that the
+           Link objects on both ranks agree on the ID.  This is done by having the "lower" rank send the Link name and
+           it's id for the Link to the "higher" rank, which will then use that id for the Link. "Higher" and "lower" are
+           determined in a way that hopefully spreads out the MPI traffic across all the ranks and isn't just a direct
+           greater/less than comparison. It is determined as follows:
+
+           1 - A rank is lower than the N/2 ranks after it, wrapping around to 0 when needed.
+
+           2 - A rank is higher than the N/2 ranks before it, wrapping around to N-1 when needed.
+
+          The id is used in several places:
+          - When exchanging Link pointers to put in the delivery_info field
+          - As the global name for connecting links on a restart from checkpoint
+
+        */
+        LinkId_t id;
+
+        /**
+           This stores any tools connected to the Link::AttachPoint.  The first entry in the list will always contain
+           the Link id since the pointer to the attached_tools list is now using that memory location.
+         */
+        ToolList* attached_tools;
+    };
+
+
+    /**
+       Manually set the default time base
+
+       @param factor SimTime_T defining the timebase factor
+    */
     void setDefaultTimeBase(SimTime_t factor) { defaultTimeBase = factor; }
 
-    /** Set the default time base fo uninitialized */
+    /**
+       Set the default time base for uninitialized
+    */
     void resetDefaultTimeBase() { defaultTimeBase = 0; }
 
 
@@ -420,7 +546,9 @@ private:
 #endif
 };
 
-/** Self Links are links from a component to itself */
+/**
+   Self Links are Links from a component to itself
+*/
 class SelfLink : public Link
 {
 public:

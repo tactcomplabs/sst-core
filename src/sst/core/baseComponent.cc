@@ -686,6 +686,7 @@ BaseComponent::configureLink_impl(const std::string& name, SimTime_t timebase, E
             }
         }
         tmp->setDefaultTimeBase(timebase);
+        tmp->setTag(sim_->getNextLinkOrderTag());
 #ifdef __SST_DEBUG_EVENT_TRACKING__
         tmp->setSendingComponentInfo(my_info_->getName(), my_info_->getType(), name);
 #endif

@@ -14,6 +14,7 @@
 
 #include "sst/core/eli/elementinfo.h"
 #include "sst/core/impl/interactive/cmdLineEditor.h"
+#include "sst/core/impl/interactive/debugStream.h"
 #include "sst/core/interactiveConsole.h"
 #include "sst/core/serialization/objectMapDeferred.h"
 #include "sst/core/watchPoint.h"
@@ -253,6 +254,7 @@ private:
     bool    containsArg(const std::string tok, const char arg);
     size_t  containsArg(const std::vector<std::string> tokens, const std::string& arg );
     std::vector<size_t> parseBracketIndices(std::string& token);
+    DebuggerStream dout;
 };
 
 } // namespace SST::IMPL::Interactive

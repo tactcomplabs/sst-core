@@ -16,6 +16,7 @@
 #include "sst/core/eli/elementinfo.h"
 #include "sst/core/sst_types.h"
 
+#include <cstdint>
 #include <map>
 
 using namespace SST::Statistics;
