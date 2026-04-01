@@ -596,7 +596,6 @@ SimpleDebugger::cmd_print(std::vector<std::string>& tokens)
         return false;
     }
 
-    int    recurse = 0;
     size_t pos = containsArg(tokens, "-r");
     // See if have a -r or not
     int                recurse = 0;

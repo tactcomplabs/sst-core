@@ -454,7 +454,7 @@ public:
     }
 
     void Dump(const int verbosity) override {
-        std::cout << name_ << " (" << type_ << ") [" << size_ << " elements]" << std::endl;
+        std::cout << name_ << "[" << size_ << " elements] (" << type_ << ")"<< std::endl;
         if (verbosity > 0) {
             applyRecursive([verbosity](ObjTreeCont* child) {
                 child->Dump(verbosity - 1);
@@ -503,28 +503,6 @@ void printElementAt(std::vector<size_t> indices, int verbosity = 1) const {
         std::cout << "}" << std::endl;
     }
 }
-
-/*
-    ObjTreeCont* getElementAt(size_t idx) const {
-    // children_ holds a wrapper node at [0], whose own children are the actual elements
-    auto& inner = children_;
-    if (inner.empty()) return nullptr;
-
-    // If convertNode wrapped elements under a single child node:
-    auto& elements = inner[0]->getChildren();
-    if (idx < elements.size()) return elements[idx].get();
-    return nullptr;
-}
-
-    void printElementAt(size_t idx, int verbosity = 1) const {
-    ObjTreeCont* elem = getElementAt(idx);
-    if (elem) {
-        elem->Dump(verbosity);
-    } else {
-        std::cout << "Index " << idx << " out of range (size=" 
-                  << getSize() << ")" << std::endl;
-    }
-}*/
 
 };
 
