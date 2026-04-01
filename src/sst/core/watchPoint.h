@@ -167,11 +167,12 @@ public:
     }
     void        setHandler(unsigned handlerType);
     std::string handlerToString(HANDLER h);
-    void        printHandler();
-    void        printWatchpoint();
+    void        printHandler(std::stringstream& ss);
+    void        genericHandler(HANDLER h);
+    void        printWatchpoint(std::stringstream& ss);
     void        resetTraceBuffer();
     inline bool checkReset() { return reset_; }
-    void        printAction();
+    void        printAction(std::stringstream& ss);
     void        addTraceBuffer(Core::Serialization::TraceBuffer* tb);
     void        addObjectBuffer(Core::Serialization::ObjectBuffer* ob);
     void        addComparison(Core::Serialization::ObjectMapComparison* cmp);
@@ -204,8 +205,10 @@ private:
     HANDLER                                                handler        = ALL;
     bool                                                   trigger        = false;
     HANDLER                                                triggerHandler = HANDLER::NONE;
+    size_t                                                 triggerCount   = 0;
     bool                                                   reset_         = false;
     WPAction*                                              wpAction;
+
 
     void     setBufferReset();
     void     check();
