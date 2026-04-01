@@ -82,7 +82,7 @@ public:
         type_(demangle_name(type.c_str()))
     {
         // Set category based on type
-        if constexpr (std::is_base_of_v<BaseComponent, T>) {
+        if constexpr (std::is_base_of_v<BaseComponent, T> || std::is_base_of_v<SubComponent, T>) {
             setCategory(ObjectCategory::Component);
         }
     }
