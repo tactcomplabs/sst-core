@@ -536,21 +536,18 @@ private:
     static uint32_t current_rank;
     static std::vector<std::string> tokens;
     static std::stringstream result;
-    //std::string msg_;
     
     int consoleExecute(const std::string& msg);
     int executeThread(const std::string& msg);
     int executeRankSerial(const std::string& msg);
     int executeRankParallel(const std::string& msg);
-    int executeRankSlave(const std::string& msg);
     bool handleCommand();
     bool handleCommandAll();
-    void sendCommand( uint32_t rank_id, uint32_t thread_id,  const std::string& cmd);
-    void sendCommandAll(const std::string&  cmd);
+    bool sendCommand( uint32_t rank_id, uint32_t thread_id,  const std::string& cmd);
+    bool sendCommandAll(const std::string&  cmd);
     void receiveCommandRankSerial();
     void receiveCommandRankParallel();
-    int packResultBuffer( std::stringstream& result, char** result_buffer);
-    void sendDone();
+    bool sendDone();
 };
 
 } // namespace SST::IMPL::Interactive
