@@ -77,7 +77,7 @@ namespace SST::Core::Serialization {
             return *this;
         }
 
-        virtual ObjTreeCont* clone() const {};
+        virtual ObjTreeCont* clone() const { return new ObjTreeCont(*this); }
 
     //    virtual bool operator<(const ObjTreeCont& rhs) const {
     //        return false;    
@@ -135,11 +135,11 @@ namespace SST::Core::Serialization {
 
         virtual void apply() {};
         virtual std::string getTypeName() const {return type_;};
-        virtual void Dump(const int verbosity){
-            std::cout << name_ << "/ " << std::endl; //(" << type_ << ")" << std::endl;
+        virtual void Dump(const int verbosity, std::ostream& os = std::cout){
+            os << name_ << "/ " << std::endl; //(" << type_ << ")" << std::endl;
             if (verbosity > 0) {
-                applyRecursive([verbosity](ObjTreeCont* child) {
-                    child->Dump(verbosity - 1);
+                applyRecursive([&](ObjTreeCont* child) {
+                    child->Dump(verbosity - 1, os);
                 });
             }
         }
@@ -206,7 +206,7 @@ namespace SST::Core::Serialization {
 
         bool isEmpty(){return objects_.empty();}
 
-        void Dump(const int verbosity) override { std::cout << "Root/" << std::endl;}
+        void Dump([[maybe_unused]] const int verbosity, std::ostream& os = std::cout) override { os << "Root/" << std::endl;}
 
         protected:
         std::vector<std::unique_ptr<ObjTreeCont>> objects_;
@@ -260,15 +260,15 @@ namespace SST::Core::Serialization {
         // using cmpare = std::variant<SST::Core::Serialization::IntegerObj, SST::Core::Serialization::FloatObj>;
      //   virtual bool operator<(ObjTreeCont& rhs) final; 
         
-        void Dump(const int verbosity) override{
+        void Dump(const int verbosity, std::ostream& os = std::cout) override{
             if(verbosity == 0) return;
             if(verbosity == 1){ 
                 visit([&](auto val) {
-                    std::cout << getObjName() << " = " << static_cast<int64_t>(val) << std::endl;
+                    os << getObjName() << " = " << static_cast<int64_t>(val) << std::endl;
                 });
             }else{
                 visit([&](auto val) {
-                    std::cout << getObjName() << " = " << static_cast<int64_t>(val) << " (" << getType() << ")" << std::endl;
+                    os << getObjName() << " = " << static_cast<int64_t>(val) << " (" << getType() << ")" << std::endl;
                 });
             }
         }
@@ -318,15 +318,15 @@ namespace SST::Core::Serialization {
                 std::cout << "Processing float: " << val << std::endl;
             });
         }
-        void Dump(const int verbosity) override{
+        void Dump(const int verbosity, std::ostream& os = std::cout) override{
             if(verbosity == 0) return;
             if(verbosity == 1){
                 visit([&](auto val) {
-                    std::cout << getObjName() << " = " << std::setprecision(6) << getObjName() << " = " << val << std::endl;
+                    os << getObjName() << " = " << std::setprecision(6) << getObjName() << " = " << val << std::endl;
                 });
             }else{
                 visit([&](auto val) {
-                    std::cout << getObjName() << " = " << std::setprecision(6) << getObjName() << " = " << val << " (" << getType() << ")" << std::endl;
+                    os << getObjName() << " = " << std::setprecision(6) << getObjName() << " = " << val << " (" << getType() << ")" << std::endl;
                 });
             }
         }
@@ -386,13 +386,13 @@ namespace SST::Core::Serialization {
         BaseComponent* getVal() const{ return val_; }
         ComponentInfo* getInfo() const{ return compInfo_;}
 
-        void setVal(BaseComponent* v){ }
+        void setVal(BaseComponent* v){ val_ = v;}
 
         void apply() override {
             std::cout << "Processing component: " << val_->getName() << std::endl;
         }
-        void Dump(const int verbosity) override{
-            std::cout << val_->getName() << std::endl;
+        void Dump([[maybe_unused]] const int verbosity, std::ostream& os = std::cout) override{
+            os << val_->getName() << std::endl;
         }
 
         ComponentObj* find(const std::string name){
@@ -453,11 +453,11 @@ public:
                   << ") size=" << size_ << std::endl;
     }
 
-    void Dump(const int verbosity) override {
-        std::cout << name_ << "[" << size_ << " elements] (" << type_ << ")"<< std::endl;
+    void Dump(const int verbosity, std::ostream& os = std::cout) override {
+        os << name_ << "[" << size_ << " elements] (" << type_ << ")"<< std::endl;
         if (verbosity > 0) {
-            applyRecursive([verbosity](ObjTreeCont* child) {
-                child->Dump(verbosity - 1);
+            applyRecursive([&](ObjTreeCont* child) {
+                child->Dump(verbosity - 1, os);
             });
         }
     }
@@ -488,19 +488,19 @@ public:
     return current;
 }
 
-void printElementAt(std::vector<size_t> indices, int verbosity = 1) const {
+void printElementAt(std::vector<size_t> indices, int verbosity = 1, std::ostream& os = std::cout) const {
     ObjTreeCont* elem = getElementAt(indices);
     if (elem) {
-        elem->Dump(verbosity);
+        elem->Dump(verbosity, os);
     } else {
-        std::cout << "Element not found at path {";
+        os << "Element not found at path {";
         bool first = true;
         for (auto i : indices) {
-            if (!first) std::cout << ", ";
-            std::cout << i;
+            if (!first) os << ", ";
+            os << i;
             first = false;
         }
-        std::cout << "}" << std::endl;
+        os << "}" << std::endl;
     }
 }
 
@@ -532,12 +532,12 @@ public:
         std::cout << "Processing string: " << val_ << std::endl;
     }
 
-    void Dump(const int verbosity) override {
+    void Dump(const int verbosity, std::ostream& os = std::cout) override {
         if(verbosity == 0) return;
         if(verbosity == 1){
-            std::cout << getObjName() << " = \"" << val_ << "\"" << std::endl;
+            os << getObjName() << " = \"" << val_ << "\"" << std::endl;
         }else{
-            std::cout << getObjName() << " = \"" << val_ << "\"" << " (" << getType() << ")" <<  std::endl;
+            os << getObjName() << " = \"" << val_ << "\"" << " (" << getType() << ")" <<  std::endl;
         }
     }
 };
@@ -568,12 +568,12 @@ public:
         std::cout << "Processing bool: " << (val_ ? "true" : "false") << std::endl;
     }
 
-    void Dump(const int verbosity) override { 
+    void Dump(const int verbosity, std::ostream& os = std::cout) override { 
         if(verbosity == 0) return;
         if(verbosity == 1){ 
-            std::cout << getObjName() << " = " << (val_ ? "true" : "false") << std::endl;
+            os << getObjName() << " = " << (val_ ? "true" : "false") << std::endl;
         }else {
-            std::cout << getObjName() << " = " << (val_ ? "true" : "false") << " (" << getType() << ")" <<  std::endl;
+            os << getObjName() << " = " << (val_ ? "true" : "false") << " (" << getType() << ")" <<  std::endl;
         }
     }
 };
@@ -620,7 +620,7 @@ class ObjectMapToTree {
             || type.find("std::array") != std::string::npos;
     }
 
-    static std::unique_ptr<IntegerObj> makeIntegerObj(const std::string& type, void* addr, std::string name)  {
+    static std::unique_ptr<IntegerObj> makeIntegerObj(const std::string& type, void* addr)  {
         if (!addr) return nullptr;
         if (type == "signed char"    || type == "int8_t" || type == "char")   return std::make_unique<IntegerObj>(*static_cast<int8_t*>(addr));
         if (type == "short"          || type == "int16_t")  return std::make_unique<IntegerObj>(*static_cast<int16_t*>(addr));
@@ -665,7 +665,7 @@ public:
 
             // Integer types
             if (isIntegerType(type)) {
-                auto intObj = makeIntegerObj(type, addr, name);
+                auto intObj = makeIntegerObj(type, addr);
                 intObj->setName(name);
                 intObj->setType(type);
                 if (intObj) return intObj.release();
@@ -755,7 +755,7 @@ public:
                 return boolObj;
             }
             if (isIntegerType(type)) {
-                auto intObj = makeIntegerObj(type, addr, name);
+                auto intObj = makeIntegerObj(type, addr);
                 if (intObj) {
                     intObj->setName(name);
                     intObj->setType(type);

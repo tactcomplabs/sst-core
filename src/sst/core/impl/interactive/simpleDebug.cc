@@ -1094,7 +1094,7 @@ SimpleDebugger::cmd_thread_serial(std::string& UNUSED(cmd_str))
     int threadID = parse_thread();
 
     // Set current thread and get interactive msg
-    if ( threadID != -1 && threadID != current_thread ) {
+    if ( threadID >= 0 && static_cast<unsigned int>(threadID) != current_rank ) {
         // Clear result string 
         result.str("");
         result.clear();
@@ -1115,7 +1115,7 @@ SimpleDebugger::cmd_thread_thread(std::string& UNUSED(cmd_str))
     int threadID = parse_thread();
 
     // Set current thread and get interactive msg
-    if ( threadID != -1 && threadID != current_thread ) {
+    if ( threadID >= 0 && static_cast<unsigned int>(threadID) != current_rank ) {
         // Clear result string 
         result.str("");
         result.clear();
@@ -1136,7 +1136,7 @@ SimpleDebugger::cmd_thread_rank_serial(std::string& cmd_str)
     int threadID = parse_thread();
 
     // Set current thread and get interactive msg
-    if ( threadID != -1 && threadID != current_thread ) {
+    if ( threadID >= 0 && static_cast<unsigned int>(threadID) != current_rank ) {
         // Clear result string 
         result.str("");
         result.clear();
@@ -1163,7 +1163,7 @@ SimpleDebugger::cmd_thread_rank_parallel(std::string& cmd_str)
     int threadID = parse_thread();
 
     // Set current thread and get interactive msg
-    if ( threadID != -1 && threadID != current_thread ) {
+    if ( threadID >= 0 && static_cast<unsigned int>(threadID) != current_rank ) {
         // Clear result string 
         result.str("");
         result.clear();
@@ -1231,7 +1231,7 @@ SimpleDebugger::cmd_rank_serial(std::string& UNUSED(cmd_str))
     int rankID = parse_rank();
 
     // Set current thread and get interactive msg
-    if ( rankID != -1 && rankID != current_rank ) {
+    if ( rankID >= 0 && static_cast<unsigned int>(rankID) != current_rank ) {
         // Clear result string 
         result.str("");
         result.clear();
@@ -1252,7 +1252,7 @@ SimpleDebugger::cmd_rank_thread(std::string& UNUSED(cmd_str))
     int rankID = parse_rank();
 
     // Set current thread and get interactive msg
-    if ( rankID != -1 && rankID != current_rank ) {
+    if ( rankID >= 0 && static_cast<unsigned int>(rankID) != current_rank ) {
         // Clear result string 
         result.str("");
         result.clear();
@@ -1273,7 +1273,7 @@ SimpleDebugger::cmd_rank_rank_serial(std::string& cmd_str)
      int rankID = parse_rank();
 
     // Set current thread and get interactive msg
-    if ( rankID != -1 && rankID != current_rank ) {
+    if ( rankID >= 0 && static_cast<unsigned int>(rankID) != current_rank ) {
         // Clear result string 
         result.str("");
         result.clear();
@@ -1300,7 +1300,7 @@ SimpleDebugger::cmd_rank_rank_parallel(std::string& cmd_str)
      int rankID = parse_rank();
 
     // Set current thread and get interactive msg
-    if ( rankID != -1 && rankID != current_rank ) {
+    if ( rankID >= 0 && static_cast<unsigned int>(rankID) != current_rank ) {
         // Clear result string 
         result.str("");
         result.clear();
@@ -1485,7 +1485,7 @@ SimpleDebugger::cmd_ls_remote(std::vector<std::string>& UNUSED(tokens))
 {
     // Dump all the components
     curObj_->applyRecursive([] (SST::Core::Serialization::ObjTreeCont* child) {
-        child->Dump(0);
+        child->Dump(0, result);
     });
 
     /*auto& vars = obj_->getVariables();
@@ -1634,7 +1634,6 @@ SimpleDebugger::cmd_cd_remote(std::vector<std::string>& tokens)
         }
     }else{
         printf("Unknown object in cd command: %s\n", selection.c_str());
-        curObj_ = curObj_;
     }
 
     return true;
