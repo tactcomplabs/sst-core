@@ -985,8 +985,7 @@ SimpleDebugger::cmd_info_remote(std::vector<std::string>& UNUSED(tokens))
 }
 
 
-// thread <threadID>
-// switches to new thread
+// thread <threadID> : switches to new thread
 int
 SimpleDebugger::parse_thread()
 {
