@@ -1988,7 +1988,42 @@ SimpleDebugger::cmd_set_remote(std::vector<std::string>& tokens)
     //    can get a segmentation fault on a subsequent command. Address
     //    Sanitizer indicated use of previously freed memory.
     // 
+
+    //Check for [ ] [ ]
+    std::vector<size_t> indices = parseBracketIndices(tokens[1]);
+
+    auto* target = curObj_->findByName(tokens[1]);
+    if(target){
+        if(!indices.empty()){
+            SST::Core::Serialization::ContainerObj* tmp = dynamic_cast<SST::Core::Serialization::ContainerObj*>(target);
+            if(tmp){ 
+                if(tmp->setElementFromString(indices, tokens[2])){ return true;}
+                else{
+                    result << "Failed to set " << tokens[1] << " to " << tokens[2]
+                        << " (type: " << target->getType() << ")" << std::endl;
+                    return false;
+                }
+            }else {
+                result << "ERROR: Unable to set value - object not indexable" << std::endl;
+                return false;
+            }
+        }else{
+            if (!target->setFromString(tokens[2])) {
+                result << "Failed to set " << tokens[1] << " to " << tokens[2]
+                    << " (type: " << target->getType() << ")" << std::endl;
+                return false;
+            }
+        }
+    }else{
+        result << "Unknown object in set command: " << tokens[1] << std::endl;
+        return false;
+    }
+
+    return true;
+        
+}
     
+/*
     if ( obj_->isContainer() ) {
         bool found     = false;
         bool read_only = false;
@@ -2045,9 +2080,9 @@ SimpleDebugger::cmd_set_remote(std::vector<std::string>& tokens)
         result << "Invalid format: " << tokens[2] << std::endl;
         return false;
     }
-    var->selectParent();
-    return true;
-}
+    var->selectParent();*/
+    //return true;
+//}
 
 // run <time>: run simulation for time
 bool  

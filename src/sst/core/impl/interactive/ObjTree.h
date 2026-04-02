@@ -144,6 +144,9 @@ namespace SST::Core::Serialization {
             }
         }
 
+        virtual bool setFromString([[maybe_unused]] const std::string& value) { return false; }
+
+
         protected:
         ObjTreeCont*              parent_;
         std::vector<std::unique_ptr<ObjTreeCont>> children_;
@@ -220,19 +223,22 @@ namespace SST::Core::Serialization {
         
         private:
         IntVariant val_;
+        void* addr_;
 
         public:
         template<typename T>
-        IntegerObj(T v) : val_(v) {}
+        IntegerObj(T v, void* addr) : val_(v), addr_(addr) {}
 
         IntegerObj(const IntegerObj& rhs): 
             ObjTree<IntegerObj>(rhs),
-            val_(rhs.val_)
+            val_(rhs.val_),
+            addr_(rhs.addr_)
         {}
         IntegerObj& operator=(const IntegerObj& rhs) {
             if (this == &rhs) return *this;
             ObjTree<IntegerObj>::operator=(rhs);
             val_  = rhs.val_;
+            addr_ = rhs.addr_;
             return *this;
         }
         ObjTreeCont* clone() const override {
@@ -244,6 +250,12 @@ namespace SST::Core::Serialization {
 
         template<typename T>
         void setVal(T v){ val_ = v;}
+
+        template<typename T>
+        void setSimVal(T v){ 
+              val_ = v;
+              syncToSim();
+        }
 
         template<typename Visitor>
         auto visit(Visitor&& visitor) { return std::visit(std::forward<Visitor>(visitor), val_); }
@@ -272,6 +284,23 @@ namespace SST::Core::Serialization {
                 });
             }
         }
+        bool setFromString(const std::string& value) override {
+        try {
+            visit([&](auto& current) {
+                using T = std::decay_t<decltype(current)>;
+                setSimVal(static_cast<T>(std::stoll(value)));
+            });
+            return true;
+            }   catch (...) { return false; }
+        }
+
+        private:
+        void syncToSim() {
+            if (!addr_) return;
+            std::visit([this](auto& v) {
+                *static_cast<std::decay_t<decltype(v)>*>(addr_) = v;
+            }, val_);
+        }
     };
 
     class FloatObj : public ObjTree<FloatObj> {
@@ -280,18 +309,23 @@ namespace SST::Core::Serialization {
         
         private:
         FloatVariant val_;
+        void* addr_;
 
         public:
         template<typename T>
-        FloatObj(T v) : val_(v) {}
+        FloatObj(T v, void* addr) : val_(v), addr_(addr) {}
 
-        FloatObj(const FloatObj& rhs): ObjTree<FloatObj>(rhs), val_(rhs.val_)
+        FloatObj(const FloatObj& rhs):
+            ObjTree<FloatObj>(rhs), 
+            val_(rhs.val_),
+            addr_(rhs.addr_)
         {}
 
         FloatObj& operator=(const FloatObj& rhs) {
             if (this == &rhs) return *this;
             ObjTree<FloatObj>::operator=(rhs);
             val_ = rhs.val_;
+            addr_ = rhs.addr_;
             return *this;
         }
 
@@ -306,6 +340,9 @@ namespace SST::Core::Serialization {
 
         template<typename T>
         void setVal(T v){ val_ = v;}
+
+        template<typename T>
+        void setSimVal(T v){ val_ = v; syncToSim(); }
 
         template<typename Visitor>
         auto visit(Visitor&& visitor) { return std::visit(std::forward<Visitor>(visitor), val_); }
@@ -330,33 +367,25 @@ namespace SST::Core::Serialization {
                 });
             }
         }
+        
+        bool setFromString(const std::string& value) override {
+        try {
+                visit([&](auto& current) {
+                    using T = std::decay_t<decltype(current)>;
+                    setSimVal(static_cast<T>(std::stold(value)));
+                });
+                return true;
+            } catch (...) { return false; }
+        }
+
+        private:
+        void syncToSim() {
+            if (!addr_) return;
+            std::visit([this](auto& v) {
+                *static_cast<std::decay_t<decltype(v)>*>(addr_) = v;
+            }, val_);
+        }
     };
-
- /*   inline bool IntegerObj::operator<(ObjTreeCont& rhs) {
-    if (IntegerObj* tmp = dynamic_cast<IntegerObj*>(&rhs)) {
-        return std::visit([&](auto lhs) {
-            return tmp->visit([&](auto r) { return lhs < r; });
-        }, val_);
-    } else if (FloatObj* tmp = dynamic_cast<FloatObj*>(&rhs)) {
-        return std::visit([&](auto lhs) {
-            return tmp->visit([&](auto r) { return lhs < r; });
-        }, val_);
-    }
-    return false;
-}
-
-    inline bool FloatObj::operator<(ObjTreeCont& rhs) {
-    if (IntegerObj* tmp = dynamic_cast<IntegerObj*>(&rhs)) {
-        return std::visit([&](auto lhs) {
-            return tmp->visit([&](auto r) { return lhs < r; });
-        }, val_);
-    } else if (FloatObj* tmp = dynamic_cast<FloatObj*>(&rhs)) {
-        return std::visit([&](auto lhs) {
-            return tmp->visit([&](auto r) { return lhs < r; });
-        }, val_);
-    }
-    return false;
-}*/
 
     class ComponentObj : public ObjTree<ComponentObj> 
     {
@@ -504,20 +533,41 @@ void printElementAt(std::vector<size_t> indices, int verbosity = 1, std::ostream
     }
 }
 
+bool setElementFromString(std::vector<size_t> indices, std::string val){
+    ObjTreeCont* elem = getElementAt(indices);
+    bool success = elem != nullptr;
+    if(elem){
+        success = elem->setFromString(val);
+    }
+    if(!success){
+        std::cout << "Element not found at path {";
+        bool first = true;
+        for (auto i : indices) {
+            if (!first) std::cout << ", ";
+            std::cout << i;
+            first = false;
+        }
+        std::cout << "}" << std::endl; 
+    }
+    return success;
+}
+
 };
 
 // Node for string types (treated specially since they're fundamental-like)
 class StringObj : public ObjTree<StringObj> {
     std::string val_;
+    void* addr_;
 
 public:
-    StringObj(const std::string& v) : val_(v) {}
-    StringObj(const StringObj& rhs) : ObjTree<StringObj>(rhs) , val_(rhs.val_) {}
+    StringObj(const std::string& v, void* addr) : val_(v), addr_(addr) {}
+    StringObj(const StringObj& rhs) : ObjTree<StringObj>(rhs) , val_(rhs.val_), addr_(rhs.addr_) {}
 
     StringObj& operator=(const StringObj& rhs) {
         if (this == &rhs) return *this;
         ObjTree<StringObj>::operator=(rhs);
         val_ = rhs.val_;
+        addr_ = rhs.addr_;
         return *this;
     }
 
@@ -527,6 +577,11 @@ public:
 
     const std::string& getVal() const { return val_; }
     void setVal(const std::string& v) { val_ = v; }
+    void setSimVal(const std::string& v){ val_ = v; *static_cast<std::string*>(addr_) = val_;}
+    bool setFromString(const std::string& value) override {
+        setSimVal(value);
+        return true;
+    }
 
     void apply() override {
         std::cout << "Processing string: " << val_ << std::endl;
@@ -545,15 +600,17 @@ public:
 // Node for bool (separate from integer for clarity)
 class BoolObj : public ObjTree<BoolObj> {
     bool val_;
+    void* addr_; // This points back to the 
 
 public:
-    BoolObj(bool v) : val_(v) {}
-    BoolObj(const BoolObj& rhs): ObjTree<BoolObj>(rhs), val_(rhs.val_) {}
+    BoolObj(bool v, void* addr) : val_(v), addr_(addr) {}
+    BoolObj(const BoolObj& rhs): ObjTree<BoolObj>(rhs), val_(rhs.val_), addr_(rhs.addr_) {}
 
     BoolObj& operator=(const BoolObj& rhs) {
         if (this == &rhs) return *this;
         ObjTree<BoolObj>::operator=(rhs);
         val_ = rhs.val_;
+        addr_ = rhs.addr_;
         return *this;
     }
 
@@ -563,6 +620,11 @@ public:
 
     bool getVal() const { return val_; }
     void setVal(bool v) { val_ = v; }
+    void setSimVal(bool v) { *(static_cast<bool*>(addr_)) = v; val_ = v;}
+    bool setFromString(const std::string& value) override { 
+        setSimVal(value == "true" || value == "1");
+        return true;
+    }
 
     void apply() override {
         std::cout << "Processing bool: " << (val_ ? "true" : "false") << std::endl;
@@ -622,25 +684,25 @@ class ObjectMapToTree {
 
     static std::unique_ptr<IntegerObj> makeIntegerObj(const std::string& type, void* addr)  {
         if (!addr) return nullptr;
-        if (type == "signed char"    || type == "int8_t" || type == "char")   return std::make_unique<IntegerObj>(*static_cast<int8_t*>(addr));
-        if (type == "short"          || type == "int16_t")  return std::make_unique<IntegerObj>(*static_cast<int16_t*>(addr));
-        if (type == "int"            || type == "int32_t")  return std::make_unique<IntegerObj>(*static_cast<int32_t*>(addr));
+        if (type == "signed char"    || type == "int8_t" || type == "char")   return std::make_unique<IntegerObj>(*static_cast<int8_t*>(addr), addr);
+        if (type == "short"          || type == "int16_t")  return std::make_unique<IntegerObj>(*static_cast<int16_t*>(addr), addr);
+        if (type == "int"            || type == "int32_t")  return std::make_unique<IntegerObj>(*static_cast<int32_t*>(addr), addr);
         if (type == "long" || type == "long long" || type == "int64_t")
-            return std::make_unique<IntegerObj>(*static_cast<int64_t*>(addr));
-        if (type == "unsigned char"  || type == "uint8_t")  return std::make_unique<IntegerObj>(*static_cast<uint8_t*>(addr));
-        if (type == "unsigned short" || type == "uint16_t") return std::make_unique<IntegerObj>(*static_cast<uint16_t*>(addr));
+            return std::make_unique<IntegerObj>(*static_cast<int64_t*>(addr), addr);
+        if (type == "unsigned char"  || type == "uint8_t")  return std::make_unique<IntegerObj>(*static_cast<uint8_t*>(addr), addr);
+        if (type == "unsigned short" || type == "uint16_t") return std::make_unique<IntegerObj>(*static_cast<uint16_t*>(addr), addr);
         if (type == "unsigned int"   || type == "unsigned" || type == "uint32_t")
-            return std::make_unique<IntegerObj>(*static_cast<uint32_t*>(addr));
+            return std::make_unique<IntegerObj>(*static_cast<uint32_t*>(addr), addr);
         if (type == "unsigned long"  || type == "unsigned long long" || type == "uint64_t")
-            return std::make_unique<IntegerObj>(*static_cast<uint64_t*>(addr));
+            return std::make_unique<IntegerObj>(*static_cast<uint64_t*>(addr), addr);
         return nullptr;
     }
 
     static std::unique_ptr<FloatObj> makeFloatObj(const std::string& type, void* addr) {
         if (!addr) return nullptr;
-        if (type == "float")       return std::make_unique<FloatObj>(*static_cast<float*>(addr));
-        if (type == "double")      return std::make_unique<FloatObj>(*static_cast<double*>(addr));
-        if (type == "long double") return std::make_unique<FloatObj>(*static_cast<long double*>(addr));
+        if (type == "float")       return std::make_unique<FloatObj>(*static_cast<float*>(addr), addr);
+        if (type == "double")      return std::make_unique<FloatObj>(*static_cast<double*>(addr), addr);
+        if (type == "long double") return std::make_unique<FloatObj>(*static_cast<long double*>(addr), addr);
         return nullptr;
     }
 
@@ -657,7 +719,7 @@ public:
         if (objMap->isFundamental()) {
             // Bool
             if (type == "bool" && addr) {
-                auto boolObj = new BoolObj(*static_cast<bool*>(addr));
+                auto boolObj = new BoolObj(*static_cast<bool*>(addr), addr);
                 boolObj->setName(name);
                 boolObj->setType(type);
                 return boolObj;
@@ -681,7 +743,7 @@ public:
 
             // String 
             if (isStringType(type) && addr) {
-                auto stringObj = new StringObj(*static_cast<std::string*>(addr));
+                auto stringObj = new StringObj(*static_cast<std::string*>(addr), addr);
                 stringObj->setName(name);
                 stringObj->setType(type);
                 return stringObj;
@@ -749,7 +811,7 @@ public:
         // Fundamental types
         if (objMap->isFundamental()) {
             if (type == "bool" && addr) {
-                auto boolObj = new BoolObj(*static_cast<bool*>(addr));
+                auto boolObj = new BoolObj(*static_cast<bool*>(addr), addr);
                 boolObj->setName(name);
                 boolObj->setType(type);
                 return boolObj;
@@ -771,7 +833,7 @@ public:
                 }
             }
             if (isStringType(type) && addr) {
-                auto stringObj = new StringObj(*static_cast<std::string*>(addr));
+                auto stringObj = new StringObj(*static_cast<std::string*>(addr), addr);
                 stringObj->setName(name);
                 stringObj->setType(type);
                 return stringObj;
