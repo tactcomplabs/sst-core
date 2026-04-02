@@ -1764,7 +1764,7 @@ SimpleDebugger::cmd_print_remote(std::vector<std::string>& tokens)
 
     size_t pos = containsArg(tokens, "-r");
     // See if have a -r or not
-    int         recurse = 4; // default -r depth
+    int         recurse = 0; // default -r depth
     std::string tok     = tokens[1];
     if ( (tok.size() >= 2) && (tok[0] == '-') && (tok[1] == 'r') ) {
         // Got a -r
@@ -1859,6 +1859,11 @@ SimpleDebugger::cmd_print_remote(std::vector<std::string>& tokens)
             }
        }else {
             target->Dump(print_verbose + 1 );
+            if(recurse > 0){
+                target->applyRecursive([print_verbose] (SST::Core::Serialization::ObjTreeCont* child) {
+                    child->Dump(print_verbose + 1);
+                });
+            }
        }
     }else{
         //printf("Unknown object in print command: %s\n", tokens[1].c_str());
