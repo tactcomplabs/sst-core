@@ -33,14 +33,6 @@ namespace SST::IMPL::Interactive {
 
 // Static Initialization
 //TODO kg is there a naming convention for static vars?
-bool          SimpleDebugger::autoCompleteEnable = true;
-std::ofstream SimpleDebugger::loggingFile;
-std::ifstream SimpleDebugger::replayFile;
-std::string   SimpleDebugger::loggingFilePath = "sst-console.out";
-std::string   SimpleDebugger::replayFilePath  = "sst-console.in";
-bool          SimpleDebugger::enLogging       = false;
-bool          SimpleDebugger::confirm_        = true;
-// New
 unsigned           SimpleDebugger::current_thread  = 0;
 unsigned           SimpleDebugger::current_rank    = 0;
 std::vector<std::string> SimpleDebugger::tokens;
@@ -1019,7 +1011,7 @@ SimpleDebugger::parse_thread()
     }
 
     // Check if valid threadID
-    if ( threadID < 0 || threadID >= static_cast<int>(num_ranks_.thread ) ) {
+    if ( threadID < 0 || threadID >= static_cast<int>(num_ranks_.thread) ) {
         std::cout << "ThreadID " << threadID << " out of range (0:" << num_ranks_.thread - 1 << ")" <<std::endl;
         return -1;
     }
@@ -1037,7 +1029,7 @@ SimpleDebugger::cmd_thread_serial(std::string& UNUSED(cmd_str))
         return false;
 
     // Set current thread and get interactive msg
-    if ( threadID != current_thread ) {
+    if ( threadID != static_cast<int>(current_thread) ) {
         // Clear result string 
         result.str("");
         result.clear();
@@ -1060,7 +1052,7 @@ SimpleDebugger::cmd_thread_thread(std::string& UNUSED(cmd_str))
         return false;
 
     // Set current thread and get interactive msg
-    if ( threadID != current_thread ) {
+    if ( threadID != static_cast<int>(current_thread) ) {
         // Clear R0 result string 
         result.str("");
         result.clear();
@@ -1083,7 +1075,7 @@ SimpleDebugger::cmd_thread_rank_serial(std::string& cmd_str)
         return false;
 
     // Set current thread and get interactive msg
-    if ( threadID != current_thread ) {
+    if ( threadID != static_cast<int>(current_thread) ) {
         // Clear R0 result string 
         result.str("");
         result.clear();
@@ -1112,7 +1104,7 @@ SimpleDebugger::cmd_thread_rank_parallel(std::string& cmd_str)
         return false;
 
     // Set current thread and get interactive msg
-    if ( threadID != current_thread ) {
+    if ( threadID != static_cast<int>(current_thread) ) {
         // Clear R0 result string 
         result.str("");
         result.clear();
@@ -1182,7 +1174,7 @@ SimpleDebugger::cmd_rank_serial(std::string& UNUSED(cmd_str))
         return false;
 
     // Set current thread and get interactive msg
-    if ( rankID != current_rank ) {
+    if ( rankID != static_cast<int>(current_rank) ) {
         // Clear R0 result string 
         result.str("");
         result.clear();
@@ -1205,7 +1197,7 @@ SimpleDebugger::cmd_rank_thread(std::string& UNUSED(cmd_str))
         return false;
 
     // Set current thread and get interactive msg
-    if ( rankID != current_rank ) {
+    if ( rankID != static_cast<int>(current_rank) ) {
         // Clear R0 result string 
         result.str("");
         result.clear();
@@ -1228,7 +1220,7 @@ SimpleDebugger::cmd_rank_rank_serial(std::string& cmd_str)
         return false;
 
     // Set current thread and get interactive msg
-    if ( rankID != current_rank ) {
+    if ( rankID != static_cast<int>(current_rank) ) {
         // Clear R0 result string 
         result.str("");
         result.clear();
@@ -1257,7 +1249,7 @@ SimpleDebugger::cmd_rank_rank_parallel(std::string& cmd_str)
         return false;
 
     // Set current thread and get interactive msg
-    if ( rankID != current_rank ) {
+    if ( rankID != static_cast<int>(current_rank) ) {
         // Clear R0 result string 
         result.str("");
         result.clear();
@@ -1763,7 +1755,7 @@ SimpleDebugger::cmd_print_remote(std::vector<std::string>& tokens)
     bool        found;
     std::string listing = obj_->listVariable(tokens[var_index], found, recurse);
     if ( !found ) {
-        result << "Unknown object in print command: " << tokens[1] << std::endl;
+        result << "Unknown object in print command: " << tokens[var_index] << std::endl;
         return false;
     }
     else {
@@ -4200,13 +4192,6 @@ SimpleDebugger::handleCommand()
             succeed = consoleCommand.first.exec_remote(tokens);            
         }  
     } 
-    #if 0
-    else {  // DONE - currently this needs to be set separately for all?
-        if (rank_.thread == current_thread) {
-            result << "**Worker DONE: R" << rank_.rank << ", T" << rank_.thread << "\n";
-        }
-    }
-    #endif
 
     // Wait for result to be stored by target thread
     process_barrier.wait();

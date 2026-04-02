@@ -340,14 +340,14 @@ private:
     RankInfo num_ranks_;
     RankInfo rank_;
 
-    static bool autoCompleteEnable; // skk default = true;
+    bool autoCompleteEnable = true;
 
     // logging support
-    static std::ofstream loggingFile;
-    static std::ifstream replayFile;
-    static std::string   loggingFilePath; // skk default = "sst-console.out";
-    static std::string   replayFilePath;  // skk default = "sst-console.in";
-    static bool          enLogging;       // skk default = false;
+    std::ofstream loggingFile;
+    std::ifstream replayFile;
+    std::string   loggingFilePath = "sst-console.out";
+    std::string   replayFilePath = "sst-console.in";
+    bool          enLogging = false;
 
     // command injection (for sst --replay option)
     std::stringstream injectedCommand;
@@ -363,12 +363,12 @@ private:
     std::vector<std::pair<WatchPoint*, BaseComponent*>> watch_points_;
     bool                                                query_clear_watchlist();
     bool                                                clear_watchlist(std::vector<std::string>& UNUSED(tokens));
-    static bool confirm_; // skk = true; // Ask for confirmation to clear watchlist
+    bool confirm_ = true; // Ask for confirmation to clear watchlist
 
     std::vector<std::string> tokenize(std::vector<std::string>& tokens, const std::string& input);
 
     // Navigation
-    bool cmd_help(std::string& UNUSED(cmd_str)); 
+    bool cmd_help(std::string& UNUSED(cmd_str));
 
     bool cmd_verbose_query();
     bool cmd_verbose_serial(std::string& UNUSED(cmd_str));
