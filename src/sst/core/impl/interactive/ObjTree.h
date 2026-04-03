@@ -80,10 +80,6 @@ namespace SST::Core::Serialization {
 
         virtual ObjTreeCont* clone() const { return new ObjTreeCont(*this); }
 
-    //    virtual bool operator<(const ObjTreeCont& rhs) const {
-    //        return false;    
-     //   }
-
         void addChildObj(ObjTreeCont* obj){
             children_.push_back(std::unique_ptr<ObjTreeCont>(obj));
             obj->parent_ = this;
@@ -185,10 +181,6 @@ namespace SST::Core::Serialization {
             return *this;
         }
 
-  //      virtual bool operator<(const ObjTreeCont& rhs) const override {
-  //          return false;
-  //       }
-
         void BuildTree(const ComponentInfoMap& compMap);
 
         Obj_T& getObj(){ return static_cast<Obj_T&>(*this);}
@@ -270,9 +262,6 @@ namespace SST::Core::Serialization {
             });
         }
 
-        // using cmpare = std::variant<SST::Core::Serialization::IntegerObj, SST::Core::Serialization::FloatObj>;
-     //   virtual bool operator<(ObjTreeCont& rhs) final; 
-        
         void Dump(const int verbosity, std::ostream& os = std::cout) override{
             if(verbosity == 0){
                 os << getObjName() << std::endl;
@@ -331,8 +320,6 @@ namespace SST::Core::Serialization {
             addr_ = rhs.addr_;
             return *this;
         }
-
-     //   virtual bool operator<(ObjTreeCont& rhs) final;
 
         ObjTreeCont* clone() const override {
             return new FloatObj(*this);
@@ -509,22 +496,6 @@ public:
     for (size_t idx : indices) {
         if (!current) return nullptr;
 
-        // If current node is a ContainerObj, its actual elements may be
-        // nested under a wrapper child (from convertNode). Detect that.
-        /*auto& children = current->getChildren();
-
-        // Check if there's a single wrapper ContainerObj child
-        ObjTreeCont* elementParent = current;
-        if (children.size() == 1) {
-            if (auto* wrapper = dynamic_cast<ContainerObj*>(children[0].get())) {
-                elementParent = wrapper;
-            }
-        }
-
-        auto& elems = elementParent->getChildren();
-        if (idx >= elems.size()) return nullptr;
-
-        current = elems[idx].get();*/
         auto& elems = current->getChildren();
         if (idx >= elems.size()) return nullptr;
 
@@ -779,8 +750,6 @@ public:
             const auto& variables = objMap->getVariables();
             auto* container = new ContainerObj(name, type, variables.size());
 
-            //ObjTreeCont* childNode = convertNode(name, objMap);
-            //container->addChildObj(childNode);
             for (const auto& [childName, childMap] : variables) {
                 ObjTreeCont* child = convertNode(childName, childMap);
                 if (child) container->addChildObj(child);
@@ -796,11 +765,6 @@ public:
                 auto* compObj = new ComponentObj(comp, nullptr);
                 compObj->setName(name);
                 compObj->setType(type);
-              //  const auto& variables = objMap->getVariables();
-              //  for (const auto& [childName, childMap] : variables) {
-              //      ObjTreeCont* childNode = convertNode(childName, childMap);
-              //      if (childNode) compObj->addChildObj(childNode);
-             //   }
                 return compObj;
             }
         }
@@ -814,8 +778,6 @@ public:
                 node->addChildObj(childNode);
             }
         }
-        //ObjTreeCont* childNode = convertNode(name, objMap);
-        //node->addChildObj(childNode);
 
         return node;
     }
@@ -962,17 +924,6 @@ public:
     if (compInfo) {
         serializeSubComponents(compNode, compInfo, recursive);
     }
-
-        //if (!serializer.hasSerialized()) return false;
-
-        // Get the serialized variables and convert them to tree nodes
-//        const auto& variables = serializer.getVariables();
-     /*   if (recursive) {
-            addChildrenFromMapRecursive(compNode, variables);
-        }
-        else {
-            addChildrenFromMap(compNode, variables);
-        }*/
 
         return true;
     }

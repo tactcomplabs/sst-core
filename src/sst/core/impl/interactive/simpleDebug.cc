@@ -1473,11 +1473,18 @@ SimpleDebugger::cmd_ls_rank_parallel(std::string& cmd_str)
 }
 
 bool
-SimpleDebugger::cmd_ls_remote(std::vector<std::string>& UNUSED(tokens))
+SimpleDebugger::cmd_ls_remote(std::vector<std::string>& tokens)
 {
+
+    unsigned verbosity = 0;
+    if("-l" == tokens[1]){
+        verbosity = 2;
+    }else if("-ll" == tokens[1]){
+        verbosity = 3;
+    }
     // Dump all the components
-    curObj_->applyRecursive([] (SST::Core::Serialization::ObjTreeCont* child) {
-        child->Dump(0, result);
+    curObj_->applyRecursive([verbosity] (SST::Core::Serialization::ObjTreeCont* child) {
+        child->Dump(verbosity, result);
     });
 
     return true;

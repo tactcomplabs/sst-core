@@ -420,7 +420,7 @@ private:
     bool cmd_ls_thread(std::string& UNUSED(cmd_str));
     bool cmd_ls_rank_serial(std::string& cmd_str);
     bool cmd_ls_rank_parallel(std::string& cmd_str);
-    bool cmd_ls_remote(std::vector<std::string>& UNUSED(tokens));
+    bool cmd_ls_remote(std::vector<std::string>& tokens);
 
     // State
     bool cmd_time(std::string& UNUSED(cmd_str));
