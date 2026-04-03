@@ -621,12 +621,66 @@ public:
 
     void Dump(const int verbosity, std::ostream& os = std::cout) override { 
         if(verbosity == 0){
-            os << getObjName();
+            os << getObjName() << std::endl;
         }
         else if(verbosity == 1){ 
             os << getObjName() << " = " << (val_ ? "true" : "false") << std::endl;
         }else {
             os << getObjName() << " = " << (val_ ? "true" : "false") << " (" << getType() << ")" <<  std::endl;
+        }
+    }
+};
+
+class GenericValObj : public ObjTree<GenericValObj> {
+    std::string val_;
+    void* addr_ = nullptr;
+    ObjectMap* sourceMap_ = nullptr;  // for write-back via string interface
+
+public:
+    GenericValObj(const std::string& val, void* addr, ObjectMap* source)
+        : val_(val), addr_(addr), sourceMap_(source) {}
+
+    GenericValObj(const GenericValObj& rhs)
+        : ObjTree<GenericValObj>(rhs),
+          val_(rhs.val_), addr_(rhs.addr_), sourceMap_(rhs.sourceMap_) {}
+
+    GenericValObj& operator=(const GenericValObj& rhs) {
+        if (this == &rhs) return *this;
+        ObjTree<GenericValObj>::operator=(rhs);
+        val_ = rhs.val_;
+        addr_ = rhs.addr_;
+        sourceMap_ = rhs.sourceMap_;
+        return *this;
+    }
+
+    ObjTreeCont* clone() const override {
+        return new GenericValObj(*this);
+    }
+
+    const std::string& getVal() const { return val_; }
+
+    // Write-back through ObjectMap's string-based set interface,
+    // which knows the real type and handles conversion internally.
+    bool setFromString(const std::string& value) override {
+        if (!sourceMap_) return false;
+        if (sourceMap_->isReadOnly()) return false;
+        sourceMap_->set(value);
+        // Re-read to confirm the value was accepted
+        val_ = sourceMap_->get();
+        return true;
+    }
+
+    void apply() override {
+        std::cout << "Processing generic: " << val_ << std::endl;
+    }
+
+    void Dump(const int verbosity, std::ostream& os = std::cout) override {
+        if (verbosity == 0) { os << getObjName() << std::endl;
+        }else if (verbosity == 1) {
+            os << getObjName() << " = " << val_ << std::endl;
+        } else {
+            os << getObjName() << " = " << val_
+               << " (" << getType() << ")" << std::endl;
         }
     }
 };
@@ -638,7 +692,7 @@ class ObjectMapToTree {
     // Known integer type strings
     static bool isIntegerType(const std::string& type) {
         static const std::unordered_set<std::string> intTypes = {
-            "signed char", "int8_t",
+            "signed char", "int8_t", "char",
             "short", "int16_t",
             "int", "int32_t",
             "long", "long long", "int64_t",
@@ -740,9 +794,15 @@ public:
                 return stringObj;
             }
 
-            // Unknown fundamental — wrap in GenericObj with the value as name
-            auto* node = new ObjTreeCont(name + " = " + objMap->get(), type);
-            return node;
+            // Unknown fundamental — wrap in GenericObj with the value as string
+            //Note: we pass a nullptr in for objMap as the objMap used here is destroyed by the caller
+            //      If it is necessary to set one of these generic values we will need to preserve the
+            //      value of objMap. For now, we just pass in a nullptr rather than carry the (potentially) 
+            //      heavy ObjMap around in this container 
+            auto* generic = new GenericValObj(objMap->get(), addr, nullptr);
+            generic->setName(name);
+            generic->setType(type);
+            return generic;
         }
 
         // --- Containers (vector, map, set, etc.) ---
@@ -818,7 +878,15 @@ public:
                 stringObj->setType(type);
                 return stringObj;
             }
-            return new ObjTreeCont(name + " = " + objMap->get(), type);
+            // Unknown fundamental — wrap in GenericObj with the value as name
+            //Note: we pass a nullptr in for objMap as the objMap used here is destroyed by the caller
+            //      If it is necessary to set one of these generic values we will need to preserve the
+            //      value of objMap. For now, we just pass in a nullptr rather than carry the (potentially) 
+            //      heavy ObjMap around in this container 
+            auto* generic = new GenericValObj(objMap->get(), addr, nullptr);
+            generic->setName(name);
+            generic->setType(type);
+            return generic;
         }
 
         // Container
