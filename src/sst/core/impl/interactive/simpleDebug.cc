@@ -1606,7 +1606,7 @@ SimpleDebugger::cmd_cd_remote(std::vector<std::string>& tokens)
     if ( selection == ".." ) {
         auto* parent = curObj_->getParent();
         if(parent){
-            curObj_ = static_cast<Core::Serialization::ComponentObj*>(parent);
+            curObj_ = parent;
         }else{
             printf("Already at top of object hierarchy\n");
             return false;
@@ -1614,7 +1614,29 @@ SimpleDebugger::cmd_cd_remote(std::vector<std::string>& tokens)
         return true;
     }
 
-    //Are we cd-ing into a Component?
+     // Search children by name
+    SST::Core::Serialization::ObjTreeCont* target = curObj_->findByName(selection);
+    if (!target) {
+        printf("Unknown object in cd command: %s\n", selection.c_str());
+        return false;
+    }
+
+    // If it's a ComponentObj that hasn't been serialized yet, serialize it
+    if (auto* comp = dynamic_cast<Core::Serialization::ComponentObj*>(target)) {
+        if (comp->getChildren().empty()) {
+            Core::Serialization::ObjectMapToTree::serializeComponent(comp, true);
+        }
+    }
+
+    // Only descend if the target has children (or is a component that just got serialized)
+    if (target->getChildren().empty()) {
+        printf("Cannot cd into %s: no children\n", selection.c_str());
+        return false;
+    }
+
+    curObj_ = target;
+
+   /* //Are we cd-ing into a Component?
     Core::Serialization::ComponentObj* tmpObj = curObj_->find(selection);
     if(tmpObj){
         curObj_ = tmpObj;
@@ -1623,7 +1645,7 @@ SimpleDebugger::cmd_cd_remote(std::vector<std::string>& tokens)
         }
     }else{
         printf("Unknown object in cd command: %s\n", selection.c_str());
-    }
+    }*/
 
     return true;
 }

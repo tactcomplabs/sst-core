@@ -332,7 +332,7 @@ private:
     SST::Core::Serialization::ObjectMap* obj_ = nullptr;
     bool                                 done = false;
     SST::Core::Serialization::ComponentObj* objTree_  = nullptr;;
-    SST::Core::Serialization::ComponentObj* curObj_  = nullptr;;
+    SST::Core::Serialization::ObjTreeCont* curObj_  = nullptr;;
     SST::Core::Serialization::ObjTreeCont* objTreeRoot_ = nullptr;
     SST::Core::Serialization::ObjTreeCont* curObjCont_ = nullptr;
     bool                                 exit_console = false;
