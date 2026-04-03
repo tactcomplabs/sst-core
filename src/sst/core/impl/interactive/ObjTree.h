@@ -40,6 +40,7 @@
 #include <vector>
 #include <any>
 #include <unordered_set>
+#include <algorithm>
 
 namespace SST::Core::Serialization {
 
@@ -447,6 +448,11 @@ namespace SST::Core::Serialization {
         ComponentObj* c = new ComponentObj(bc, compinfo);
         addChildObj(c);
         }
+         
+        std::sort(children_.begin(), children_.end(), 
+            [](const std::unique_ptr<ObjTreeCont>& a, const std::unique_ptr<ObjTreeCont>& b){
+                return a->getObjName() < b->getObjName();
+            });
     }
 
 class ContainerObj : public ObjTree<ContainerObj> {

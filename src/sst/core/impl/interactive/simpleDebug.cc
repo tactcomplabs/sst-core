@@ -554,26 +554,18 @@ void
 SimpleDebugger::save_name_stack()
 {
     name_stack.clear();
-    for ( ;; ) {
-        // Get the name of the current node
-        std::string name = obj_->getName();
 
-        // Get the parent of the current node
-        Core::Serialization::ObjectMap* parent = obj_->selectParent();
-
-        // If the parent is nullptr, we have reached the top and can stop
-        if ( !parent ) break;
-
-        // Push the name on the name_stack
-        name_stack.push_front(std::move(name));
-
-        // See if this is the top level component, and if so, set it to nullptr
-        if ( dynamic_cast<Core::Serialization::ObjectMap*>(base_comp_) == obj_ ) base_comp_ = nullptr;
-
-        // Move up to the parent
-        obj_ = parent;
+    if(!curObj_->isRoot()){
+        SST::Core::Serialization::ObjTreeCont* parent =  curObj_->getParent();
+        name_stack.push_front(std::move(curObj_->getObjName())); 
+        while (parent && !parent->isRoot())
+        {
+            name_stack.push_front(std::move(curObj_->getObjName()));
+            parent =  parent->getParent();
+        }
     }
 
+    //DDD: remove this
     obj_->decRefCount();
     obj_ = nullptr;
 }
@@ -1488,16 +1480,6 @@ SimpleDebugger::cmd_ls_remote(std::vector<std::string>& UNUSED(tokens))
         child->Dump(0, result);
     });
 
-    /*auto& vars = obj_->getVariables();
-    for ( auto& x : vars ) {
-        if ( x.second->isFundamental() ) {
-            result << x.first << " = " << x.second->get() << " (" << x.second->getType() << ")" << std::endl;
-        }
-        else {
-            result << x.first.c_str() << "/ (" << x.second->getType() << ")\n";
-        }
-    }
-    //result << dreset;  // SKK move to console*/ 
     return true;
 }
 
