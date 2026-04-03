@@ -1989,6 +1989,7 @@ SimpleDebugger::cmd_set_remote(std::vector<std::string>& tokens)
     //    Sanitizer indicated use of previously freed memory.
     // 
 
+    //DDD: Do we need to check for ReadOnly in the ObjectMap?
     //Check for [ ] [ ]
     std::vector<size_t> indices = parseBracketIndices(tokens[1]);
 
@@ -2023,67 +2024,6 @@ SimpleDebugger::cmd_set_remote(std::vector<std::string>& tokens)
         
 }
     
-/*
-    if ( obj_->isContainer() ) {
-        bool found     = false;
-        bool read_only = false;
-        obj_->set(tokens[1], tokens[2], found, read_only);
-        if ( !found ) {
-            result << "Unknown object in set command for container: " << tokens[1] << std::endl;
-            return false;
-        }
-        if ( read_only ) {
-            result << "Object specified in set command is read-only for container: " << tokens[1] << std::endl;
-            return false;
-        }
-        // TODO do we need var->selectParent() here?
-        return true;
-    }
-
-    bool  loop_detected = false;
-    auto* var           = obj_->selectVariable(tokens[1], loop_detected);
-    assert(var);
-    if ( !var || (var == obj_) ) {
-        result << "Unknown object in set command: " << tokens[1] << std::endl;
-        // TODO make sure selectVariable hasn't altered any state.
-        return false;
-    }
-
-    // Once we have a valid object, be sure to use var->selectParent() or
-    // future commands may attempt to use free'd memory.
-
-    if ( var->isReadOnly() ) {
-        result << "Object specified in set command is read-only: " << tokens[1] << std::endl;
-        var->selectParent();
-        return false;
-    }
-
-    if ( !var->isFundamental() ) {
-        result << "Invalid object in set command: " << tokens[1] << " is not a fundamental type" << std::endl;
-        var->selectParent();
-        return false;
-    }
-    std::string value = tokens[2];
-    if ( var->getType() == "std::string" ) {
-        for ( size_t index = 3; index < tokens.size(); index++ ) {
-            value = value + " " + tokens[index];
-        }
-    }
-    else {
-        value = tokens[2];
-    }
-
-    try {
-        var->set(value);
-    }
-    catch ( const std::exception& e ) {
-        result << "Invalid format: " << tokens[2] << std::endl;
-        return false;
-    }
-    var->selectParent();*/
-    //return true;
-//}
-
 // run <time>: run simulation for time
 bool  
 SimpleDebugger::cmd_run(std::string& UNUSED(cmd_str))

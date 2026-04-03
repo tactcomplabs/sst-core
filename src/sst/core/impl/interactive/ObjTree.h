@@ -273,8 +273,10 @@ namespace SST::Core::Serialization {
      //   virtual bool operator<(ObjTreeCont& rhs) final; 
         
         void Dump(const int verbosity, std::ostream& os = std::cout) override{
-            if(verbosity == 0) return;
-            if(verbosity == 1){ 
+            if(verbosity == 0){
+                os << getObjName() << std::endl;
+            }
+            else if(verbosity == 1){ 
                 visit([&](auto val) {
                     os << getObjName() << " = " << static_cast<int64_t>(val) << std::endl;
                 });
@@ -356,14 +358,16 @@ namespace SST::Core::Serialization {
             });
         }
         void Dump(const int verbosity, std::ostream& os = std::cout) override{
-            if(verbosity == 0) return;
-            if(verbosity == 1){
+            if(verbosity == 0){
+                os << getObjName() << std::endl;
+            }
+            else if(verbosity == 1){
                 visit([&](auto val) {
-                    os << getObjName() << " = " << std::setprecision(6) << getObjName() << " = " << val << std::endl;
+                    os << getObjName() << " = " << std::setprecision(6) << " = " << val << std::endl;
                 });
             }else{
                 visit([&](auto val) {
-                    os << getObjName() << " = " << std::setprecision(6) << getObjName() << " = " << val << " (" << getType() << ")" << std::endl;
+                    os << getObjName() << " = " << std::setprecision(6) << " = " << val << " (" << getType() << ")" << std::endl;
                 });
             }
         }
@@ -483,8 +487,10 @@ public:
     }
 
     void Dump(const int verbosity, std::ostream& os = std::cout) override {
-        os << name_ << "[" << size_ << " elements] (" << type_ << ")"<< std::endl;
-        if (verbosity > 0) {
+        if(verbosity == 0) {
+            os << name_ << " [" << size_ << " elements] (" << type_ << ")"<< std::endl;
+        }
+        else {
             applyRecursive([&](ObjTreeCont* child) {
                 child->Dump(verbosity - 1, os);
             });
@@ -499,7 +505,7 @@ public:
 
         // If current node is a ContainerObj, its actual elements may be
         // nested under a wrapper child (from convertNode). Detect that.
-        auto& children = current->getChildren();
+        /*auto& children = current->getChildren();
 
         // Check if there's a single wrapper ContainerObj child
         ObjTreeCont* elementParent = current;
@@ -510,6 +516,10 @@ public:
         }
 
         auto& elems = elementParent->getChildren();
+        if (idx >= elems.size()) return nullptr;
+
+        current = elems[idx].get();*/
+        auto& elems = current->getChildren();
         if (idx >= elems.size()) return nullptr;
 
         current = elems[idx].get();
@@ -588,8 +598,10 @@ public:
     }
 
     void Dump(const int verbosity, std::ostream& os = std::cout) override {
-        if(verbosity == 0) return;
-        if(verbosity == 1){
+        if(verbosity == 0){
+            os << getObjName() << std::endl;
+        }
+        else if(verbosity == 1){
             os << getObjName() << " = \"" << val_ << "\"" << std::endl;
         }else{
             os << getObjName() << " = \"" << val_ << "\"" << " (" << getType() << ")" <<  std::endl;
@@ -631,8 +643,10 @@ public:
     }
 
     void Dump(const int verbosity, std::ostream& os = std::cout) override { 
-        if(verbosity == 0) return;
-        if(verbosity == 1){ 
+        if(verbosity == 0){
+            os << getObjName();
+        }
+        else if(verbosity == 1){ 
             os << getObjName() << " = " << (val_ ? "true" : "false") << std::endl;
         }else {
             os << getObjName() << " = " << (val_ ? "true" : "false") << " (" << getType() << ")" <<  std::endl;
@@ -759,15 +773,13 @@ public:
             const auto& variables = objMap->getVariables();
             auto* container = new ContainerObj(name, type, variables.size());
 
-            ObjTreeCont* childNode = convertNode(name, objMap);
-            container->addChildObj(childNode);
+            //ObjTreeCont* childNode = convertNode(name, objMap);
+            //container->addChildObj(childNode);
+            for (const auto& [childName, childMap] : variables) {
+                ObjTreeCont* child = convertNode(childName, childMap);
+                if (child) container->addChildObj(child);
+            }
 
-            /*for (const auto& [childName, childMap] : variables) {
-                ObjTreeCont* childNode = convert(childName, childMap);
-                if (childNode) {
-                    container->addChildObj(childNode);
-                }
-            }*/
             return container;
         }
 
@@ -788,7 +800,7 @@ public:
         }
         
         // --- Generic non-fundamental, non-container (user-defined classes) ---
-         auto* node = new ObjTreeCont(name, type);
+        auto* node = new ObjTreeCont(name, type);
         const auto& variables = objMap->getVariables();
         for (const auto& [childName, childMap] : variables) {
             ObjTreeCont* childNode = convertNode(childName, childMap);
@@ -796,8 +808,8 @@ public:
                 node->addChildObj(childNode);
             }
         }
-        ObjTreeCont* childNode = convertNode(name, objMap);
-        node->addChildObj(childNode);
+        //ObjTreeCont* childNode = convertNode(name, objMap);
+        //node->addChildObj(childNode);
 
         return node;
     }
