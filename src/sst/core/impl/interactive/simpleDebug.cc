@@ -560,7 +560,7 @@ SimpleDebugger::save_name_stack()
         name_stack.push_front(std::move(curObj_->getObjName())); 
         while (parent && !parent->isRoot())
         {
-            name_stack.push_front(std::move(curObj_->getObjName()));
+            name_stack.push_front(std::move(parent->getObjName()));
             parent =  parent->getParent();
         }
     }
