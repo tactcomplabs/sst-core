@@ -351,11 +351,11 @@ namespace SST::Core::Serialization {
             }
             else if(verbosity == 1){
                 visit([&](auto val) {
-                    os << getObjName() << " = " << std::setprecision(6) << " = " << val << std::endl;
+                    os << getObjName()  << std::setprecision(6) << " = " << val << std::endl;
                 });
             }else{
                 visit([&](auto val) {
-                    os << getObjName() << " = " << std::setprecision(6) << " = " << val << " (" << getType() << ")" << std::endl;
+                    os << getObjName() << std::setprecision(6) << " = " << val << " (" << getType() << ")" << std::endl;
                 });
             }
         }
@@ -413,7 +413,7 @@ namespace SST::Core::Serialization {
             std::cout << "Processing component: " << val_->getName() << std::endl;
         }
         void Dump([[maybe_unused]] const int verbosity, std::ostream& os = std::cout) override{
-            os << val_->getName() << std::endl;
+            os << val_->getName() << "/" << std::endl;
         }
 
         ComponentObj* find(const std::string name){
