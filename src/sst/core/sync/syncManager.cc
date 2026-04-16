@@ -542,10 +542,7 @@ SyncManager::execute()
     std::cout << "SyncManager::execute: Rank " << rank_.rank 
     << ": Thread " << rank_.thread 
     << ": Type " << type << std::endl;
-#endif // SKK  
-
-    // KG I think this is no longer used
-    SST_SYNC_PROFILE_START
+#endif // SKK
 
     if ( profile_tools_ ) profile_tools_->syncManagerStart(next_sync_type_ == RANK);
 

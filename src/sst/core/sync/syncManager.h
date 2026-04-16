@@ -203,7 +203,6 @@ public:
     void           exchangeLinkInfo();
     void           handleShutdown();
     void           handleInteractiveConsole();
-    void           execute() override;
     SimTime_t      findRankSyncInterval();
     SimTime_t      findThreadSyncInterval();
     void           updateMinPart();
