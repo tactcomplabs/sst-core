@@ -23,6 +23,7 @@
 #include "sst/core/rankInfo.h"
 #include "sst/core/sst_types.h"
 #include "sst/core/statapi/statengine.h"
+#include "sst/core/timeConverter.h"
 #include "sst/core/unitAlgebra.h"
 #include "sst/core/util/basicPerf.h"
 #include "sst/core/util/filesystem.h"
@@ -68,7 +69,6 @@ class SimulatorHeartbeat;
 class SyncBase;
 class SyncManager;
 class ThreadSync;
-class TimeConverter;
 class TimeLord;
 class TimeVortex;
 class UnitAlgebra;
@@ -77,6 +77,10 @@ namespace Statistics {
 class StatisticOutput;
 class StatisticProcessingEngine;
 } // namespace Statistics
+
+namespace Util {
+class PerfReporter;
+} // namespace Util
 
 namespace pvt {
 
@@ -218,8 +222,11 @@ public:
     int  prepareLinks(ConfigGraph& graph, const RankInfo& myRank, SimTime_t min_part);
     int  performWireUp(ConfigGraph& graph, const RankInfo& myRank, SimTime_t min_part);
     void exchangeLinkInfo();
+
+    /** Functions to compute the current rank and thread sync intervals */
     void findRankSyncInterval();
     void findThreadSyncInterval();
+    void updateSyncMinPart();
 
     /** Setup external control actions (forced stops, signal handling */
     void setupSimActions();
@@ -253,19 +260,10 @@ public:
 
     bool isIndependentThread() { return independent; }
 
-    void printProfilingInfo(FILE* fp);
+    void printProfilingInfo(Util::PerfReporter* reporter);
 
     void printPerformanceInfo();
 
-    /** Register a OneShot event to be called after a time delay
-        Note: OneShot cannot be canceled, and will always callback after
-              the timedelay.
-    */
-    // TimeConverter* registerOneShot(const std::string& timeDelay, int priority, OneShot::HandlerBase* handler, bool
-    // absolute);
-
-    // TimeConverter* registerOneShot(const UnitAlgebra& timeDelay, int priority, OneShot::HandlerBase* handler, bool
-    // absolute);
 
     const std::vector<SimTime_t>& getInterThreadLatencies() const { return interThreadLatencies; }
 
@@ -345,12 +343,11 @@ public:
     /******** API provided through BaseComponent only ***********/
 
     /** Register a handler to be called on a set frequency */
-    TimeConverter* registerClock(const std::string& freq, Clock::HandlerBase* handler, int priority);
+    TimeConverter registerClock(const std::string& freq, Clock::HandlerBase* handler, int priority);
 
-    TimeConverter* registerClock(const UnitAlgebra& freq, Clock::HandlerBase* handler, int priority);
+    TimeConverter registerClock(const UnitAlgebra& freq, Clock::HandlerBase* handler, int priority);
 
-    TimeConverter* registerClock(TimeConverter* tcFreq, Clock::HandlerBase* handler, int priority);
-    TimeConverter* registerClock(TimeConverter& tcFreq, Clock::HandlerBase* handler, int priority);
+    TimeConverter registerClock(TimeConverter tcFreq, Clock::HandlerBase* handler, int priority);
 
     // registerClock function used during checkpoint/restart
     void registerClock(SimTime_t factor, Clock::HandlerBase* handler, int priority);
@@ -359,18 +356,15 @@ public:
     void reportClock(SimTime_t factor, int priority);
 
     /** Remove a clock handler from the list of active clock handlers */
-    void unregisterClock(TimeConverter* tc, Clock::HandlerBase* handler, int priority);
-    void unregisterClock(TimeConverter& tc, Clock::HandlerBase* handler, int priority);
+    void unregisterClock(TimeConverter tc, Clock::HandlerBase* handler, int priority);
 
     /** Reactivate an existing clock and handler.
      * @return time when handler will next fire
      */
-    Cycle_t reregisterClock(TimeConverter* tc, Clock::HandlerBase* handler, int priority);
-    Cycle_t reregisterClock(TimeConverter& tc, Clock::HandlerBase* handler, int priority);
+    Cycle_t reregisterClock(TimeConverter tc, Clock::HandlerBase* handler, int priority);
 
     /** Returns the next Cycle that the TimeConverter would fire. */
-    Cycle_t getNextClockCycle(TimeConverter* tc, int priority = CLOCKPRIORITY);
-    Cycle_t getNextClockCycle(TimeConverter& tc, int priority = CLOCKPRIORITY);
+    Cycle_t getNextClockCycle(TimeConverter tc, int priority = CLOCKPRIORITY);
 
     /** Gets the clock the handler is registered with, represented by it's factor
      *
@@ -401,7 +395,7 @@ public:
      */
     TimeConverter minPartToTC(SimTime_t cycles) const;
 
-    std::string initializeCheckpointInfrastructure(const std::string& prefix);
+    static void writeCheckpointConfigGraph(ConfigGraph* graph);
     void        scheduleCheckpoint();
     void        scheduleInteractiveConsole(const std::string& msg);
 
@@ -500,6 +494,8 @@ public:
     void endSimulation();
     void endSimulation(SimTime_t end);
 
+    void checkIndependent();
+
     enum ShutdownMode_t {
         SHUTDOWN_CLEAN,     /* Normal shutdown */
         SHUTDOWN_SIGNAL,    /* SIGINT or SIGTERM received */
@@ -535,6 +531,7 @@ public:
     SimulatorHeartbeat*     m_heartbeat = nullptr;
     CheckpointAction*       checkpoint_action_;
     static std::string      checkpoint_directory_;
+    static std::string      checkpoint_configgraph_;
     bool                    endSim = false;
     bool                    independent; // true if no links leave thread (i.e. no syncs required)
     static std::atomic<int> untimed_msg_count;
@@ -647,24 +644,12 @@ public:
     uint64_t rankLatency     = 0; // Serialization time
     uint64_t messageXferSize = 0;
 
-    uint64_t rankExchangeBytes   = 0; // Serialization size
-    uint64_t rankExchangeEvents  = 0; // Serialized events
     uint64_t rankExchangeCounter = 0; // Num rank peer exchanges
 
 
     // Profiling functions
     void incrementSerialCounters(uint64_t count);
-    void incrementExchangeCounters(uint64_t events, uint64_t bytes);
 
-#endif
-
-#if SST_SYNC_PROFILING
-    uint64_t rankSyncCounter   = 0; // Num. of rank syncs
-    uint64_t rankSyncTime      = 0; // Total time rank syncing, in ns
-    uint64_t threadSyncCounter = 0; // Num. of thread syncs
-    uint64_t threadSyncTime    = 0; // Total time thread syncing, in ns
-                                    // Does not include thread syncs as part of rank syncs
-    void     incrementSyncTime(bool rankSync, uint64_t count);
 #endif
 
 #if SST_HIGH_RESOLUTION_CLOCK

@@ -188,11 +188,6 @@ private:
         std::bind(&StandardConfigParsers::from_string_default<int>, std::placeholders::_1, std::placeholders::_2, 2));
 
     /**
-        Print SST timing information to JSON file
-    */
-    SST_CONFIG_DECLARE_OPTION(std::string, timing_json, "", &StandardConfigParsers::from_string<std::string>);
-
-    /**
        Simulated cycle to stop the simulation at
     */
     SST_CONFIG_DECLARE_OPTION(std::string, stop_at, "0ns", &StandardConfigParsers::from_string<std::string>);
@@ -228,7 +223,7 @@ private:
        Prefix to use for the default SST::Output object in core
     */
     SST_CONFIG_DECLARE_OPTION(
-        std::string, output_core_prefix, "@x SST Core: ", &StandardConfigParsers::from_string<std::string>);
+        std::string, output_core_prefix, "#@x SST Core: ", &StandardConfigParsers::from_string<std::string>);
 
 
     /**** Configuration output ****/
@@ -425,7 +420,6 @@ private:
     */
 
 
-#if PY_MINOR_VERSION >= 9
     /**
        Controls whether the Python coverage object will be loaded
      */
@@ -433,7 +427,6 @@ private:
 
     SST_CONFIG_DECLARE_OPTION(bool, enable_python_coverage, false, &StandardConfigParsers::flag_set_true,
         &Config::ext_help_enable_python_coverage);
-#endif
 
 
     /**** Advanced options - Profiling ****/
