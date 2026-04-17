@@ -454,6 +454,7 @@ private:
     bool cmd_watchlist_rank_serial(std::string& cmd_str);
     bool cmd_watchlist_rank_parallel(std::string& cmd_str);
     bool cmd_watchlist_remote(std::vector<std::string>& tokens);
+    bool cmd_watchlist_remote_ot(std::vector<std::string>& tokens);
     
     bool cmd_addTraceVar_serial(std::string& UNUSED(cmd_str));
     bool cmd_addTraceVar_thread(std::string& UNUSED(cmd_str));

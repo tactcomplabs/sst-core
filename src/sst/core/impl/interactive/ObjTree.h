@@ -9,8 +9,8 @@
 // information, see the LICENSE file in the top level directory of the
 // distribution.
 
-#ifndef SST_CORE_SERIALIZATION_OBJECTMAP_DEBUGGER_H
-#define SST_CORE_SERIALIZATION_OBJECTMAP_DEBUGGER_H
+#ifndef SST_CORE_SERIALIZATION_OBJECTTREE_DEBUGGER_H
+#define SST_CORE_SERIALIZATION_OBJECTTREE_DEBUGGER_H
 
 #include "sst/core/from_string.h"
 #include "sst/core/warnmacros.h"
@@ -47,13 +47,15 @@ namespace SST::Core::Serialization {
     class ObjTreeCont
     {
         public:
-        ObjTreeCont() : parent_(nullptr), children_(), name_("uninit"), type_("uninit")  {};
-        ObjTreeCont(const std::string& name, const std::string& type)
-        : parent_(nullptr), children_(), name_(name), type_(type) {}
+        enum class NodeKind { Generic, Integer, Float, String, Bool, Component, Container, GenericVal };
+
+        ObjTreeCont() : parent_(nullptr), children_(), name_("uninit"), type_("uninit"), kind_(NodeKind::Generic)  {};
+        ObjTreeCont(const std::string& name, const std::string& type, NodeKind kind = NodeKind::Generic)
+        : parent_(nullptr), children_(), name_(name), type_(type), kind_(kind) {}
         virtual ~ObjTreeCont() = default;
 
         ObjTreeCont(const ObjTreeCont& rhs)
-        : parent_(nullptr), children_(), name_(rhs.name_), type_(rhs.type_)
+        : parent_(nullptr), children_(), name_(rhs.name_), type_(rhs.type_), kind_(rhs.kind_)
         {
             children_.reserve(rhs.children_.size());
             for (const auto& child : rhs.children_) {
@@ -68,6 +70,7 @@ namespace SST::Core::Serialization {
             parent_ = nullptr;
             name_   = rhs.name_;
             type_   = rhs.type_;
+            kind_   = rhs.kind_;
             children_.clear();
             children_.reserve(rhs.children_.size());
             for (const auto& child : rhs.children_) {
@@ -142,13 +145,22 @@ namespace SST::Core::Serialization {
         }
 
         virtual bool setFromString([[maybe_unused]] const std::string& value) { return false; }
+        virtual void syncFromSim(){ };
+        virtual bool hasChanged(){ return false; }
 
+        NodeKind getKind() const { return kind_; }
+        bool isComponent() const { return kind_ == NodeKind::Component; }
+        bool isLeaf() const { return kind_ == NodeKind::Integer || kind_ == NodeKind::Float 
+                                  || kind_ == NodeKind::String  || kind_ == NodeKind::Bool
+                                  || kind_ == NodeKind::GenericVal; }
 
         protected:
-        ObjTreeCont*              parent_;
-        std::vector<std::unique_ptr<ObjTreeCont>> children_;
+        ObjTreeCont*                                parent_;
+        std::vector<std::unique_ptr<ObjTreeCont>>   children_;
         std::string                                 name_;
         std::string                                 type_;
+        NodeKind                                    kind_;
+
 
     };
 
@@ -157,6 +169,7 @@ namespace SST::Core::Serialization {
     {
         public:
         ObjTree() = default;
+        ObjTree(NodeKind kind) : ObjTreeCont("", "", kind) {}
 
         ObjTree(const ObjTree<Obj_T>& rhs): ObjTreeCont(rhs), objects_()
         {
@@ -220,7 +233,7 @@ namespace SST::Core::Serialization {
 
         public:
         template<typename T>
-        IntegerObj(T v, void* addr) : val_(v), addr_(addr) {}
+        IntegerObj(T v, void* addr) : ObjTree<IntegerObj>(NodeKind::Integer), val_(v), addr_(addr) {}
 
         IntegerObj(const IntegerObj& rhs): 
             ObjTree<IntegerObj>(rhs),
@@ -248,6 +261,20 @@ namespace SST::Core::Serialization {
         void setSimVal(T v){ 
               val_ = v;
               syncToSim();
+        }
+
+         virtual void syncFromSim() override {
+            if (!addr_) return;
+            std::visit([this](auto& v) {
+                v = *static_cast<std::decay_t<decltype(v)>*>(addr_);
+            }, val_);
+        }
+
+        virtual bool hasChanged() override {
+            if (!addr_) return false;
+            return std::visit([this](const auto& v) -> bool {
+                return v != *static_cast<std::decay_t<decltype(v)>*>(addr_);
+            }, val_);
         }
 
         template<typename Visitor>
@@ -305,7 +332,7 @@ namespace SST::Core::Serialization {
 
         public:
         template<typename T>
-        FloatObj(T v, void* addr) : val_(v), addr_(addr) {}
+        FloatObj(T v, void* addr) : ObjTree<FloatObj>(NodeKind::Float), val_(v), addr_(addr) {}
 
         FloatObj(const FloatObj& rhs):
             ObjTree<FloatObj>(rhs), 
@@ -334,6 +361,20 @@ namespace SST::Core::Serialization {
         template<typename T>
         void setSimVal(T v){ val_ = v; syncToSim(); }
 
+        virtual void syncFromSim() override {
+            if (!addr_) return;
+            std::visit([this](auto& v) {
+                v = *static_cast<std::decay_t<decltype(v)>*>(addr_);
+            }, val_);
+        }
+
+        virtual bool hasChanged() override {
+            if (!addr_) return false;
+            return std::visit([this](const auto& v) -> bool {
+                return v != *static_cast<std::decay_t<decltype(v)>*>(addr_);
+            }, val_);
+        }
+
         template<typename Visitor>
         auto visit(Visitor&& visitor) { return std::visit(std::forward<Visitor>(visitor), val_); }
     
@@ -351,11 +392,11 @@ namespace SST::Core::Serialization {
             }
             else if(verbosity == 1){
                 visit([&](auto val) {
-                    os << getObjName()  << std::setprecision(6) << " = " << val << std::endl;
+                    os << getObjName()  << std::setprecision(12) << " = " << val << std::endl;
                 });
             }else{
                 visit([&](auto val) {
-                    os << getObjName() << std::setprecision(6) << " = " << val << " (" << getType() << ")" << std::endl;
+                    os << getObjName() << std::setprecision(12) << " = " << val << " (" << getType() << ")" << std::endl;
                 });
             }
         }
@@ -388,7 +429,7 @@ namespace SST::Core::Serialization {
 
         public:
         ComponentObj() = default;
-        ComponentObj(BaseComponent* v, ComponentInfo* ci) : val_(v), compInfo_(ci) {setName(v->getName());}
+        ComponentObj(BaseComponent* v, ComponentInfo* ci) : ObjTree<ComponentObj>(NodeKind::Component), val_(v), compInfo_(ci) {setName(v->getName());}
         
         ComponentObj(const ComponentObj& rhs): ObjTree<ComponentObj>(rhs), val_(rhs.val_), compInfo_(rhs.compInfo_) {}
 
@@ -447,7 +488,7 @@ class ContainerObj : public ObjTree<ContainerObj> {
 
 public:
     ContainerObj(const std::string& name, const std::string& type, size_t size)
-        :size_(size) {
+        :ObjTree<ContainerObj>(NodeKind::Container), size_(size) {
             setName(name);
             setType(type);
         }
@@ -547,7 +588,7 @@ class StringObj : public ObjTree<StringObj> {
     void* addr_;
 
 public:
-    StringObj(const std::string& v, void* addr) : val_(v), addr_(addr) {}
+    StringObj(const std::string& v, void* addr) : ObjTree<StringObj>(NodeKind::String), val_(v), addr_(addr) {}
     StringObj(const StringObj& rhs) : ObjTree<StringObj>(rhs) , val_(rhs.val_), addr_(rhs.addr_) {}
 
     StringObj& operator=(const StringObj& rhs) {
@@ -569,6 +610,11 @@ public:
         setSimVal(value);
         return true;
     }
+    virtual void syncFromSim() override { val_ = *static_cast<std::string*>(addr_);}
+    virtual bool hasChanged() override {
+    if (!addr_) return false;
+        return val_ != *static_cast<std::string*>(addr_);
+    }
 
     void apply() override {
         std::cout << "Processing string: " << val_ << std::endl;
@@ -589,10 +635,10 @@ public:
 // Node for bool (separate from integer for clarity)
 class BoolObj : public ObjTree<BoolObj> {
     bool val_;
-    void* addr_; // This points back to the 
+    void* addr_; // This points back to the ObjectMap
 
 public:
-    BoolObj(bool v, void* addr) : val_(v), addr_(addr) {}
+    BoolObj(bool v, void* addr) : ObjTree<BoolObj>(NodeKind::Bool), val_(v), addr_(addr) {}
     BoolObj(const BoolObj& rhs): ObjTree<BoolObj>(rhs), val_(rhs.val_), addr_(rhs.addr_) {}
 
     BoolObj& operator=(const BoolObj& rhs) {
@@ -613,6 +659,11 @@ public:
     bool setFromString(const std::string& value) override { 
         setSimVal(value == "true" || value == "1");
         return true;
+    }
+    virtual void syncFromSim() override { val_ = *(static_cast<bool*>(addr_)); }
+    virtual bool hasChanged() override {
+        if (!addr_) return false;
+        return val_ != *static_cast<bool*>(addr_);
     }
 
     void apply() override {
@@ -638,7 +689,7 @@ class GenericValObj : public ObjTree<GenericValObj> {
 
 public:
     GenericValObj(const std::string& val, void* addr, ObjectMap* source)
-        : val_(val), addr_(addr), sourceMap_(source) {}
+        : ObjTree<GenericValObj>(NodeKind::GenericVal), val_(val), addr_(addr), sourceMap_(source) {}
 
     GenericValObj(const GenericValObj& rhs)
         : ObjTree<GenericValObj>(rhs),
@@ -670,6 +721,13 @@ public:
         return true;
     }
 
+    //NOTE: we are currently not carrying around sourceMap so this
+    // will ALWAYS return false
+    bool hasChanged() override {
+        if (!sourceMap_) return false;
+        return val_ != sourceMap_->get();
+    }
+
     void apply() override {
         std::cout << "Processing generic: " << val_ << std::endl;
     }
@@ -681,411 +739,6 @@ public:
         } else {
             os << getObjName() << " = " << val_
                << " (" << getType() << ")" << std::endl;
-        }
-    }
-};
-
-class ObjectMapToTree {
-    using IntVariant = IntegerObj::IntVariant;
-    using FloatVariant = FloatObj::FloatVariant;
-
-    // Known integer type strings
-    static bool isIntegerType(const std::string& type) {
-        static const std::unordered_set<std::string> intTypes = {
-            "signed char", "int8_t", "char",
-            "short", "int16_t",
-            "int", "int32_t",
-            "long", "long long", "int64_t",
-            "unsigned char", "uint8_t",
-            "unsigned short", "uint16_t",
-            "unsigned int", "unsigned", "uint32_t",
-            "unsigned long", "unsigned long long", "uint64_t"
-        };
-        return intTypes.count(type) > 0;
-    }
-
-    static bool isFloatType(const std::string& type) {
-        return type == "float" || type == "double" || type == "long double";
-    }
-
-    static bool isStringType(const std::string& type) {
-        // Demangled std::string can appear in various forms
-        return type.find("std::string") != std::string::npos
-            || type.find("std::__cxx11::basic_string") != std::string::npos
-            || type.find("basic_string") != std::string::npos;
-    }
-
-    static bool isContainerType(const std::string& type) {
-        return type.find("std::vector") != std::string::npos
-            || type.find("std::map") != std::string::npos
-            || type.find("std::unordered_map") != std::string::npos
-            || type.find("std::set") != std::string::npos
-            || type.find("std::unordered_set") != std::string::npos
-            || type.find("std::list") != std::string::npos
-            || type.find("std::deque") != std::string::npos
-            || type.find("std::multimap") != std::string::npos
-            || type.find("std::array") != std::string::npos;
-    }
-
-    static std::unique_ptr<IntegerObj> makeIntegerObj(const std::string& type, void* addr)  {
-        if (!addr) return nullptr;
-        if (type == "signed char"    || type == "int8_t" || type == "char")   return std::make_unique<IntegerObj>(*static_cast<int8_t*>(addr), addr);
-        if (type == "short"          || type == "int16_t")  return std::make_unique<IntegerObj>(*static_cast<int16_t*>(addr), addr);
-        if (type == "int"            || type == "int32_t")  return std::make_unique<IntegerObj>(*static_cast<int32_t*>(addr), addr);
-        if (type == "long" || type == "long long" || type == "int64_t")
-            return std::make_unique<IntegerObj>(*static_cast<int64_t*>(addr), addr);
-        if (type == "unsigned char"  || type == "uint8_t")  return std::make_unique<IntegerObj>(*static_cast<uint8_t*>(addr), addr);
-        if (type == "unsigned short" || type == "uint16_t") return std::make_unique<IntegerObj>(*static_cast<uint16_t*>(addr), addr);
-        if (type == "unsigned int"   || type == "unsigned" || type == "uint32_t")
-            return std::make_unique<IntegerObj>(*static_cast<uint32_t*>(addr), addr);
-        if (type == "unsigned long"  || type == "unsigned long long" || type == "uint64_t")
-            return std::make_unique<IntegerObj>(*static_cast<uint64_t*>(addr), addr);
-        return nullptr;
-    }
-
-    static std::unique_ptr<FloatObj> makeFloatObj(const std::string& type, void* addr) {
-        if (!addr) return nullptr;
-        if (type == "float")       return std::make_unique<FloatObj>(*static_cast<float*>(addr), addr);
-        if (type == "double")      return std::make_unique<FloatObj>(*static_cast<double*>(addr), addr);
-        if (type == "long double") return std::make_unique<FloatObj>(*static_cast<long double*>(addr), addr);
-        return nullptr;
-    }
-
-public:
-    // Convert a single ObjectMap* into an ObjTreeCont*
-    // Caller takes ownership of the returned pointer
-    static ObjTreeCont* convert(const std::string& name, ObjectMap* objMap) {
-        if (!objMap) return nullptr;
-
-        std::string type = objMap->getType();
-        void* addr = objMap->getAddr();
-
-        // --- Fundamental types ---
-        if (objMap->isFundamental()) {
-            // Bool
-            if (type == "bool" && addr) {
-                auto boolObj = new BoolObj(*static_cast<bool*>(addr), addr);
-                boolObj->setName(name);
-                boolObj->setType(type);
-                return boolObj;
-            }
-
-            // Integer types
-            if (isIntegerType(type)) {
-                auto intObj = makeIntegerObj(type, addr);
-                intObj->setName(name);
-                intObj->setType(type);
-                if (intObj) return intObj.release();
-            }
-
-            // Float types
-            if (isFloatType(type)) {
-                auto floatObj = makeFloatObj(type, addr);
-                floatObj->setName(name);
-                floatObj->setType(type);
-                if (floatObj) return floatObj.release();
-            }
-
-            // String 
-            if (isStringType(type) && addr) {
-                auto stringObj = new StringObj(*static_cast<std::string*>(addr), addr);
-                stringObj->setName(name);
-                stringObj->setType(type);
-                return stringObj;
-            }
-
-            // Unknown fundamental — wrap in GenericObj with the value as string
-            //Note: we pass a nullptr in for objMap as the objMap used here is destroyed by the caller
-            //      If it is necessary to set one of these generic values we will need to preserve the
-            //      value of objMap. For now, we just pass in a nullptr rather than carry the (potentially) 
-            //      heavy ObjMap around in this container 
-            auto* generic = new GenericValObj(objMap->get(), addr, nullptr);
-            generic->setName(name);
-            generic->setType(type);
-            return generic;
-        }
-
-        // --- Containers (vector, map, set, etc.) ---
-        if (objMap->isContainer() || isContainerType(type)) {
-            const auto& variables = objMap->getVariables();
-            auto* container = new ContainerObj(name, type, variables.size());
-
-            for (const auto& [childName, childMap] : variables) {
-                ObjTreeCont* child = convertNode(childName, childMap);
-                if (child) container->addChildObj(child);
-            }
-
-            return container;
-        }
-
-        // --- BaseComponent types ---
-        if (objMap->getCategory() == ObjectMap::ObjectCategory::Component) {
-            auto* comp = static_cast<BaseComponent*>(objMap->getAddr());
-            if (comp) {
-                auto* compObj = new ComponentObj(comp, nullptr);
-                compObj->setName(name);
-                compObj->setType(type);
-                return compObj;
-            }
-        }
-        
-        // --- Generic non-fundamental, non-container (user-defined classes) ---
-        auto* node = new ObjTreeCont(name, type);
-        const auto& variables = objMap->getVariables();
-        for (const auto& [childName, childMap] : variables) {
-            ObjTreeCont* childNode = convertNode(childName, childMap);
-            if (childNode) {
-                node->addChildObj(childNode);
-            }
-        }
-
-        return node;
-    }
-
-     static ObjTreeCont* convertNode(const std::string& name, ObjectMap* objMap) {
-        if (!objMap) return nullptr;
-
-        std::string type = objMap->getType();
-        void* addr = objMap->getAddr();
-
-        // Fundamental types
-        if (objMap->isFundamental()) {
-            if (type == "bool" && addr) {
-                auto boolObj = new BoolObj(*static_cast<bool*>(addr), addr);
-                boolObj->setName(name);
-                boolObj->setType(type);
-                return boolObj;
-            }
-            if (isIntegerType(type)) {
-                auto intObj = makeIntegerObj(type, addr);
-                if (intObj) {
-                    intObj->setName(name);
-                    intObj->setType(type);
-                    return intObj.release();
-                }
-            }
-            if (isFloatType(type)) {
-                auto floatObj = makeFloatObj(type, addr);
-                if (floatObj){
-                    floatObj->setName(name);
-                    floatObj->setType(type);
-                    return floatObj.release();
-                }
-            }
-            if (isStringType(type) && addr) {
-                auto stringObj = new StringObj(*static_cast<std::string*>(addr), addr);
-                stringObj->setName(name);
-                stringObj->setType(type);
-                return stringObj;
-            }
-            // Unknown fundamental — wrap in GenericObj with the value as name
-            //Note: we pass a nullptr in for objMap as the objMap used here is destroyed by the caller
-            //      If it is necessary to set one of these generic values we will need to preserve the
-            //      value of objMap. For now, we just pass in a nullptr rather than carry the (potentially) 
-            //      heavy ObjMap around in this container 
-            auto* generic = new GenericValObj(objMap->get(), addr, nullptr);
-            generic->setName(name);
-            generic->setType(type);
-            return generic;
-        }
-
-        // Container
-        if (objMap->isContainer() || isContainerType(type)) {
-            const auto& variables = objMap->getVariables();
-            auto* container = new ContainerObj(name, type, variables.size());
-            for (const auto& [childName, childMap] : variables) {
-                ObjTreeCont* child = convertNode(childName, childMap);
-                if (child) container->addChildObj(child);
-            }
-            return container;
-        }
-
-        // BaseComponent (using category flag)
-        if (objMap->getCategory() == ObjectMap::ObjectCategory::Component) {
-            auto* comp = static_cast<BaseComponent*>(objMap->getAddr());
-            if (comp){
-                auto* compObj = new ComponentObj(comp, nullptr);
-                compObj->setName(name);
-                compObj->setType(objMap->getType());
-                return compObj;
-            } 
-        }
-
-        // Generic
-        return new ObjTreeCont(name, type);
-    }
-
-    static void addChildrenFromMap(ObjTreeCont* parent, const ObjectMultimap& variables) {
-        if (!parent) return;
-        for (const auto& [name, objMap] : variables) {
-            ObjTreeCont* child = convertNode(name, objMap);
-            if (child) parent->addChildObj(child);
-        }
-    }
-
-     static void addChildrenFromMapRecursive(ObjTreeCont* parent, const ObjectMultimap& variables) {
-        if (!parent) return;
-        for (const auto& [name, objMap] : variables) {
-            ObjTreeCont* child = convert(name, objMap);
-            if (child) parent->addChildObj(child);
-        }
-    }
-
-    // Convert an entire ObjectMap's variables into an ObjTreeCont tree
-    static std::unique_ptr<ObjTreeCont> convertTree(const std::string& rootName, ObjectMap* objMap) {
-        auto root = std::make_unique<ObjTreeCont>(rootName, objMap->getType());
-        const auto& variables = objMap->getVariables();
-        for (const auto& [name, childMap] : variables) {
-            ObjTreeCont* child = convert(name, childMap);
-            if (child) {
-                root->addChildObj(child);
-            }
-        }
-        return root;
-    }
-
-     /**
-     * Takes a ComponentObj, serializes its BaseComponent via
-     * ObjectMapDeferred, and populates the ComponentObj's children
-     * with the serialized variables.
-     *
-     * @param compNode  The ComponentObj node to expand
-     * @param recursive If true, recursively convert all children
-     * @return true if serialization succeeded
-     */
-    static bool serializeComponent(ComponentObj* compNode, bool recursive = false) {
-        if (!compNode) return false;
-
-        BaseComponent* comp = compNode->getVal();
-        if (!comp) return false;
-
-       ComponentInfo* compInfo = compNode->getInfo();
-
-
-        // Create a temporary deferred map and trigger serialization
-        ComponentSerializer serializer(comp);
-        serializer.serialize();
-
-         if (serializer.hasSerialized()) {
-        const auto& variables = serializer.getVariables();
-
-        // Collect sub-component addresses so we skip them during conversion
-        std::vector<void*> subCompAddrs;
-        if (compInfo) {
-            collectSubComponentAddrs(compInfo, subCompAddrs);
-        }
-
-        for (const auto& [name, objMap] : variables) {
-            if (!objMap) continue;
-
-            // Skip variables that are sub-components
-            if (std::find(subCompAddrs.begin(), subCompAddrs.end(), objMap->getAddr()) != subCompAddrs.end()) continue;
-
-            ObjTreeCont* child = recursive 
-                ? convert(name, objMap) 
-                : convertNode(name, objMap);
-            if (child) compNode->addChildObj(child);
-        }
-    }
-
-    // Serialize sub-components from ComponentInfo
-    if (compInfo) {
-        serializeSubComponents(compNode, compInfo, recursive);
-    }
-
-        return true;
-    }
-
-    /**
-     * Serialize all ComponentObj children of a given node.
-     *
-     * @param parent    The parent node whose ComponentObj children to expand
-     * @param recursive If true, recursively convert all grandchildren
-     */
-    static void serializeAllComponents(ObjTreeCont* parent, bool recursive = false) {
-        if (!parent) return;
-
-        parent->applyRecursiveByType<ComponentObj>([recursive](ComponentObj* comp) {
-            serializeComponent(comp, recursive);
-        });
-    }
-
-    /**
-     * Full pipeline: convert an ObjectMap tree, then serialize
-     * any ComponentObj nodes found in the result.
-     *
-     * @param rootName  Name for the root node
-     * @param objMap    Source ObjectMap to convert
-     * @param recursive If true, fully expand all levels
-     * @return Root of the converted and serialized tree
-     */
-    static std::unique_ptr<ObjTreeCont> convertAndSerialize(
-        const std::string& rootName, ObjectMap* objMap, bool recursive = true)
-    {
-        auto root = convertTree(rootName, objMap);
-        if (!root) return nullptr;
-
-        // Serialize all component nodes in the tree
-        serializeAllComponents(root.get(), recursive);
-
-        return root;
-    }
-
-    private:
-    static void collectSubComponentAddrs(ComponentInfo* compInfo,
-                                          std::vector<void*>& addrs) {
-        auto& subComps = compInfo->getSubComponents();
-
-        for (auto it = subComps.begin(); it != subComps.end(); ++it) {
-
-            BaseComponent* sub = it->second.getComponent();
-            if (sub) {
-                addrs.push_back(static_cast<void*>(sub));
-            }
-        }
-
-    }
-
-    static void serializeSubComponents(ObjTreeCont* parent,
-                                        ComponentInfo* compInfo,
-                                        bool recursive) {
-        auto& subComps = compInfo->getSubComponents();
-        for (auto& [compId, subInfo] : subComps) {
-            BaseComponent* sub = subInfo.getComponent();
-            if (!sub) continue;
-
-            auto* subObj = new ComponentObj(sub, &subInfo);
-            subObj->setName(subInfo.getName());
-            subObj->setType(subInfo.getType());
-
-            // Serialize this sub-component's own variables
-            ComponentSerializer subSerializer(sub);
-            subSerializer.serialize();
-
-            if (subSerializer.hasSerialized()) {
-                const auto& subVars = subSerializer.getVariables();
-
-                // Collect nested sub-component addresses
-                std::vector<void*> nestedAddrs;
-                collectSubComponentAddrs(&subInfo, nestedAddrs);
-
-                for (const auto& [name, objMap] : subVars) {
-                    if (!objMap) continue;
-                    if (std::find(nestedAddrs.begin(), nestedAddrs.end(), objMap->getAddr()) != nestedAddrs.end()) continue;
-
-                    ObjTreeCont* child = recursive
-                        ? convert(name, objMap)
-                        : convertNode(name, objMap);
-                    if (child) subObj->addChildObj(child);
-                }
-            }
-
-            // Recurse into this sub-component's own sub-components
-            if (recursive) {
-                serializeSubComponents(subObj, &subInfo, recursive);
-            }
-
-            parent->addChildObj(subObj);
         }
     }
 };

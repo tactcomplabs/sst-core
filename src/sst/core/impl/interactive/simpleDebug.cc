@@ -18,7 +18,8 @@
 #include "sst/core/simulation_impl.h"
 #include "sst/core/stringize.h"
 #include "sst/core/timeConverter.h"
-#include "sst/core/impl/interactive/NumericHandle.h"
+#include "sst/core/impl/interactive/ObjTreeHelpers.h"
+#include "sst/core/impl/interactive/ObjMapToTree.h"
 
 #include <cstddef>
 #include <cstdio>
@@ -1636,17 +1637,6 @@ SimpleDebugger::cmd_cd_remote(std::vector<std::string>& tokens)
 
     curObj_ = target;
 
-   /* //Are we cd-ing into a Component?
-    Core::Serialization::ComponentObj* tmpObj = curObj_->find(selection);
-    if(tmpObj){
-        curObj_ = tmpObj;
-        if(curObj_->getChildren().empty()){
-            Core::Serialization::ObjectMapToTree::serializeComponent(curObj_, true);
-        }
-    }else{
-        printf("Unknown object in cd command: %s\n", selection.c_str());
-    }*/
-
     return true;
 }
 
@@ -2001,6 +1991,16 @@ SimpleDebugger::cmd_set_remote(std::vector<std::string>& tokens)
     // 
 
     //DDD: Do we need to check for ReadOnly in the ObjectMap?
+
+    //NOTE: We assume that if there are more than 3 tokens you are setting a string. 
+    if(tokens.size() > 3){
+        int totalTokens = tokens.size();
+        for(int t = 3; t < totalTokens; t++){
+            tokens[2].push_back(' ');
+            tokens[2].append(tokens[t]); //pack all the other tokens into the string value that will be set.
+        }
+    }
+
     //Check for [ ] [ ]
     std::vector<size_t> indices = parseBracketIndices(tokens[1]);
 
@@ -2894,6 +2894,117 @@ SimpleDebugger::cmd_document(std::string& UNUSED(cmd_str))
     return true;
 }
 
+//Create a helper object that contains the paths to the objects, the types being compared
+// as well as the operators used. Creates and returns a new ObjTreeComparison that the caller owns.
+// nullptr returned as an error condition.
+Core::Serialization::ObjTreeComparison* 
+parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serialization::ObjTreeCont* curObj, Core::Serialization::ObjTreeComparison* op = nullptr){
+
+    const std::string& var = tokens[index++];
+    if ( index >= tokens.size() ) {
+        std::cout << "Invalid format for trigger test" << std::endl;
+        return nullptr;
+    }
+    const std::string&                      opstr = tokens[index++];
+    if(nullptr == op){
+        op = new Core::Serialization::ObjTreeComparison();
+    }
+    op->operators.push_back(Core::Serialization::ObjTreeComparison::getOperationFromString(opstr));
+
+    std::string v2;
+    if( Core::Serialization::ObjTreeComparison::Op::CHANGED != op->operators[0] ){
+        if( index >= tokens.size() ){
+            std::cout << "Invalid format for trigger test. Valid formats are <var> changed and <var> <op> <val>" 
+                << std::endl;
+            return nullptr;
+        }
+        v2 = tokens[index++];
+    }
+     
+    // Is operator valid
+    if ( op->operators[0] == Core::Serialization::ObjTreeComparison::Op::INVALID ) {
+        std::cout << "Unknown comparison operation specified in trigger test" << std::endl;
+        return nullptr;
+    }
+
+        //DDD: There is a lot of code duplicated ... this can clearly be a loop
+    SST::Core::Serialization::ObjTreeCont* opObj = curObj->findByName(var);
+    SST::Core::Serialization::ObjTreeCont* parent = nullptr;
+    std::deque<std::string> path;
+    if ( nullptr != opObj ) {
+
+        parent =  opObj->getParent();
+        path.push_front(opObj->getObjName());
+        while (parent && !parent->isRoot())
+        {
+            path.push_front(parent->getObjName());
+            parent =  parent->getParent();
+        }
+        op->objectsToCompare.emplace_back(std::move(path), Core::Serialization::ObjTreeComparison::valType::OBJ, opObj->clone());
+
+        // In changed mode, we do not use v2
+        if ( op->operators[0] == Core::Serialization::ObjTreeComparison::Op::CHANGED ) {
+            return op;
+        }
+    }else {
+          std::unique_ptr<Core::Serialization::ObjTreeCont> constNode = nullptr;
+        //Convert the string value to an Integer or FloatObj
+        try {
+            int64_t v = std::stoll(var);
+            constNode = std::make_unique<Core::Serialization::IntegerObj>(v, nullptr);
+        } catch (...) {}
+        try {
+            double v = std::stod(var);
+            constNode = std::make_unique<Core::Serialization::FloatObj>(v, nullptr);
+        } catch (...) {}
+        if(constNode == nullptr){
+            std::cout << "Unknown Constant in expression" << std::endl;
+            return nullptr;
+        }
+        std::deque<std::string> const_arg;
+        const_arg.push_back(v2);
+        op->objectsToCompare.emplace_back(std::move(const_arg), Core::Serialization::ObjTreeComparison::valType::CONST, constNode->clone());
+    }
+    
+
+    // Check if v2 is a variable
+    Core::Serialization::ObjTreeCont* opObj2 = curObj->findByName(v2);
+
+    // V2 is valid variable
+    if ( nullptr != opObj2 ) {
+        parent =  opObj2->getParent();
+        path.clear();
+        path.push_front(opObj2->getObjName());
+        while (parent && !parent->isRoot())
+        {
+            path.push_front(parent->getObjName());
+            parent =  parent->getParent();
+        }
+        op->objectsToCompare.emplace_back(std::move(path), Core::Serialization::ObjTreeComparison::valType::OBJ, opObj2->clone());
+    }
+    else { // V2 is value string
+        std::unique_ptr<Core::Serialization::ObjTreeCont> constNode = nullptr;
+        //Convert the string value to an Integer or FloatObj
+        try {
+            int64_t v = std::stoll(v2);
+            constNode = std::make_unique<Core::Serialization::IntegerObj>(v, nullptr);
+        } catch (...) {}
+        try {
+            double v = std::stod(v2);
+            constNode = std::make_unique<Core::Serialization::FloatObj>(v, nullptr);
+        } catch (...) {}
+        if(constNode == nullptr){
+            std::cout << "Unknown Constant in expression" << std::endl;
+            return nullptr;
+        }
+        std::deque<std::string> const_arg;
+        const_arg.push_back(v2);
+        op->objectsToCompare.emplace_back(std::move(const_arg), Core::Serialization::ObjTreeComparison::valType::CONST, constNode->clone());
+    }
+    
+    return op;
+}
+
 Core::Serialization::ObjectMapComparison*
 parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serialization::ObjectMap* obj, std::string& name)
 {
@@ -3156,6 +3267,121 @@ SimpleDebugger::cmd_watch_rank_parallel(std::string& cmd_str)
     return true;  // SKK Fix return values
 }
 
+/*
+    std::string path = "/";
+    if(!curObj_->isRoot()){
+        SST::Core::Serialization::ObjTreeCont* parent =  curObj_->getParent();
+        path.append(curObj_->getObjName()); 
+        while (parent && !parent->isRoot())
+        {
+            path.insert(0,parent->getObjName());
+            path.insert(0,"/");
+            parent =  parent->getParent();
+        }
+    }
+    result << path << std::endl; 
+    return true;
+*/
+
+bool
+SimpleDebugger::cmd_watch_remote(std::vector<std::string>& tokens)
+{
+    size_t      index = 1;
+    std::string name  = "";
+
+    try {
+        // Get first comparison
+        // allocate ObjTreeCompairson 
+        Core::Serialization::ObjTreeComparison* c = parseComparison(tokens, index, curObj_, nullptr);
+        if ( c == nullptr ) {
+            result << "Invalid comparison argument passed to watch command" << std::endl;
+            return false;
+        }
+        size_t wpIndex = watch_points_.size();
+        auto*  pt      = new WatchPoint(wpIndex, name, c);
+
+#if 0 // watch variables currently don't trace, but they could automatically
+      // trace test vars
+        auto* tb = map->getTraceBuffer(obj_, 32, 4);
+        pt->addTraceBuffer(tb);
+
+        auto* ob = map->getObjectBuffer(obj_->getFullName() + "/" + var, 32);
+        pt->addObjectBuffer(ob);
+#endif
+
+        // Add additional comparisons and logical ops
+        while ( index < tokens.size() ) {
+
+            // Get Logical Operator
+            WatchPoint::LogicOp logicOp = getLogicOpFromString(tokens[index++]);
+            if ( logicOp == WatchPoint::LogicOp::UNDEFINED ) {
+                result << "Invalid logic operator: " << tokens[index - 1] << std::endl;
+                return false;
+            }
+            else {
+                pt->addLogicOp(logicOp);
+            }
+            if ( index == tokens.size() ) {
+                result << "Invalid format for watch command" << std::endl;
+                return false;
+            }
+
+            // Get next comparison
+            c = parseComparison(tokens, index, curObj_, c);
+            if ( c == nullptr ) {
+                result << "Invalid comparison argument passed to watch command" << std::endl;
+                return false;
+            }
+        } // while index < tokens.size(), add another logic op and test comparision
+        //pt->addComparison(c);  //DDD: We passed a pointer to c when we created the Watchpoint
+
+        // Parse action
+        std::string           action    = "interactive";
+        WatchPoint::WPAction* actionObj = new WatchPoint::InteractiveWPAction();
+        if ( actionObj == nullptr ) {
+            result << "Error in action: " << action << std::endl;
+            return false;
+        }
+        else {
+            // Every action gets the same verbosity as the console object
+            actionObj->setVerbosity(verbosity);
+            pt->setAction(actionObj);
+        }
+
+        // Get the top level component to set the watch point
+        BaseComponent* comp = nullptr;
+        Core::Serialization::ObjTreeCont* parent = curObj_;
+        while (!parent->isComponent() && !parent->isRoot())
+        {
+            parent = parent->getParent();
+        }
+        
+        comp = static_cast<Core::Serialization::ComponentObj*>(parent)->getVal();
+        if ( comp ) {
+            comp->addWatchPoint(pt);
+            watch_points_.emplace_back(pt, comp);
+            result << "Added watchpoint #" << wpIndex << std::endl;
+        }
+        else {
+            result << "Not a component" << std::endl;
+            return false;
+        }
+    } // try/catch  TODO: need to revisit what can actually throw an exception
+    catch ( const std::exception& e ) {
+        result << "Invalid format for watch command" << std::endl;
+        return false;
+    }
+
+    // Check for extra arguments
+    if ( index != tokens.size() ) {
+        result << "Invalid format for watch command: too many arguments" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+/*
 bool
 SimpleDebugger::cmd_watch_remote(std::vector<std::string>& tokens)
 {
@@ -3246,7 +3472,7 @@ SimpleDebugger::cmd_watch_remote(std::vector<std::string>& tokens)
 
     return true;
 }
-
+*/
 // confirm <true/false>
 bool
 SimpleDebugger::cmd_setConfirm(std::string& UNUSED(cmd_str))
@@ -3689,7 +3915,9 @@ SimpleDebugger::cmd_trace_remote(std::vector<std::string>& tokens)
         return false;
     }
     size_t wpIndex = watch_points_.size();
-    auto*  pt      = new WatchPoint(wpIndex, name, c);
+    //auto*  pt      = new WatchPoint(wpIndex, name, c);
+    Core::Serialization::ObjTreeComparison* fixme = nullptr;
+    auto*  pt      = new WatchPoint(wpIndex, name, fixme);
 
     // Add additional comparisons and logical ops
     while ( index < tokens.size() ) {
@@ -3718,7 +3946,7 @@ SimpleDebugger::cmd_trace_remote(std::vector<std::string>& tokens)
             std::cout << "Invalid argument in comparison of trace command\n";
             return false;
         }
-        pt->addComparison(c);
+       //FIXME: pt->addComparison(c);
 
     } // while index < tokens.size(), add another logic op and test comparision
 

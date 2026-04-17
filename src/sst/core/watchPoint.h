@@ -16,6 +16,7 @@
 #include "sst/core/event.h"
 #include "sst/core/serialization/objectMap.h"
 #include "sst/core/stringize.h"
+#include "sst/core/impl/interactive/ObjTreeHelpers.h"
 
 namespace SST {
 
@@ -124,7 +125,7 @@ public:
     }; // class ShutdownWPAction
 
     // Construction
-    WatchPoint(size_t index, const std::string& name, Core::Serialization::ObjectMapComparison* obj);
+    WatchPoint(size_t index, const std::string& name, Core::Serialization::ObjTreeComparison* obj);
     ~WatchPoint() = default;
 
     // Inherited from both Event and Clock handler AttachPoints.
@@ -175,7 +176,7 @@ public:
     void        printAction(std::stringstream& ss);
     void        addTraceBuffer(Core::Serialization::TraceBuffer* tb);
     void        addObjectBuffer(Core::Serialization::ObjectBuffer* ob);
-    void        addComparison(Core::Serialization::ObjectMapComparison* cmp);
+    void        addComparison(Core::Serialization::ObjTreeComparison* cmp);
 
     enum LogicOp : unsigned { // Logical Op for trigger tests
         AND       = 0,
@@ -197,7 +198,7 @@ protected:
 
 private:
     size_t                                                 numCmpObj_ = 0;
-    std::vector<Core::Serialization::ObjectMapComparison*> cmpObjects_;
+    std::vector<Core::Serialization::ObjTreeComparison*>   cmpObjects_;
     std::vector<LogicOp>                                   logicOps_;
     std::string                                            name_;
     Core::Serialization::TraceBuffer*                      tb_ = nullptr;

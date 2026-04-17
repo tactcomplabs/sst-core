@@ -92,7 +92,7 @@ WatchPoint::ShutdownWPAction::invokeAction(WatchPoint* wp)
     return;
 }
 
-WatchPoint::WatchPoint(size_t index, const std::string& name, Core::Serialization::ObjectMapComparison* obj) :
+WatchPoint::WatchPoint(size_t index, const std::string& name, Core::Serialization::ObjTreeComparison* obj) :
     Clock::HandlerBase::AttachPoint(),
     Event::HandlerBase::AttachPoint(),
     name_(name),
@@ -373,7 +373,7 @@ WatchPoint::addObjectBuffer(Core::Serialization::ObjectBuffer* ob)
 }
 
 void
-WatchPoint::addComparison(Core::Serialization::ObjectMapComparison* cmp)
+WatchPoint::addComparison(Core::Serialization::ObjTreeComparison* cmp)
 {
     cmpObjects_.push_back(cmp);
     numCmpObj_++;
@@ -394,7 +394,7 @@ WatchPoint::check()
 {
     bool result = false;
 
-    if ( cmpObjects_[0]->compare() ) {
+    if ( cmpObjects_[0]->evaluateComparison(nullptr) ) {
         result = true;
     }
     std::stringstream s;
@@ -406,7 +406,7 @@ WatchPoint::check()
 
     for ( size_t i = 1; i < numCmpObj_; i++ ) {
         bool result2 = false;
-        if ( cmpObjects_[i]->compare() ) {
+        if ( cmpObjects_[i]->evaluateComparison(nullptr) ) {
             result2 = true;
         }
         s << "      ";
