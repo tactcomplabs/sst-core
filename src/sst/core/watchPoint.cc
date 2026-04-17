@@ -95,10 +95,10 @@ WatchPoint::ShutdownWPAction::invokeAction(WatchPoint* wp)
 WatchPoint::WatchPoint(size_t index, const std::string& name, Core::Serialization::ObjTreeComparison* obj) :
     Clock::HandlerBase::AttachPoint(),
     Event::HandlerBase::AttachPoint(),
+    cmpObjects_(obj),
     name_(name),
     wpIndex(index)
 {
-    addComparison(obj);
 }
 
 void
@@ -274,9 +274,7 @@ WatchPoint::printWatchpoint(std::stringstream& ss)
     ss << "TriggerCount " << triggerCount << " : ";
     printHandler(ss);
     // TODO: print the logic values
-    for ( size_t i = 0; i < numCmpObj_; i++ ) { // Print trigger tests
-        cmpObjects_[i]->print(ss);
-    }
+    cmpObjects_->print(ss, 0, cmpObjects_->operators.size()*2);
     ss << " : ";
 
     if ( tb_ != nullptr ) { // print trace buffer config
@@ -373,13 +371,6 @@ WatchPoint::addObjectBuffer(Core::Serialization::ObjectBuffer* ob)
 }
 
 void
-WatchPoint::addComparison(Core::Serialization::ObjTreeComparison* cmp)
-{
-    cmpObjects_.push_back(cmp);
-    numCmpObj_++;
-}
-
-void
 WatchPoint::setBufferReset()
 {
     if ( tb_ != nullptr ) {
@@ -394,25 +385,27 @@ WatchPoint::check()
 {
     bool result = false;
 
-    if ( cmpObjects_[0]->evaluateComparison(nullptr) ) {
+    if ( cmpObjects_->evaluateComparison(0, nullptr) ) {
+
         result = true;
     }
+    //printf("      comparison_0 = %d\n", result);
     std::stringstream s;
     s << std::boolalpha;
     s << "    WatchPoint " << name_.c_str() << " tests:\n";
     s << "      ";
-    cmpObjects_[0]->print(s);
+    cmpObjects_->print(s, 0, 1);
     s << " -> " << result << std::endl;
 
-    for ( size_t i = 1; i < numCmpObj_; i++ ) {
+    for ( size_t i = 1; i < cmpObjects_->operators.size(); i++ ) {
         bool result2 = false;
-        if ( cmpObjects_[i]->evaluateComparison(nullptr) ) {
+        if ( cmpObjects_->evaluateComparison(i, nullptr) ) {
             result2 = true;
         }
+     //   printf("      comparison%ld = %d\n", i, result2);
         s << "      ";
-        cmpObjects_[i]->print(s);
+        cmpObjects_->print(s, i*2, i*2+1);
         s << " -> " << result2 << std::endl;
-        // printf("      comparison%ld = %d\n", i, result2);
 
         if ( logicOps_[i - 1] == LogicOp::AND ) {
             result = result && result2;

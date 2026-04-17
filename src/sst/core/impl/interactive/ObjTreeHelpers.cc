@@ -16,38 +16,25 @@
 namespace SST::Core::Serialization {
 
 bool 
-ObjTreeComparison::evaluateComparison(SST::Core::Serialization::ObjTreeCont* treeRoot){
+ObjTreeComparison::evaluateComparison(unsigned index, SST::Core::Serialization::ObjTreeCont* treeRoot){
 
     //Get the error conditions out of the way
-    if(objectsToCompare.empty() || operators.empty() || (operators[0] == Op::INVALID)){ return false; }
+    if(objectsToCompare.empty()              || 
+        operators.empty()                    || 
+        (operators.size() < index)           ||
+        (objectsToCompare.size() < (index*2) ) ||
+        (operators[index] == Op::INVALID)) 
+        { return false; }
 
-    //How many objects we got?
-    if(1 == objectsToCompare.size() ){ //Just 1? means we got a CHANGED
-        if( operators[0] != Op::CHANGED ){
-            std::cout << "Invalid Watchpoint compairson" << std::endl;
-            return false;
-        }else{
-            return std::get<std::unique_ptr<Core::Serialization::ObjTreeCont>>(objectsToCompare[0])->hasChanged();
-        }
-    }else if( 2 == objectsToCompare.size() ){ // 2 means we have a compairson
-        //which sides hold objects, and which side (if any) holds constants?
-        //auto& lhsTuple = objectsToCompare[0];
-        //auto& rhsTuple = objectsToCompare[1];
-
-        std::get<std::unique_ptr<Core::Serialization::ObjTreeCont>>(objectsToCompare[0])->syncFromSim();
-        std::get<std::unique_ptr<Core::Serialization::ObjTreeCont>>(objectsToCompare[1])->syncFromSim();
-
-//        Core::Serialization::ObjTreeCont* lhsObj = (std::get<valType>(lhsTuple) == valType::OBJ)
-//                        ? std::get<std::unique_ptr<ObjTreeCont>>(lhsTuple).get()
-//                        : nullptr;
-
-//        Core::Serialization::ObjTreeCont* rhsObj = (std::get<valType>(rhsTuple) == valType::OBJ)
-//                        ? std::get<std::unique_ptr<ObjTreeCont>>(rhsTuple).get()
- //                       : nullptr;  
+    if(operators[index] == Op::CHANGED ){ 
+        return std::get<std::unique_ptr<Core::Serialization::ObjTreeCont>>(objectsToCompare[index*2])->hasChanged();
+    }else {
+        std::get<std::unique_ptr<Core::Serialization::ObjTreeCont>>(objectsToCompare[index*2])->syncFromSim();
+        std::get<std::unique_ptr<Core::Serialization::ObjTreeCont>>(objectsToCompare[(index*2)+1])->syncFromSim();
          
-        auto lhs = SST::Core::Serialization::NumericHandle::from(std::get<std::unique_ptr<Core::Serialization::ObjTreeCont>>(objectsToCompare[0]).get());
-        auto rhs = SST::Core::Serialization::NumericHandle::from(std::get<std::unique_ptr<Core::Serialization::ObjTreeCont>>(objectsToCompare[1]).get());
-        switch(operators[0]){
+        auto lhs = SST::Core::Serialization::NumericHandle::from(std::get<std::unique_ptr<Core::Serialization::ObjTreeCont>>(objectsToCompare[index*2]).get());
+        auto rhs = SST::Core::Serialization::NumericHandle::from(std::get<std::unique_ptr<Core::Serialization::ObjTreeCont>>(objectsToCompare[(index*2)+1]).get());
+        switch(operators[index]){
             case Op::LT:  return lhs <  rhs;
             case Op::LTE: return lhs <= rhs;
             case Op::GT:  return lhs >  rhs;

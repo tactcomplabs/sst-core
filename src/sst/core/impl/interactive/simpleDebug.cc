@@ -2942,8 +2942,10 @@ parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serializa
         }
         op->objectsToCompare.emplace_back(std::move(path), Core::Serialization::ObjTreeComparison::valType::OBJ, opObj->clone());
 
-        // In changed mode, we do not use v2
+        // In changed mode, we do not use v2, but add a "placeholder" object to the compairson list. This is a touch
+            // wasteful, but makes our life a lot easier later 
         if ( op->operators[0] == Core::Serialization::ObjTreeComparison::Op::CHANGED ) {
+            op->objectsToCompare.emplace_back(std::move(path), Core::Serialization::ObjTreeComparison::valType::UNKNOWN, opObj->clone());
             return op;
         }
     }else {
@@ -2962,7 +2964,7 @@ parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serializa
             return nullptr;
         }
         std::deque<std::string> const_arg;
-        const_arg.push_back(v2);
+        const_arg.push_back(var);
         op->objectsToCompare.emplace_back(std::move(const_arg), Core::Serialization::ObjTreeComparison::valType::CONST, constNode->clone());
     }
     
@@ -3333,7 +3335,6 @@ SimpleDebugger::cmd_watch_remote(std::vector<std::string>& tokens)
                 return false;
             }
         } // while index < tokens.size(), add another logic op and test comparision
-        //pt->addComparison(c);  //DDD: We passed a pointer to c when we created the Watchpoint
 
         // Parse action
         std::string           action    = "interactive";

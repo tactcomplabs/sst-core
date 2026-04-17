@@ -176,7 +176,6 @@ public:
     void        printAction(std::stringstream& ss);
     void        addTraceBuffer(Core::Serialization::TraceBuffer* tb);
     void        addObjectBuffer(Core::Serialization::ObjectBuffer* ob);
-    void        addComparison(Core::Serialization::ObjTreeComparison* cmp);
 
     enum LogicOp : unsigned { // Logical Op for trigger tests
         AND       = 0,
@@ -197,8 +196,8 @@ protected:
     void      simulationShutdown();
 
 private:
-    size_t                                                 numCmpObj_ = 0;
-    std::vector<Core::Serialization::ObjTreeComparison*>   cmpObjects_;
+    //size_t                                                 numCmpObj_ = 0;
+    std::unique_ptr<Core::Serialization::ObjTreeComparison>  cmpObjects_;
     std::vector<LogicOp>                                   logicOps_;
     std::string                                            name_;
     Core::Serialization::TraceBuffer*                      tb_ = nullptr;

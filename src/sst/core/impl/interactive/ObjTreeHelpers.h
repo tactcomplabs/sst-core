@@ -62,9 +62,11 @@ public:
     std::vector<std::tuple<std::deque<std::string>, valType, std::unique_ptr<ObjTreeCont>>> objectsToCompare;
     std::vector<Op> operators;
 
-    void print(std::stringstream& s) const {
+    void print(std::stringstream& s, unsigned startIdx, unsigned stopIdx) const {
         if(objectsToCompare.empty() || operators.empty()){ return; }
-        for(size_t i = 0; i < objectsToCompare.size(); i++){
+        if(objectsToCompare.size() < startIdx || objectsToCompare.size() < stopIdx){return;}
+        for(size_t i = startIdx; i < stopIdx; i++){
+            if(std::get<valType>(objectsToCompare[i]) == valType::UNKNOWN ) {continue;}
             s << std::get<std::deque<std::string>>(objectsToCompare[i]).back();
             if((i % 2 == 0) &&  (i/2 < operators.size())){
                 s << " " << getStringFromOp(operators[i/2]);
@@ -74,7 +76,7 @@ public:
         s << std::endl;
     }
 
-    bool evaluateComparison(SST::Core::Serialization::ObjTreeCont* treeRoot);
+    bool evaluateComparison(unsigned index, SST::Core::Serialization::ObjTreeCont* treeRoot);
 
     ObjTreeComparison() = default;
     ~ObjTreeComparison()= default;
