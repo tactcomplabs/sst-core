@@ -67,16 +67,25 @@ public:
         if(objectsToCompare.size() < startIdx || objectsToCompare.size() < stopIdx){return;}
         for(size_t i = startIdx; i < stopIdx; i++){
             if(std::get<valType>(objectsToCompare[i]) == valType::UNKNOWN ) {continue;}
-            s << std::get<std::deque<std::string>>(objectsToCompare[i]).back();
+            if(std::get<valType>(objectsToCompare[i]) == valType::CONST) {
+                s << std::get<std::deque<std::string>>(objectsToCompare[i]).back();
+                s << " ";
+                continue;
+            }else{
+                for(size_t j = 0; j < std::get<std::deque<std::string>>(objectsToCompare[i]).size(); j++){
+                    s << "/";
+                    s << std::get<std::deque<std::string>>(objectsToCompare[i])[j];
+                }
+            }
             if((i % 2 == 0) &&  (i/2 < operators.size())){
                 s << " " << getStringFromOp(operators[i/2]);
             }
             s << " ";
         } 
-        s << std::endl;
+        //s << std::endl;
     }
 
-    bool evaluateComparison(unsigned index, SST::Core::Serialization::ObjTreeCont* treeRoot);
+    bool evaluateComparison(unsigned index, [[maybe_unused]] SST::Core::Serialization::ObjTreeCont* treeRoot);
 
     ObjTreeComparison() = default;
     ~ObjTreeComparison()= default;

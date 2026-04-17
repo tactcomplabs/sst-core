@@ -16,7 +16,7 @@
 namespace SST::Core::Serialization {
 
 bool 
-ObjTreeComparison::evaluateComparison(unsigned index, SST::Core::Serialization::ObjTreeCont* treeRoot){
+ObjTreeComparison::evaluateComparison(unsigned index, [[maybe_unused]] SST::Core::Serialization::ObjTreeCont* treeRoot){
 
     //Get the error conditions out of the way
     if(objectsToCompare.empty()              || 

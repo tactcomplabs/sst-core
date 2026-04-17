@@ -2912,7 +2912,7 @@ parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serializa
     op->operators.push_back(Core::Serialization::ObjTreeComparison::getOperationFromString(opstr));
 
     std::string v2;
-    if( Core::Serialization::ObjTreeComparison::Op::CHANGED != op->operators[0] ){
+    if( Core::Serialization::ObjTreeComparison::Op::CHANGED != op->operators.back()){
         if( index >= tokens.size() ){
             std::cout << "Invalid format for trigger test. Valid formats are <var> changed and <var> <op> <val>" 
                 << std::endl;
@@ -2922,7 +2922,7 @@ parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serializa
     }
      
     // Is operator valid
-    if ( op->operators[0] == Core::Serialization::ObjTreeComparison::Op::INVALID ) {
+    if ( op->operators.back() == Core::Serialization::ObjTreeComparison::Op::INVALID ) {
         std::cout << "Unknown comparison operation specified in trigger test" << std::endl;
         return nullptr;
     }
@@ -2944,7 +2944,7 @@ parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serializa
 
         // In changed mode, we do not use v2, but add a "placeholder" object to the compairson list. This is a touch
             // wasteful, but makes our life a lot easier later 
-        if ( op->operators[0] == Core::Serialization::ObjTreeComparison::Op::CHANGED ) {
+        if ( op->operators.back() == Core::Serialization::ObjTreeComparison::Op::CHANGED ) {
             op->objectsToCompare.emplace_back(std::move(path), Core::Serialization::ObjTreeComparison::valType::UNKNOWN, opObj->clone());
             return op;
         }
