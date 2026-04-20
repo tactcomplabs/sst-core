@@ -359,13 +359,13 @@ WatchPoint::printAction(std::stringstream& ss)
 }
 
 void
-WatchPoint::addTraceBuffer(Core::Serialization::TraceBuffer* tb)
+WatchPoint::addTraceBuffer(Core::Serialization::ObjTreeTraceBuffer* tb)
 {
     tb_ = tb;
 }
 
 void
-WatchPoint::addObjectBuffer(Core::Serialization::ObjectBuffer* ob)
+WatchPoint::addObjectBuffer(Core::Serialization::ObjTreeCont* ob)
 {
     tb_->addObjectBuffer(ob);
 }

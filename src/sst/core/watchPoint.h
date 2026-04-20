@@ -174,8 +174,8 @@ public:
     void        resetTraceBuffer();
     inline bool checkReset() { return reset_; }
     void        printAction(std::stringstream& ss);
-    void        addTraceBuffer(Core::Serialization::TraceBuffer* tb);
-    void        addObjectBuffer(Core::Serialization::ObjectBuffer* ob);
+    void        addTraceBuffer(Core::Serialization::ObjTreeTraceBuffer* tb);
+    void        addObjectBuffer(Core::Serialization::ObjTreeCont* ob);
 
     enum LogicOp : unsigned { // Logical Op for trigger tests
         AND       = 0,
@@ -200,7 +200,7 @@ private:
     std::unique_ptr<Core::Serialization::ObjTreeComparison>  cmpObjects_;
     std::vector<LogicOp>                                   logicOps_;
     std::string                                            name_;
-    Core::Serialization::TraceBuffer*                      tb_ = nullptr;
+    Core::Serialization::ObjTreeTraceBuffer*               tb_ = nullptr;
     size_t                                                 wpIndex;
     HANDLER                                                handler        = ALL;
     bool                                                   trigger        = false;

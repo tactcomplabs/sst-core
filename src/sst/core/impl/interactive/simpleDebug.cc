@@ -2329,25 +2329,26 @@ SimpleDebugger::cmd_addTraceVar_remote(std::vector<std::string>& tokens)
         const std::string& tvar = tokens[tindex++];
 
         // Find and check trace variable
-        Core::Serialization::ObjectMap* map = obj_->findVariable(tvar);
+        //Core::Serialization::ObjectMap* map = obj_->findVariable(tvar);
+        auto* map = curObj_->findByName(tvar);
         if ( nullptr == map ) {
             result << "Unknown variable: " << tvar << std::endl;
             return false;
         }
 
         // Is variable fundamental
-        if ( !map->isFundamental() ) {
-            result << "Traces can only be placed on fundamental types; " << tvar 
-                << " is not fundamental" << std::endl;
-            return false;
-        }
+        //if ( !map->isFundamental() ) {
+        //    result << "Traces can only be placed on fundamental types; " << tvar 
+        //        << " is not fundamental" << std::endl;
+        //    return false;
+       // }
         size_t bufsize = wp->getBufferSize();
         if ( bufsize == 0 ) {
             result << "Watchpoint " << wpIndex << " does not have tracing enabled" << std::endl;
             return false;
         }
-        auto* ob = map->getObjectBuffer(obj_->getFullName() + "/" + tvar, bufsize);
-        wp->addObjectBuffer(ob);
+        //auto* ob = map->getObjectBuffer(obj_->getFullName() + "/" + tvar, bufsize);
+        wp->addObjectBuffer(map);
     }
     return true;
 }
@@ -3738,6 +3739,61 @@ SimpleDebugger::cmd_unwatch_remote(std::vector<std::string>& tokens)
     return true;
 }
 
+Core::Serialization::ObjTreeTraceBuffer*
+parseTraceBuffer(std::vector<std::string>& tokens, size_t& index, SST::Core::Serialization::ObjTreeCont* obj)
+{
+    size_t bufsize = 32;
+    size_t pdelay  = 0;
+
+    // Get buffer config
+    if ( tokens[index++] != ":" ) {
+        std::cout << "Invalid format: trace <trigger> : <bufsize> <postdelay> : <v1> ... "
+                     "<vN> : <action>\n";
+        return nullptr;
+    }
+    // Could check for ":" here and assume that means they just want default
+    // values for buffer size and post delay
+
+    try {
+        bufsize = std::stoi(tokens[index++]);
+    }
+    catch ( const std::invalid_argument& e ) {
+        std::cerr << "Error: Invalid argument for buffer size: " << tokens[5] << std::endl;
+        return nullptr;
+    }
+    catch ( const std::out_of_range& e ) {
+        std::cerr << "Error: Out of range for buffer size: " << tokens[5] << std::endl;
+        return nullptr;
+    }
+
+    // Get post delay
+    try {
+        pdelay = std::stoi(tokens[index++]);
+    }
+    catch ( const std::invalid_argument& e ) {
+        std::cerr << "Error: Invalid argument for post trigger delay: " << tokens[6] << std::endl;
+        return nullptr;
+    }
+    catch ( const std::out_of_range& e ) {
+        std::cerr << "Error: Out of range for post trigger delay: " << tokens[6] << std::endl;
+        return nullptr;
+    }
+
+    if ( tokens[index++] != ":" ) {
+        std::cout << "Invalid format: trace <var> <op> <value> : <bufsize> <postdelay> : "
+                     "<v1> ... <vN> : <action>\n";
+        return nullptr;
+    }
+
+    try {
+        // Setup Trace Buffer
+        return new Core::Serialization::ObjTreeTraceBuffer(bufsize, pdelay);
+    }
+    catch ( const std::exception& e ) {
+        std::cout << "Invalid buffer argument passed to trace command\n";
+        return nullptr;
+    }
+}
 
 Core::Serialization::TraceBuffer*
 parseTraceBuffer(std::vector<std::string>& tokens, size_t& index, Core::Serialization::ObjectMap* obj)
@@ -3794,6 +3850,26 @@ parseTraceBuffer(std::vector<std::string>& tokens, size_t& index, Core::Serializ
         return nullptr;
     }
 }
+
+Core::Serialization::ObjTreeCont*
+parseTraceVar(std::string& tvar, Core::Serialization::ObjTreeCont* obj, Core::Serialization::ObjTreeTraceBuffer* tb)
+{
+    // Find and check trace variable
+    auto* map = obj->findByName(tvar);
+    if ( nullptr == map ) {
+        std::cout << "Unknown variable: " << tvar << std::endl;
+        return nullptr;
+    }
+
+    // Is variable fundamental
+    //if ( !map->isFundamental() ) {
+   //     std::cout << "Traces can only be placed on fundamental types; " << tvar << "is not fundamental\n";
+   //     return nullptr;
+   // }
+   // std::string name = obj->getFullName() + "/" + tvar;
+    return map; //map->getObjectBuffer(name, tb->getBufferSize());
+}
+
 
 Core::Serialization::ObjectBuffer*
 parseTraceVar(std::string& tvar, Core::Serialization::ObjectMap* obj, Core::Serialization::TraceBuffer* tb)
@@ -3910,15 +3986,13 @@ SimpleDebugger::cmd_trace_remote(std::vector<std::string>& tokens)
     std::string name  = "";
 
     // Get first comparison
-    Core::Serialization::ObjectMapComparison* c = parseComparison(tokens, index, obj_, name);
+    Core::Serialization::ObjTreeComparison* c = parseComparison(tokens, index, curObj_, nullptr);
     if ( c == nullptr ) {
        std::cout << "Invalid argument passed in comparison trigger command" << std::endl;
         return false;
     }
     size_t wpIndex = watch_points_.size();
-    //auto*  pt      = new WatchPoint(wpIndex, name, c);
-    Core::Serialization::ObjTreeComparison* fixme = nullptr;
-    auto*  pt      = new WatchPoint(wpIndex, name, fixme);
+    auto*  pt      = new WatchPoint(wpIndex, name, c);
 
     // Add additional comparisons and logical ops
     while ( index < tokens.size() ) {
@@ -3942,17 +4016,16 @@ SimpleDebugger::cmd_trace_remote(std::vector<std::string>& tokens)
         }
 
         // Get next comparison
-        Core::Serialization::ObjectMapComparison* c = parseComparison(tokens, index, obj_, name);
+        c = parseComparison(tokens, index, curObj_, c);
         if ( c == nullptr ) {
             std::cout << "Invalid argument in comparison of trace command\n";
             return false;
         }
-       //FIXME: pt->addComparison(c);
 
     } // while index < tokens.size(), add another logic op and test comparision
 
     try {
-        auto* tb = parseTraceBuffer(tokens, index, obj_);
+        auto* tb = parseTraceBuffer(tokens, index, curObj_);
         if ( tb == nullptr ) {
             std::cout << "Invalid trace buffer argument in trace command\n";
             return false;
@@ -3967,7 +4040,7 @@ SimpleDebugger::cmd_trace_remote(std::vector<std::string>& tokens)
                 break;
             }
 
-            auto* objBuf = parseTraceVar(tvar, obj_, tb);
+            auto* objBuf = parseTraceVar(tvar, curObj_, tb);
             if ( objBuf == nullptr ) {
                 std::cout << "Invalid trace variable argument passed to trace command\n";
                 return false;
@@ -3994,7 +4067,15 @@ SimpleDebugger::cmd_trace_remote(std::vector<std::string>& tokens)
         }
 
         // Get the top level component to set the watch point
-        BaseComponent* comp = static_cast<BaseComponent*>(base_comp_->getAddr());
+        //BaseComponent* comp = static_cast<BaseComponent*>(base_comp_->getAddr());
+        BaseComponent* comp = nullptr;
+        Core::Serialization::ObjTreeCont* parent = curObj_;
+        while (!parent->isComponent() && !parent->isRoot())
+        {
+            parent = parent->getParent();
+        }
+        
+        comp = static_cast<Core::Serialization::ComponentObj*>(parent)->getVal(); 
         if ( comp ) {
             comp->addWatchPoint(pt);
             watch_points_.emplace_back(pt, comp);

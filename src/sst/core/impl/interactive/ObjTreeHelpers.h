@@ -92,5 +92,220 @@ public:
 
 
 };
+
+class ObjTreeTraceBuffer
+{
+
+public:
+    ObjTreeTraceBuffer(size_t sz, size_t pdelay) :
+        bufSize_(sz),
+        postDelay_(pdelay)
+    {
+        tagBuffer_.resize(bufSize_);
+        cycleBuffer_.resize(bufSize_);
+        handlerBuffer_.resize(bufSize_);
+    }
+
+    virtual ~ObjTreeTraceBuffer() = default;
+
+    void setBufferReset() { reset_ = true; }
+
+    void resetTraceBuffer()
+    {
+        printf("    Reset Trace Buffer\n");
+        postCount_   = 0;
+        cur_         = 0;
+        first_       = 0;
+        numRecs_     = 0;
+        samplesLost_ = 0;
+        isOverrun_   = false;
+        reset_       = false;
+        state_       = CLEAR;
+    }
+
+    size_t getBufferSize() { return bufSize_; }
+
+    void addObjectBuffer(ObjTreeCont* vb)
+    {
+        objBuffers_.push_back(vb);
+        numObjects++;
+    }
+
+    enum BufferState : int {
+        CLEAR,       // 0 Pre Trigger
+        TRIGGER,     // 1 Trigger
+        POSTTRIGGER, // 2 Post Trigger
+        OVERRUN      // 3 Overrun
+    };
+
+    const std::map<BufferState, char> state2char { { CLEAR, '-' }, { TRIGGER, '!' }, { POSTTRIGGER, '+' },
+        { OVERRUN, 'o' } };
+
+    bool sampleT(bool trigger, uint64_t cycle, const std::string& handler)
+    {
+        size_t start_state  = state_;
+        bool   invokeAction = false;
+
+        // if Trigger == TRUE
+        if ( trigger ) {
+            if ( start_state == CLEAR ) { // Not previously triggered
+                state_ = TRIGGER;         // State becomes trigger record
+            }
+            // printf("    Sample: trigger\n");
+
+        } // if trigger
+
+        if ( start_state == TRIGGER || start_state == POSTTRIGGER ) { // trigger record or post trigger
+            state_ = POSTTRIGGER;                                     // State becomes post trigger
+            // printf("    Sample: post trigger\n");
+        }
+
+// Circular buffer
+#ifdef _OBJMAP_DEBUG_
+        std::cout << "    Sample:" << handler << ": numRecs:" << numRecs_ << " first:" << first_ << " cur:" << cur_
+                  << " state:" << state2char.at(state_) << " isOverrun:" << isOverrun_
+                  << " samplesLost:" << samplesLost_ << std::endl;
+#endif
+        cycleBuffer_[cur_]   = cycle;
+        handlerBuffer_[cur_] = handler;
+        if ( trigger ) {
+            triggerCycle = cycle;
+        }
+
+        // Sample all the trace object buffers
+        ObjTreeCont* varBuffer_;
+        for ( size_t obj = 0; obj < numObjects; obj++ ) {
+            varBuffer_ = objBuffers_[obj];
+            //varBuffer_->sample(cur_, trigger);
+            if(trigger){
+                varBuffer_->syncFromSim();
+            }
+        }
+
+        if ( numRecs_ < bufSize_ ) {
+            tagBuffer_[cur_] = state_;
+            numRecs_++;
+            cur_ = (cur_ + 1) % bufSize_;
+            if ( cur_ == 0 ) first_ = 0; // 1;
+        }
+        else { // Buffer full
+            // Check to see if we are overwriting trigger
+            if ( tagBuffer_[cur_] == TRIGGER ) {
+                // printf("    Sample Overrun\n");
+                isOverrun_ = true;
+            }
+            tagBuffer_[cur_] = state_;
+            numRecs_++;
+            cur_   = (cur_ + 1) % bufSize_;
+            first_ = cur_;
+        }
+
+        if ( isOverrun_ ) {
+            samplesLost_++;
+        }
+
+        if ( (state_ == TRIGGER) && (postDelay_ == 0) ) {
+            invokeAction = true;
+            std::cout << "    Invoke Action\n";
+        }
+
+        if ( state_ == POSTTRIGGER ) {
+            postCount_++;
+            if ( postCount_ >= postDelay_ ) {
+                invokeAction = true;
+                std::cout << "    Invoke Action\n";
+            }
+        }
+
+        return invokeAction;
+    }
+
+    void dumpTraceBufferT()
+    {
+        if ( numRecs_ == 0 ) return;
+
+        size_t start;
+        size_t end;
+
+        start = first_;
+        if ( cur_ == 0 ) {
+            end = bufSize_ - 1;
+        }
+        else {
+            end = cur_ - 1;
+        }
+        // std::cout << "start=" << start << " end=" << end << std::endl;
+
+        for ( int j = start;; j++ ) {
+            size_t i = j % bufSize_;
+
+            std::cout << "buf[" << i << "] " << handlerBuffer_.at(i) << " @" << cycleBuffer_.at(i) << " ("
+                      << state2char.at(tagBuffer_.at(i)) << ") ";
+
+            for ( size_t obj = 0; obj < numObjects; obj++ ) {
+                ObjTreeCont* varBuffer_ = objBuffers_[obj];
+                varBuffer_->Dump(2);
+                //std::cout << varBuffer_->getObjName() << "=" << varBuffer_->get() << " ";
+            }
+            std::cout << std::endl;
+
+            if ( i == end ) {
+                break;
+            }
+        }
+    }
+
+    void dumpTriggerRecord()
+    {
+        if ( numRecs_ == 0 ) {
+            std::cout << "No trace samples in current buffer" << std::endl;
+            return;
+        }
+        if ( state_ != CLEAR ) {
+            std::cout << "LastTriggerRecord:@cycle" << triggerCycle << ": SamplesLost=" << samplesLost_ << ": ";
+            for ( size_t obj = 0; obj < numObjects; obj++ ) {
+                ObjTreeCont* varBuffer_ = objBuffers_[obj];
+                //std::cout << SST::Core::to_string(varBuffer_->getName()) << "=" << varBuffer_->getTriggerVal() << " ";
+                varBuffer_->Dump(1);
+            }
+            std::cout << std::endl;
+        }
+    }
+
+    void printVars(std::stringstream& ss)
+    {
+        for ( size_t obj = 0; obj < numObjects; obj++ ) {
+            ObjTreeCont* varBuffer_ = objBuffers_[obj];
+            //ss << SST::Core::to_string(varBuffer_->getName()) << " ";
+            ss << varBuffer_->getObjName() << " ";
+        }
+    }
+
+    void printConfig(std::stringstream& ss)
+    {
+        ss << "bufsize = " << bufSize_ << " postDelay = " << postDelay_ << " : ";
+        printVars(ss);
+    }
+
+    // private:
+    size_t                          bufSize_     = 64;
+    size_t                          postDelay_   = 8;
+    size_t                          postCount_   = 0;
+    size_t                          cur_         = 0;
+    size_t                          first_       = 0;
+    size_t                          numRecs_     = 0;
+    bool                            isOverrun_   = false;
+    size_t                          samplesLost_ = 0;
+    bool                            reset_       = false;
+    BufferState                     state_       = CLEAR;
+
+    size_t                     numObjects = 0;
+    std::vector<BufferState>   tagBuffer_;
+    std::vector<std::string>   handlerBuffer_;
+    std::vector<ObjTreeCont*>  objBuffers_;
+    std::vector<uint64_t>      cycleBuffer_;
+    uint64_t                   triggerCycle;
+
+}; // class TraceBuffer
 }
 #endif
