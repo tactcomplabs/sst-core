@@ -20,6 +20,8 @@
 #include "sst/core/timeConverter.h"
 #include "sst/core/warnmacros.h"
 
+#include <atomic>
+
 namespace SST {
 
 SimTime_t ThreadSyncDirectSkip::localMinimumNextActivityTime = 0;
@@ -104,46 +106,43 @@ ThreadSyncDirectSkip::getSignals(int& end, int& usr, int& alrm)
 void
 ThreadSyncDirectSkip::setShutdownFlags(bool enter_shutdown, Simulation_impl::ShutdownMode_t shutdown_mode)
 {
-    if (enter_shutdown) {
+    if ( enter_shutdown ) {
         enter_shutdown_.store(enter_shutdown);
         shutdown_mode_.store(static_cast<unsigned>(shutdown_mode));
     }
 }
 
 void
-ThreadSyncDirectSkip::setFlags(bool enter_interactive, bool enter_shutdown, Simulation_impl::ShutdownMode_t shutdown_mode)
+ThreadSyncDirectSkip::setFlags(
+    bool enter_interactive, bool enter_shutdown, Simulation_impl::ShutdownMode_t shutdown_mode)
 {
-    // SKK This must be atomic because it can be set from any thread
-    if (enter_interactive)
-        enter_interactive_.store(enter_interactive);
+    // This must be atomic because it can be set from any thread
+    if ( enter_interactive ) enter_interactive_.store(enter_interactive);
     setShutdownFlags(enter_shutdown, shutdown_mode);
 }
 
-void 
-ThreadSyncDirectSkip::getShutdownFlags( bool& enter_shutdown, Simulation_impl::ShutdownMode_t& shutdown_mode)
+void
+ThreadSyncDirectSkip::getShutdownFlags(bool& enter_shutdown, Simulation_impl::ShutdownMode_t& shutdown_mode)
 {
-    enter_shutdown  = enter_shutdown_.load();
-    #if 1
-    switch (shutdown_mode_) {
-        case 0:
-            shutdown_mode = Simulation_impl::ShutdownMode_t::SHUTDOWN_CLEAN;
-            break;
-        case 1:
-            shutdown_mode = Simulation_impl::ShutdownMode_t::SHUTDOWN_SIGNAL;
-            break;
-        case 2:
-            shutdown_mode = Simulation_impl::ShutdownMode_t::SHUTDOWN_EMERGENCY;
-            break;
+    enter_shutdown = enter_shutdown_.load();
+    switch ( shutdown_mode_ ) {
+    case 0:
+        shutdown_mode = Simulation_impl::ShutdownMode_t::SHUTDOWN_CLEAN;
+        break;
+    case 1:
+        shutdown_mode = Simulation_impl::ShutdownMode_t::SHUTDOWN_SIGNAL;
+        break;
+    case 2:
+        shutdown_mode = Simulation_impl::ShutdownMode_t::SHUTDOWN_EMERGENCY;
+        break;
     }
-    #else
-    shutdown_mode = static_cast<Simulation_impl::ShutdownMode_t>(shutdown_mode_);
-    #endif
 }
 
-void 
-ThreadSyncDirectSkip::getFlags( bool& enter_interactive, bool& enter_shutdown, Simulation_impl::ShutdownMode_t& shutdown_mode)
+void
+ThreadSyncDirectSkip::getFlags(
+    bool& enter_interactive, bool& enter_shutdown, Simulation_impl::ShutdownMode_t& shutdown_mode)
 {
-    enter_interactive  = enter_interactive_.load();
+    enter_interactive = enter_interactive_.load();
     getShutdownFlags(enter_shutdown, shutdown_mode);
 }
 
@@ -162,7 +161,6 @@ int                       ThreadSyncDirectSkip::sig_alrm_(0);
 std::atomic<bool>         ThreadSyncDirectSkip::enter_interactive_(false);
 std::atomic<bool>         ThreadSyncDirectSkip::enter_shutdown_(false);
 std::atomic<unsigned>     ThreadSyncDirectSkip::shutdown_mode_(0);
-
 
 
 } // namespace SST

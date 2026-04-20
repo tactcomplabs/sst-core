@@ -34,8 +34,6 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#define SKK 0
-
 namespace SST {
 
 class InteractiveConsole;
@@ -45,40 +43,6 @@ RankSync*                 SyncManager::rankSync_ = nullptr;
 Core::ThreadSafe::Barrier SyncManager::RankExecBarrier_[6];
 Core::ThreadSafe::Barrier SyncManager::LinkUntimedBarrier_[3];
 SimTime_t                 SyncManager::next_rankSync_ = MAX_SIMTIME_T;
-
-#if SST_SYNC_PROFILING
-
-#if SST_HIGH_RESOLUTION_CLOCK
-#define SST_SYNC_PROFILE_START                                  \
-    auto sim                = Simulation_impl::getSimulation(); \
-    auto last_sync_type     = next_sync_type_;                  \
-    auto sync_profile_start = std::chrono::high_resolution_clock::now();
-
-#define SST_SYNC_PROFILE_STOP                                                                                 \
-    auto sync_profile_stop = std::chrono::high_resolution_clock::now();                                       \
-    auto sync_profile_count =                                                                                 \
-        std::chrono::duration_cast<std::chrono::nanoseconds>(sync_profile_stop - sync_profile_start).count(); \
-    sim_->incrementSyncTime(last_sync_type == RANK, sync_profile_count);
-
-#else
-#define SST_SYNC_PROFILE_START                                               \
-    auto           sim            = Simulation_impl::getSimulation();        \
-    auto           last_sync_type = next_sync_type_;                         \
-    struct timeval sync_profile_stop, sync_profile_start, sync_profile_diff; \
-    gettimeofday(&sync_profile_start, NULL);
-
-#define SST_SYNC_PROFILE_STOP                                                               \
-    gettimeofday(&sync_profile_stop, NULL);                                                 \
-    timersub(&sync_profile_stop, &sync_profile_start, &sync_profile_diff);                  \
-    auto sync_profile_count = (sync_profile_diff.tv_usec + sync_profile_diff.tv_sec * 1e6); \
-    sim_->incrementSyncTime(last_sync_type == RANK, sync_profile_count);
-
-#endif // SST_HIGH_RESOLUTION_CLOCK
-
-#else // SST_SYNC_PROFILING
-#define SST_SYNC_PROFILE_START
-#define SST_SYNC_PROFILE_STOP
-#endif // SST_SYNC_PROFILING
 
 class EmptyRankSync : public RankSync
 {
@@ -132,21 +96,23 @@ public:
         return false;
     }
 
-    void setShutdownFlags(bool UNUSED(enter_shutdown), 
-                Simulation_impl::ShutdownMode_t UNUSED(shutdown_mode)) override {}
+    void setShutdownFlags(bool UNUSED(enter_shutdown), Simulation_impl::ShutdownMode_t UNUSED(shutdown_mode)) override
+    {}
 
     void setCkptFlag(bool UNUSED(generate_ckpt)) override {}
-    void setFlags(bool UNUSED(enter_interactive), bool UNUSED(enter_shutdown), 
-                Simulation_impl::ShutdownMode_t UNUSED(shutdown_mode)) override {}
+    void setFlags(bool UNUSED(enter_interactive), bool UNUSED(enter_shutdown),
+        Simulation_impl::ShutdownMode_t UNUSED(shutdown_mode)) override
+    {}
 
-    void getShutdownFlags( bool& UNUSED(enter_shutdown), Simulation_impl::ShutdownMode_t& UNUSED(shutdown_mode)) override {}
+    void getShutdownFlags(bool& UNUSED(enter_shutdown), Simulation_impl::ShutdownMode_t& UNUSED(shutdown_mode)) override
+    {}
     void getCkptFlag(bool& UNUSED(generate_ckpt)) override {}
-    void getFlags( bool& UNUSED(enter_interactive), bool& UNUSED(enter_shutdown), Simulation_impl::ShutdownMode_t& UNUSED(shutdown_mode)) override {}
+    void getFlags(bool& UNUSED(enter_interactive), bool& UNUSED(enter_shutdown),
+        Simulation_impl::ShutdownMode_t& UNUSED(shutdown_mode)) override
+    {}
 
-     /** Clear interactive flags before next run */
+    /** Clear interactive flags before next run */
     void clearFlags() override {}
-    void interactiveExchange() override {}
-    void shutdownExchange() override {}
 
     SimTime_t getNextSyncTime() override { return nextSyncTime; }
 
@@ -154,8 +120,6 @@ public:
 
     // Don't want to reset time for Empty Sync
     void setRestartTime(SimTime_t UNUSED(time)) override {}
-
-    void testManager() override {}
 };
 
 class EmptyThreadSync : public ThreadSync
@@ -189,17 +153,21 @@ public:
         return false;
     }
 
-    void setShutdownFlags(bool UNUSED(enter_shutdown), 
-                Simulation_impl::ShutdownMode_t UNUSED(shutdown_mode)) override {}
+    void setShutdownFlags(bool UNUSED(enter_shutdown), Simulation_impl::ShutdownMode_t UNUSED(shutdown_mode)) override
+    {}
 
-    void setFlags(bool UNUSED(enter_interactive), bool UNUSED(enter_shutdown), 
-                Simulation_impl::ShutdownMode_t UNUSED(shutdown_mode)) override {}
+    void setFlags(bool UNUSED(enter_interactive), bool UNUSED(enter_shutdown),
+        Simulation_impl::ShutdownMode_t UNUSED(shutdown_mode)) override
+    {}
 
-    void getShutdownFlags( bool& UNUSED(enter_shutdown), Simulation_impl::ShutdownMode_t& UNUSED(shutdown_mode)) override {}
+    void getShutdownFlags(bool& UNUSED(enter_shutdown), Simulation_impl::ShutdownMode_t& UNUSED(shutdown_mode)) override
+    {}
 
-    void getFlags( bool& UNUSED(enter_interactive), bool& UNUSED(enter_shutdown), Simulation_impl::ShutdownMode_t& UNUSED(shutdown_mode)) override {}
+    void getFlags(bool& UNUSED(enter_interactive), bool& UNUSED(enter_shutdown),
+        Simulation_impl::ShutdownMode_t& UNUSED(shutdown_mode)) override
+    {}
 
-     /** Clear interactive flags before next run */
+    /** Clear interactive flags before next run */
     void clearFlags() override {}
 
     /** Register a Link which this Sync Object is responsible for */
@@ -412,34 +380,6 @@ RankSync::findSyncInterval(uint32_t UNUSED_WO_MPI(my_rank))
     return low_latency;
 }
 
-// Class used to hold the list of profile tools installed in the SyncManager
-class SyncProfileToolList
-{
-public:
-    SyncProfileToolList() = default;
-
-    void syncManagerStart()
-    {
-        for ( auto* x : tools )
-            x->syncManagerStart();
-    }
-
-    void syncManagerEnd()
-    {
-        for ( auto* x : tools )
-            x->syncManagerEnd();
-    }
-
-    /**
-       Adds a profile tool the the list and registers this handler
-       with the profile tool
-    */
-    void addProfileTool(Profile::SyncProfileTool* tool) { tools.push_back(tool); }
-
-private:
-    std::vector<Profile::SyncProfileTool*> tools;
-};
-
 void
 SyncManager::setupSyncObjects()
 {
@@ -460,8 +400,9 @@ SyncManager::setupSyncObjects()
         }
         else {
             rankSync_ = new EmptyRankSync(num_ranks_);
-            if (num_ranks_.rank > 1)
-                sim_->getSimulationOutput().output("WARNING: EmptyRankSync: Checkpoint and interactive debug disabled\n");
+            if ( num_ranks_.rank > 1 )
+                sim_->getSimulationOutput().output(
+                    "WARNING: EmptyRankSync: Checkpoint and interactive debug disabled\n");
         }
     }
 
@@ -500,8 +441,6 @@ SyncManager::SyncManager(const RankInfo& rank, const RankInfo& num_ranks, SimTim
     ic_barrier_.resize(num_ranks_.thread);
 
     setPriority(SYNCPRIORITY);
-
-    // sim_->getSimulationOutput().output("skk:syncmgr:constructor: T%d\n", rank_.thread);
 }
 
 SyncManager::SyncManager()
@@ -545,67 +484,75 @@ SimTime_t
 SyncManager::findRankSyncInterval()
 {
     SimTime_t interval = rankSync_->findSyncInterval(rank_.rank);
+    // If there are no cross-rank links, then interval will be MAX_SIMTIME_T.  If this happens, we need to change over
+    // to an EmptyRankSync
+    if ( interval == MAX_SIMTIME_T ) {
+        delete rankSync_;
+        rankSync_ = new EmptyRankSync(num_ranks_);
+    }
     rankSync_->setMaxPeriod(interval);
     return interval;
+}
+
+void
+SyncManager::updateMinPart()
+{
+    min_part_ = rankSync_->getMaxPeriod();
 }
 
 SimTime_t
 SyncManager::findThreadSyncInterval()
 {
     SimTime_t interval = threadSync_->findSyncInterval();
+    // If there are no cross-rank links, then interval will be MAX_SIMTIME_T.  If this happens, we need to change over
+    // to an EmptyThreadSync
+    if ( interval == MAX_SIMTIME_T ) {
+        delete threadSync_;
+        threadSync_ = new EmptyThreadSync(sim_);
+    }
     threadSync_->setMaxPeriod(interval);
     return interval;
 }
 
 void
-SyncManager::getSimShutdownFlags(bool& enter_shutdown, Simulation_impl::ShutdownMode_t& shutdown_mode) {
-            
+SyncManager::getSimShutdownFlags(bool& enter_shutdown, Simulation_impl::ShutdownMode_t& shutdown_mode)
+{
+
     // Get sim flags to exchange in threadSync
     enter_shutdown = sim_->enter_shutdown_;
-    shutdown_mode = sim_->shutdown_mode_;
+    shutdown_mode  = sim_->shutdown_mode_;
 }
 
-// sim_->getSimFlags(enter_interactive, enter_shutdown, shutdown_mode, checkpoint)
 void
-SyncManager::getSimFlags(bool& enter_interactive, bool& enter_shutdown, Simulation_impl::ShutdownMode_t& shutdown_mode, bool& generate_ckpt) {
-            
+SyncManager::getSimFlags(
+    bool& enter_interactive, bool& enter_shutdown, Simulation_impl::ShutdownMode_t& shutdown_mode, bool& generate_ckpt)
+{
+
     // Get sim flags to exchange in threadSync
     enter_interactive = sim_->enter_interactive_;
     getSimShutdownFlags(enter_shutdown, shutdown_mode);
     generate_ckpt = checkpoint_->getCheckpoint();
 }
 
-
 void
 SyncManager::execute()
 {
-#if 0 // SKK
-    std::string type = "RANK";
-    if (next_sync_type_ == THREAD)
-        type = "THREAD";
-    std::cout << "SyncManager::execute: Rank " << rank_.rank 
-    << ": Thread " << rank_.thread 
-    << ": Type " << type << std::endl;
-#endif // SKK  
+    if ( profile_tools_ ) profile_tools_->syncManagerStart(next_sync_type_ == RANK);
 
-    SST_SYNC_PROFILE_START
+    bool                            signals_received    = false;
+    int                             sig_end             = 0;
+    int                             sig_usr             = 0;
+    int                             sig_alrm            = 0;
+    bool                            interactive_enabled = false;
+    bool                            enter_interactive   = false;
+    bool                            enter_shutdown      = false;
+    Simulation_impl::ShutdownMode_t shutdown_mode       = Simulation_impl::ShutdownMode_t::SHUTDOWN_CLEAN;
+    bool                            generate_ckpt       = false;
 
-    if ( profile_tools_ ) profile_tools_->syncManagerStart();
-
-    bool signals_received = false;
-    int  sig_end = 0;
-    int  sig_usr = 0;
-    int  sig_alrm = 0;
-    bool interactive_enabled = false;
-    bool enter_interactive = false;
-    bool enter_shutdown = false;
-    Simulation_impl::ShutdownMode_t shutdown_mode = Simulation_impl::ShutdownMode_t::SHUTDOWN_CLEAN;
-    bool generate_ckpt = false;
-
-    if (sim_->interactive_) {
+    if ( sim_->interactive_ ) {
         interactive_enabled = true;
     }
-
+    if ( profile_tools_ ) profile_tools_->syncManagerStart(next_sync_type_ == RANK);
 
     SimTime_t next_checkpoint_time = MAX_SIMTIME_T;
 
@@ -633,15 +580,11 @@ SyncManager::execute()
         }
 
         // Get interactive, shutdown, and checkpoint flags
-        if (interactive_enabled) {
-            //printf("0: Rank%d, Thread%d: sim_- Flags: enter_interactive %d, enter_shutdown %d, shutdown_mode %d\n", 
-            //            rank_.rank, rank_.thread, sim_->enter_interactive_, sim_->enter_shutdown_, sim_->shutdown_mode_);
+        if ( interactive_enabled ) {
             getSimFlags(enter_interactive, enter_shutdown, shutdown_mode, generate_ckpt);
             rankSync_->setFlags(enter_interactive, enter_shutdown, shutdown_mode);
         }
         rankSync_->setCkptFlag(generate_ckpt);
-        //printf("1: Rank%d, Thread%d: Flags: enter_interactive %d, enter_shutdown %d, shutdown_mode %d\n", 
-        //            rank_.rank, rank_.thread, enter_interactive, enter_shutdown, shutdown_mode);       
 
         // Now call the actual RankSync.  No barrier needed here
         // because all threads will wait on thread 0 before doing
@@ -653,10 +596,10 @@ SyncManager::execute()
 
         // Now call the threadSync after() call
         threadSync_->after();
-        
+
         // Get signals
         signals_received = rankSync_->getSignals(sig_end, sig_usr, sig_alrm);
-       
+
         // Handle any signals
         if ( sig_end )
             real_time_->performSignal(sig_end);
@@ -666,59 +609,30 @@ SyncManager::execute()
         }
 
         // Generate checkpoint if needed
-#if 1
         rankSync_->getCkptFlag(generate_ckpt);
         if ( generate_ckpt ) {
             checkpoint_->setCheckpoint();
         }
         next_checkpoint_time = checkpoint_->check(getDeliveryTime());
-#else
-        // Check local checkpoint generate flag and set shared generate if needed.
-            if ( checkpoint_->getCheckpoint() == true ) {
-                ckpt_generate_.store(1);
-            }
-            // Ensure everyone has written the mask before updating local generate_
-            ic_barrier_.wait();
-            printf("2.5: Rank%d, Thread%d: ckpt_generate_ %d\n", 
-                rank_.rank, rank_.thread, ckpt_generate_.load());
-            if ( ckpt_generate_.load() ) {
-                checkpoint_->setCheckpoint();
-            }
-            next_checkpoint_time = checkpoint_->check(getDeliveryTime());
-            ckpt_generate_.store(0);
 
-        //next_checkpoint_time = checkpoint_->check(getDeliveryTime());
-#endif
-        if (interactive_enabled) {
+        if ( interactive_enabled ) {
             rankSync_->getFlags(enter_interactive, enter_shutdown, shutdown_mode);
-            //printf("2: Rank%d, Thread%d: Flags: enter_interactive %d, enter_shutdown %d, shutdown_mode %d\n", 
-            //            rank_.rank, rank_.thread, enter_interactive, enter_shutdown, shutdown_mode);
 
             // Handle shutdown (all threads/ranks)
-            if (enter_shutdown) {
+            if ( enter_shutdown ) {
                 sim_->setEndSim();
                 ic_barrier_.wait();
-                if (rank_.thread == 0)
-                    rankSync_->clearFlags();
-                RankExecBarrier_[5].wait(); 
+                if ( rank_.thread == 0 ) rankSync_->clearFlags();
+                RankExecBarrier_[5].wait();
             }
             // Handle interactive console
-            else { 
-                // std::cout << "skk: syncmgr rank: t0: interactive execute\n";
-                if (enter_interactive == true) {
-                    //printf("3: Rank%d, Thread%d: Flags: enter_interactive %d, enter_shutdown %d, shutdown_mode %d\n", 
-                    //    rank_.rank, rank_.thread, enter_interactive, enter_shutdown, shutdown_mode);
-
-                    //Output::getDefaultObject().output("R%d, T%d: Before execute \n", rank_.rank, rank_.thread);
+            else {
+                if ( enter_interactive == true ) {
                     sim_->interactive_->execute(sim_->interactive_msg_);
-                    sim_->enter_interactive_ = false; // IC may schedule IC again     
-                    if (rank_.thread == 0)
-                        rankSync_->clearFlags();
-                    RankExecBarrier_[5].wait(); 
+                    sim_->enter_interactive_ = false; // IC may schedule IC again
+                    if ( rank_.thread == 0 ) rankSync_->clearFlags();
+                    RankExecBarrier_[5].wait();
                 }
-                //printf("4: Rank%d, Thread%d: Flags: enter_interactive %d, enter_shutdown %d, shutdown_mode %d\n", 
-                //        rank_.rank, rank_.thread, enter_interactive, enter_shutdown, shutdown_mode);
-                
             }
         }
 
@@ -726,7 +640,6 @@ SyncManager::execute()
         // checkpoint happened, so no global activity, or the
         // checkpoint happened and the last thing that happens in the
         // checkpoint code is a barrier.
-
         if ( exit_ != nullptr && rank_.thread == 0 ) exit_->check();
 
         RankExecBarrier_[3].wait();
@@ -746,8 +659,8 @@ SyncManager::execute()
         // Note that only thread 0 receives signals so it is the only one to execute above
         // However, any thread can trigger interactive or shutdown, so need to have all threads store
         // That is also why the setFlags must be atomic
-       
-        if (num_ranks_.rank == 1 && interactive_enabled) { 
+
+        if ( num_ranks_.rank == 1 && interactive_enabled ) {
             // Get local sim flags
             getSimFlags(enter_interactive, enter_shutdown, shutdown_mode, generate_ckpt);
             // Each thread atomically sets shared flags in threadSync
@@ -757,13 +670,8 @@ SyncManager::execute()
         threadSync_->execute(); // exchange event queues, includes barrier
 
         // Handle signals for multi-threaded runs/no MPI
-        if ( num_ranks_.rank == 1 ) {  
+        if ( num_ranks_.rank == 1 ) {
             signals_received = threadSync_->getSignals(sig_end, sig_usr, sig_alrm);
-#if 0
-            Output& out = sim_->getSimulationOutput();
-            out.output("skk:syncmgr:execute: T%d: sig_end=%d, sig_usr=%d, sig_alrm=%d, received=%d\n", rank_.thread,
-                sig_end, sig_usr, sig_alrm, signals_received);
-#endif
             if ( sig_end )
                 real_time_->performSignal(sig_end);
             else if ( signals_received ) {
@@ -783,20 +691,16 @@ SyncManager::execute()
             next_checkpoint_time = checkpoint_->check(getDeliveryTime());
             ckpt_generate_.store(0);
 
-            if (interactive_enabled) {
+            if ( interactive_enabled ) {
                 threadSync_->getFlags(enter_interactive, enter_shutdown, shutdown_mode);
-                //printf("After threadSync_->getFlags: enter_interactive %d, enter_shutdown %d, shutdown_mode %d \n",
-                //    enter_interactive, enter_shutdown, shutdown_mode);
-                if (enter_shutdown) {
+                if ( enter_shutdown ) {
                     sim_->setEndSim();
                     ic_barrier_.wait();
                     threadSync_->clearFlags();
                 }
-                else if (enter_interactive) {
+                else if ( enter_interactive ) {
                     sim_->interactive_->execute(sim_->interactive_msg_);
                     sim_->enter_interactive_ = false; // IC may schedule IC again
-                    //Output::getDefaultObject().output(" R%d, T%d: after interactive enter_interactive %d, enter_shutdown %d, shutdown_mode %d\n", 
-                        //rank_.rank, rank_.thread, enter_interactive, enter_shutdown, shutdown_mode);
                     ic_barrier_.wait();
                     threadSync_->clearFlags();
                 }
@@ -816,8 +720,6 @@ SyncManager::execute()
     RankExecBarrier_[4].wait();
 
     if ( profile_tools_ ) profile_tools_->syncManagerEnd();
-
-    SST_SYNC_PROFILE_STOP
 }
 
 /** Cause an exchange of Untimed Data to occur */
@@ -902,14 +804,16 @@ SyncManager::getDataSize() const
 void
 SyncManager::addProfileTool(Profile::SyncProfileTool* tool)
 {
-    if ( !profile_tools_ ) profile_tools_ = new SyncProfileToolList();
+    if ( !profile_tools_ ) {
+        profile_tools_ = new Profile::SyncProfileToolList();
+        if ( rank_.thread == 0 ) {
+            rankSync_->setProfileToolList(profile_tools_);
+        }
+    }
     profile_tools_->addProfileTool(tool);
 }
 
 std::atomic<unsigned>     SyncManager::ckpt_generate_ { 0 };
-std::atomic<int>          SyncManager::current_ic_thread_ { 0 };
-std::atomic<int>          SyncManager::current_ic_state_ { 0 };
-std::atomic<unsigned>     SyncManager::endSim_ { false };
 Core::ThreadSafe::Barrier SyncManager::ic_barrier_;
 
 

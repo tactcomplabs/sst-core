@@ -66,7 +66,7 @@ createNameFromFormat(const std::string& format, const std::string& prefix, uint6
 
 } // namespace pvt
 
-CheckpointAction::CheckpointAction(Config* cfg, RankInfo this_rank, Simulation_impl* sim, TimeConverter* period) :
+CheckpointAction::CheckpointAction(Config* cfg, RankInfo this_rank, Simulation_impl* sim, TimeConverter period) :
     Action(),
     rank_(this_rank),
     period_(period),
@@ -83,10 +83,10 @@ CheckpointAction::CheckpointAction(Config* cfg, RankInfo this_rank, Simulation_i
     last_cpu_time_ = 0;
 
     // If period_ is set, then we have a simtime checkpoint period
-    if ( period_ ) {
+    if ( period_.getFactor() != 0 ) {
         // Compute the first checkpoint time
         next_sim_time_ =
-            (period_->getFactor() * (sim->getCurrentSimCycle() / period_->getFactor())) + period_->getFactor();
+            (period_.getFactor() * (sim->getCurrentSimCycle() / period_.getFactor())) + period_.getFactor();
     }
     else {
         next_sim_time_ = MAX_SIMTIME_T;
@@ -147,14 +147,13 @@ CheckpointAction::execute()
     Simulation_impl* sim = Simulation_impl::getSimulation();
     createCheckpoint(sim);
 
-    next_sim_time_ += period_->getFactor();
+    next_sim_time_ += period_.getFactor();
     sim->insertActivity(next_sim_time_, this);
 }
 
 void
 CheckpointAction::createCheckpoint(Simulation_impl* sim)
 {
-
     if ( 0 == rank_.rank && 0 == rank_.thread ) {
         const double now = sst_get_cpu_time();
         sim->getSimulationOutput().output(
@@ -213,11 +212,9 @@ CheckpointAction::createCheckpoint(Simulation_impl* sim)
     // No need to barrier here since rank 0 thread 0 will be the first
     // to execute in the loop below and everything else will wait
     for ( uint32_t r = 0; r < num_ranks.rank; ++r ) {
-
         if ( r == rank_.rank ) {
             // If this is my rank go ahead
             for ( uint32_t t = 0; t < num_ranks.thread; ++t ) {
-
                 // If this is my thread go ahead
                 if ( t == rank_.thread ) {
                     sim->checkpoint_append_registry(directory + "/" + registry_name, filename);
@@ -257,11 +254,6 @@ CheckpointAction::createCheckpoint(Simulation_impl* sim)
 SimTime_t
 CheckpointAction::check(SimTime_t current_time)
 {
-#if 0
-    Simulation_impl* sim = Simulation_impl::getSimulation();
-    sim->getSimulationOutput().output(
-        "skk:R %d, T %d: checkpointAction.cc: check()\n", rank_.rank, rank_.thread);
-#endif
     // The if-logic is a little weird, but it's trying to minimize the
     // number of branches in the normal case of no checkpoint being
     // initiated.  This will also handle the case where both a sim and
@@ -273,7 +265,7 @@ CheckpointAction::check(SimTime_t current_time)
         // Only add to the simulation-interval checkpoint time if it
         // was what triggered this
         if ( current_time == next_sim_time_ ) {
-            next_sim_time_ += period_->getFactor();
+            next_sim_time_ += period_.getFactor();
         }
     }
     return next_sim_time_;
@@ -336,10 +328,10 @@ doesDirectoryExist(const std::string& dirName, bool include_files)
 
 
 std::string
-initializeCheckpointInfrastructure(Config* cfg, bool rt_can_ckpt, int myRank)
+initializeCheckpointInfrastructure(Config* cfg, bool can_ckpt, int myRank)
 {
     ////// Check to see if checkpointing is enabled //////
-    if ( !cfg->canInitiateCheckpoint() && !rt_can_ckpt ) return "";
+    if ( !can_ckpt ) return "";
 
     std::string checkpoint_dir_name = "";
 
@@ -352,7 +344,7 @@ initializeCheckpointInfrastructure(Config* cfg, bool rt_can_ckpt, int myRank)
         }
 
         // Create checkpoint directory path
-        SST::Util::Filesystem& fs = Simulation_impl::getSimulation()->filesystem;
+        SST::Util::Filesystem& fs = Simulation_impl::filesystem;
         checkpoint_dir_name       = fs.createUniqueDirectory(cfg->checkpoint_prefix());
     }
 

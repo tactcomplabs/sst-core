@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <ostream>
 #include <sstream>
+#include <streambuf>
 #include <string>
 #include <utility>
 #include <vector>
@@ -59,7 +60,7 @@ public:
 
     void reset()
     {
-        if (confirm_) 
+        if ( confirm_ )
             paginate_ = true;
         else
             paginate_ = false;
@@ -70,7 +71,7 @@ public:
 
     void setConfirm(bool c)
     {
-        confirm_ = c;
+        confirm_  = c;
         paginate_ = c;
     }
 
@@ -99,11 +100,8 @@ public:
         clear();
     }
 
-    void setConfirm(bool c)
-    {
-       buf_.setConfirm(c);
-    }
-    
+    void setConfirm(bool c) { buf_.setConfirm(c); }
+
 
     void     setLineWidth(const unsigned w) { buf_.setLineWidth(w); }
     void     setLineCount(const unsigned c) { buf_.setLineCount(c); }

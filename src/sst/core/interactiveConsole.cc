@@ -18,6 +18,7 @@
 #include "sst/core/simulation_impl.h"
 #include "sst/core/timeLord.h"
 
+#include <iostream>
 namespace SST {
 
 /************ InteractiveConsole ***********/
@@ -91,7 +92,7 @@ InteractiveConsole::getSyncQueueDataSize() const
     return Simulation_impl::getSimulation()->getSyncQueueDataSize();
 }
 
-TimeConverter*
+TimeConverter
 InteractiveConsole::getTimeConverter(const std::string& time)
 {
     return Simulation_impl::getSimulation()->getTimeLord()->getTimeConverter(time);

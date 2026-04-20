@@ -22,6 +22,7 @@ EXTRA_DIST += \
     tests/testsuite_default_config_input_output.py \
     tests/testsuite_default_partitioner.py \
     tests/testsuite_default_PortModule.py \
+    tests/testsuite_default_testingframework.py \
     tests/testsuite_testengine_testing.py \
     tests/test_Checkpoint.py \
     tests/test_Component.py \
@@ -86,6 +87,7 @@ EXTRA_DIST += \
     tests/refFiles/test_Profiling_event_component.out \
     tests/refFiles/test_Profiling_event_subcomponent.out \
     tests/refFiles/test_MessageGeneratorComponent.out \
+    tests/refFiles/test_MessageMesh.out \
     tests/refFiles/test_MemPool_overflow.out \
     tests/refFiles/test_MemPool_undeleted_items.out \
     tests/refFiles/test_RNGComponent_marsaglia.out \

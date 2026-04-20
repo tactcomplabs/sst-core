@@ -28,7 +28,7 @@ namespace SST {
 class WatchPoint : public Clock::HandlerBase::AttachPoint, public Event::HandlerBase::AttachPoint
 {
 public:
-    static const uint32_t VMASK = 0x10; // see simpleDebug.h::VERBOSITY_MASK
+    static const uint32_t VMASK = 0x10; // see debugConsole.h::VERBOSITY_MASK
 
     /**
        Base class for performing comparisons and logic operations for
@@ -208,7 +208,6 @@ private:
     size_t                                                 triggerCount   = 0;
     bool                                                   reset_         = false;
     WPAction*                                              wpAction;
-
 
     void     setBufferReset();
     void     check();

@@ -9,10 +9,9 @@
 // information, see the LICENSE file in the top level directory of the
 // distribution.
 
-// #include "simpleDebug.h"
 #include "sst_config.h"
 
-#include "sst/core/impl/interactive/simpleDebug.h"
+#include "sst/core/impl/interactive/debugConsole.h"
 
 #include "sst/core/baseComponent.h"
 #include "sst/core/simulation_impl.h"
@@ -23,6 +22,7 @@
 
 #include <cstddef>
 #include <cstdio>
+#include <ios>
 #include <iostream>
 #include <list>
 #include <sstream>
@@ -34,43 +34,34 @@
 namespace SST::IMPL::Interactive {
 
 // Static Initialization
-//TODO kg is there a naming convention for static vars?
-bool          SimpleDebugger::autoCompleteEnable = true;
-std::ofstream SimpleDebugger::loggingFile;
-std::ifstream SimpleDebugger::replayFile;
-std::string   SimpleDebugger::loggingFilePath = "sst-console.out";
-std::string   SimpleDebugger::replayFilePath  = "sst-console.in";
-bool          SimpleDebugger::enLogging       = false;
-bool          SimpleDebugger::confirm_        = true;
-// New
-unsigned           SimpleDebugger::current_thread  = 0;
-unsigned           SimpleDebugger::current_rank    = 0;
-std::vector<std::string> SimpleDebugger::tokens;
-std::stringstream         SimpleDebugger::result;
+unsigned                 DebugConsole::current_thread = 0;
+unsigned                 DebugConsole::current_rank   = 0;
+std::vector<std::string> DebugConsole::tokens;
+std::stringstream        DebugConsole::result;
 
 
-SimpleDebugger::SimpleDebugger(Params& params) :
+DebugConsole::DebugConsole(Params& params) :
     InteractiveConsole(),
     dout(std::cout, 50, 160)
 {
     // registerAsPrimaryComponent();
     num_ranks_ = Simulation_impl::getSimulation()->getNumRanks();
-    rank_ = Simulation_impl::getSimulation()->getRank();
+    rank_      = Simulation_impl::getSimulation()->getRank();
 
     // Serial (single rank, single thread)
-    if (num_ranks_.rank == 1 && num_ranks_.thread == 1) {
+    if ( num_ranks_.rank == 1 && num_ranks_.thread == 1 ) {
         exec_type = ExecutionType::SERIAL;
     }
     // Thread (single rank, multiple threads)
-    else if (num_ranks_.rank == 1) {
+    else if ( num_ranks_.rank == 1 ) {
         exec_type = ExecutionType::THREAD;
     }
     // Rank Serial (multiple ranks, single thread per rank)
-    else if (num_ranks_.thread == 1) {
+    else if ( num_ranks_.thread == 1 ) {
         exec_type = ExecutionType::RANK_SERIAL;
     }
     // Rank Parallel (multiple ranks, multiple threads per rank)
-    else  {
+    else {
         exec_type = ExecutionType::RANK_PARALLEL;
     }
 
@@ -81,193 +72,247 @@ SimpleDebugger::SimpleDebugger(Params& params) :
     // Populate the command registry
     cmdRegistry = CommandRegistry({
 
-        // SKK Implementerial, thread, rank paths
         // Navigation
-        { "help", "?", "<[CMD]>: show this help or detailed command help", ConsoleCommandGroup::GENERAL,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_help(cmd_str); }, }, 
+        {
+            "help",
+            "?",
+            "<[CMD]>: show this help or detailed command help",
+            ConsoleCommandGroup::GENERAL,
+            [this](std::string& cmd_str) { return cmd_help(cmd_str); },
+        },
         { "verbose", "v", "[mask]: set verbosity mask or print if no mask specified", ConsoleCommandGroup::GENERAL,
-            exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_verbose_serial(cmd_str); },
-            [this](std::string& UNUSED(cmd_str)) { return cmd_verbose_thread(cmd_str); },
+            exec_type, [this](std::string& cmd_str) { return cmd_verbose_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_verbose_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_verbose_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_verbose_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& UNUSED(tokens)) { return cmd_verbose_remote(tokens); }
-        },
-        
-        { "info", "info", "\"current\"|\"all\" print summary for current thread or all threads",
-            ConsoleCommandGroup::GENERAL, exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_info_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_info_thread(cmd_str); },
+            [this](std::vector<std::string>& tokens) { return cmd_verbose_remote(tokens); } },
+
+        {
+            "info",
+            "info",
+            "\"current\"|\"all\" print summary for current thread or all threads",
+            ConsoleCommandGroup::GENERAL,
+            exec_type,
+            [this](std::string& cmd_str) { return cmd_info_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_info_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_info_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_info_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& UNUSED(tokens)) { return cmd_info_remote(tokens); },
+            [this](std::vector<std::string>& tokens) { return cmd_info_remote(tokens); },
         },
-        { "thread", "thd", "[threadID]: switch to specified thread ID", ConsoleCommandGroup::GENERAL,
-            exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_thread_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_thread_thread(cmd_str); },
+        { "thread", "thd", "[threadID]: switch to specified thread ID", ConsoleCommandGroup::GENERAL, exec_type,
+            [this](std::string& cmd_str) { return cmd_thread_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_thread_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_thread_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_thread_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& UNUSED(tokens)) { return cmd_thread_remote(tokens); }
-        },
-        { "rank", "rank", "[rankID]: switch to specified rank ID, same thread", ConsoleCommandGroup::GENERAL,
-            exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_rank_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_rank_thread(cmd_str); },
+            [this](std::vector<std::string>& tokens) { return cmd_thread_remote(tokens); } },
+        { "rank", "rank", "[rankID]: switch to specified rank ID, same thread", ConsoleCommandGroup::GENERAL, exec_type,
+            [this](std::string& cmd_str) { return cmd_rank_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_rank_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_rank_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_rank_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& UNUSED(tokens)) { return cmd_rank_remote(tokens); }
-        },
+            [this](std::vector<std::string>& tokens) { return cmd_rank_remote(tokens); } },
         { "confirm", "cfm", "<true/false>: set confirmation requests on (default) or off", ConsoleCommandGroup::GENERAL,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_setConfirm(cmd_str); } },
+            [this](std::string& cmd_str) { return cmd_setConfirm(cmd_str); } },
         { "pwd", "pwd", "print the current working directory in the object map", ConsoleCommandGroup::NAVIGATION,
-            exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_pwd_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_pwd_thread(cmd_str); },
+            exec_type, [this](std::string& cmd_str) { return cmd_pwd_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_pwd_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_pwd_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_pwd_rank_parallel(cmd_str); },
             [this](std::vector<std::string>& tokens) { return cmd_pwd_remote(tokens); } },
-        { "chdir", "cd", "change 1 directory level in the object map", ConsoleCommandGroup::NAVIGATION,
-            exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_cd_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_cd_thread(cmd_str); },
+        { "chdir", "cd", "change 1 directory level in the object map", ConsoleCommandGroup::NAVIGATION, exec_type,
+            [this](std::string& cmd_str) { return cmd_cd_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_cd_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_cd_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_cd_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& tokens) { return cmd_cd_remote(tokens); } 
-        },
+            [this](std::vector<std::string>& tokens) { return cmd_cd_remote(tokens); } },
         { "list", "ls", "list the objects in the current level of the object map", ConsoleCommandGroup::NAVIGATION,
-            exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_ls_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_ls_thread(cmd_str); },
+            exec_type, [this](std::string& cmd_str) { return cmd_ls_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_ls_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_ls_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_ls_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& UNUSED(tokens)) { return cmd_ls_remote(tokens); } 
-        },
+            [this](std::vector<std::string>& tokens) { return cmd_ls_remote(tokens); } },
 
         // State
         { "time", "tm", "print current simulation time in cycles", ConsoleCommandGroup::STATE,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_time(cmd_str); } },
-        { "print", "p", "[-rN] [<obj>]: print objects at the current level", ConsoleCommandGroup::STATE,
+            [this](std::string& cmd_str) { return cmd_time(cmd_str); } },
+        {
+            "print",
+            "p",
+            "[-rN] [<obj>]: print objects at the current level",
+            ConsoleCommandGroup::STATE,
             exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_print_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_print_thread(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_print_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_print_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_print_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_print_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& tokens) { return cmd_print_remote(tokens); }, },
-        { "set", "s", "var value: set value for a variable at the current level", ConsoleCommandGroup::STATE,
+            [this](std::vector<std::string>& tokens) { return cmd_print_remote(tokens); },
+        },
+        {
+            "set",
+            "s",
+            "var value: set value for a variable at the current level",
+            ConsoleCommandGroup::STATE,
             exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_set_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_set_thread(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_set_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_set_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_set_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_set_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& tokens) { return cmd_set_remote(tokens); }, },
-        { "watch", "w", "<trig>: adds watchpoint to the watchlist", ConsoleCommandGroup::WATCH,
+            [this](std::vector<std::string>& tokens) { return cmd_set_remote(tokens); },
+        },
+        {
+            "watch",
+            "w",
+            "<trig>: adds watchpoint to the watchlist",
+            ConsoleCommandGroup::WATCH,
             exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_watch_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_watch_thread(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_watch_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_watch_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_watch_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_watch_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& tokens) { return cmd_watch_remote(tokens); }, },
-        { "trace", "t", "<trig> : <bufSize> <postDelay> : <v1> ... <vN> : <action>", ConsoleCommandGroup::WATCH,
+            [this](std::vector<std::string>& tokens) { return cmd_watch_remote(tokens); },
+        },
+        {
+            "trace",
+            "t",
+            "<trig> : <bufSize> <postDelay> : <v1> ... <vN> : <action>",
+            ConsoleCommandGroup::WATCH,
             exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_trace_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_trace_thread(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_trace_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_trace_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_trace_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_trace_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& tokens) { return cmd_trace_remote(tokens); }, },
-        { "watchlist", "wl", "prints the current list of watchpoints", ConsoleCommandGroup::WATCH,
+            [this](std::vector<std::string>& tokens) { return cmd_trace_remote(tokens); },
+        },
+        {
+            "watchlist",
+            "wl",
+            "prints the current list of watchpoints",
+            ConsoleCommandGroup::WATCH,
             exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_watchlist_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_watchlist_thread(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_watchlist_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_watchlist_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_watchlist_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_watchlist_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& tokens) { return cmd_watchlist_remote(tokens); }, },
-#if 1
-        { "addTraceVar", "add", "<watchpointIndex> <var1> ... <varN>", ConsoleCommandGroup::WATCH,
+            [this](std::vector<std::string>& tokens) { return cmd_watchlist_remote(tokens); },
+        },
+        {
+            "addTraceVar",
+            "add",
+            "<watchpointIndex> <var1> ... <varN>",
+            ConsoleCommandGroup::WATCH,
             exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_addTraceVar_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_addTraceVar_thread(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_addTraceVar_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_addTraceVar_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_addTraceVar_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_addTraceVar_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& tokens) { return cmd_addTraceVar_remote(tokens); }, },
-        { "printWatchPoint", "prw", "<watchpointIndex>: prints a watchpoint", ConsoleCommandGroup::WATCH,
+            [this](std::vector<std::string>& tokens) { return cmd_addTraceVar_remote(tokens); },
+        },
+        {
+            "printWatchPoint",
+            "prw",
+            "<watchpointIndex>: prints a watchpoint",
+            ConsoleCommandGroup::WATCH,
             exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_printWatchpoint_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_printWatchpoint_thread(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_printWatchpoint_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_printWatchpoint_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_printWatchpoint_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_printWatchpoint_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& tokens) { return cmd_printWatchpoint_remote(tokens); }, },
-        { "printTrace", "prt", "<watchpointIndex>: prints trace buffer for a watchpoint", ConsoleCommandGroup::WATCH,
+            [this](std::vector<std::string>& tokens) { return cmd_printWatchpoint_remote(tokens); },
+        },
+        {
+            "printTrace",
+            "prt",
+            "<watchpointIndex>: prints trace buffer for a watchpoint",
+            ConsoleCommandGroup::WATCH,
             exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_printTrace_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_printTrace_thread(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_printTrace_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_printTrace_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_printTrace_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_printTrace_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& tokens) { return cmd_printTrace_remote(tokens); }, },
-        { "resetTrace", "rst", "<watchpointIndex>: reset trace buffer for a watchpoint", ConsoleCommandGroup::WATCH,
+            [this](std::vector<std::string>& tokens) { return cmd_printTrace_remote(tokens); },
+        },
+        {
+            "resetTrace",
+            "rst",
+            "<watchpointIndex>: reset trace buffer for a watchpoint",
+            ConsoleCommandGroup::WATCH,
             exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_resetTraceBuffer_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_resetTraceBuffer_thread(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_resetTraceBuffer_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_resetTraceBuffer_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_resetTraceBuffer_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_resetTraceBuffer_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& tokens) { return cmd_resetTraceBuffer_remote(tokens); }, },
-        { "setHandler", "shn", "<idx> <t1> ... <t2>: trigger check/sampling handler", ConsoleCommandGroup::WATCH,
+            [this](std::vector<std::string>& tokens) { return cmd_resetTraceBuffer_remote(tokens); },
+        },
+        {
+            "setHandler",
+            "shn",
+            "<idx> <t1> ... <t2>: trigger check/sampling handler",
+            ConsoleCommandGroup::WATCH,
             exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_setHandler_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_setHandler_thread(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_setHandler_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_setHandler_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_setHandler_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_setHandler_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& tokens) { return cmd_setHandler_remote(tokens); }, },
-#endif
-        { "unwatch", "uw", "<watchpointIndex>: remove 1 or all watchpoints", ConsoleCommandGroup::WATCH,
+            [this](std::vector<std::string>& tokens) { return cmd_setHandler_remote(tokens); },
+        },
+        {
+            "unwatch",
+            "uw",
+            "<watchpointIndex>: remove 1 or all watchpoints",
+            ConsoleCommandGroup::WATCH,
             exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_unwatch_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_unwatch_thread(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_unwatch_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_unwatch_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_unwatch_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_unwatch_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& tokens) { return cmd_unwatch_remote(tokens); }, },
+            [this](std::vector<std::string>& tokens) { return cmd_unwatch_remote(tokens); },
+        },
         // Simulation
-        { "run", "r", "[TIME]: continues the simulation", ConsoleCommandGroup::SIMULATION,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_run(cmd_str); },
+        {
+            "run",
+            "r",
+            "[TIME]: continues the simulation",
+            ConsoleCommandGroup::SIMULATION,
+            [this](std::string& cmd_str) { return cmd_run(cmd_str); },
         },
-        { "continue", "c", "alias for run", ConsoleCommandGroup::SIMULATION,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_run(cmd_str); }, },
-        
-        { "exit", "e", "exit debugger and continue simulation", ConsoleCommandGroup::SIMULATION,
-            exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_exit_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_exit_thread(cmd_str); },
+        {
+            "continue",
+            "c",
+            "alias for run",
+            ConsoleCommandGroup::SIMULATION,
+            [this](std::string& cmd_str) { return cmd_run(cmd_str); },
+        },
+
+        { "exit", "e", "exit debugger and continue simulation", ConsoleCommandGroup::SIMULATION, exec_type,
+            [this](std::string& cmd_str) { return cmd_exit_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_exit_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_exit_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_exit_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& tokens) { return clear_watchlist(tokens); }
-        },
-        { "quit", "q", "alias for exit", ConsoleCommandGroup::SIMULATION,
-            exec_type,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_exit_serial(cmd_str); }, 
-            [this](std::string& UNUSED(cmd_str)) { return cmd_exit_thread(cmd_str); },
+            [this](std::vector<std::string>& tokens) { return clear_watchlist(tokens); } },
+        { "quit", "q", "alias for exit", ConsoleCommandGroup::SIMULATION, exec_type,
+            [this](std::string& cmd_str) { return cmd_exit_serial(cmd_str); },
+            [this](std::string& cmd_str) { return cmd_exit_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_exit_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_exit_rank_parallel(cmd_str); },
-            [this](std::vector<std::string>& tokens) { return clear_watchlist(tokens); } 
-        },
+            [this](std::vector<std::string>& tokens) { return clear_watchlist(tokens); } },
         { "shutdown", "shutd", "exit the debugger and cleanly shutdown simulator", ConsoleCommandGroup::SIMULATION,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_shutdown(cmd_str); } 
-        },
+            [this](std::string& cmd_str) { return cmd_shutdown(cmd_str); } },
         // Logging/Replay
         { "logging", "log", "<filepath>: log command line entires to file", ConsoleCommandGroup::LOGGING,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_logging(cmd_str); } },
+            [this](std::string& cmd_str) { return cmd_logging(cmd_str); } },
         { "replay", "rep", "<filepath>: run commands from a file. See also: sst --replay", ConsoleCommandGroup::LOGGING,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_replay(cmd_str); } },
+            [this](std::string& cmd_str) { return cmd_replay(cmd_str); } },
         { "history", "h", "[N]: display all or last N unique commands", ConsoleCommandGroup::LOGGING,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_history(cmd_str); } },
+            [this](std::string& cmd_str) { return cmd_history(cmd_str); } },
         // Misc
         { "autoComplete", "ac", "toggle command line auto-completion enable", ConsoleCommandGroup::MISC,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_autoComplete(cmd_str); } },
+            [this](std::string& cmd_str) { return cmd_autoComplete(cmd_str); } },
         { "clear", "clr", "reset terminal", ConsoleCommandGroup::MISC,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_clear(cmd_str); } },
+            [this](std::string& cmd_str) { return cmd_clear(cmd_str); } },
         { "define", "def", "define a user command sequence", ConsoleCommandGroup::MISC,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_define(cmd_str); } },
+            [this](std::string& cmd_str) { return cmd_define(cmd_str); } },
         { "document", "doc", "document help for a user defined command", ConsoleCommandGroup::MISC,
-            [this](std::string& UNUSED(cmd_str)) { return cmd_document(cmd_str); } },
+            [this](std::string& cmd_str) { return cmd_document(cmd_str); } },
     });
 
     // Detailed help from some commands. Can also add general things like 'help navigation'
@@ -367,20 +412,20 @@ SimpleDebugger::SimpleDebugger(Params& params) :
     }
 }
 
-SimpleDebugger::~SimpleDebugger()
+DebugConsole::~DebugConsole()
 {
     if ( loggingFile.is_open() ) loggingFile.close();
     if ( replayFile.is_open() ) replayFile.close();
     if ( objTree_ ) delete objTree_;
 }
 
-#if 1
 void
-SimpleDebugger::summary()
+DebugConsole::summary()
 {
     Simulation_impl* sim_ = Simulation_impl::getSimulation();
-    result << "-- Rank:" << rank_.rank << "/" << num_ranks_.rank << " Thread:" << rank_.thread << "/" << num_ranks_.thread;
-        //<< " (Process " << getpid() << ")";
+    result << "-- Rank:" << rank_.rank << "/" << num_ranks_.rank << " Thread:" << rank_.thread << "/"
+           << num_ranks_.thread;
+    //<< " (Process " << getpid() << ")";
     if ( sim_->enter_interactive_ ) {
         result << " (Triggered)" << std::endl;
     }
@@ -402,56 +447,19 @@ SimpleDebugger::summary()
     result << std::endl;
 }
 
-#else
-
-void
-SimpleDebugger::summary()
-{
-#if 0
-    std::count << "\n(Rank:" << rank_.rank << " / " << num_ranks_.rank
-        << " Thread:" << rank_.thread << "/" << num_ranks_.thread
-        << ")\n";
-    std::cout << " -- Trigger Status\n";
-#endif
-
-    std::cout << " -- Component Summary\n";
-#if 0
-    std::vector<std::string> tokens;
-    if (nullptr == obj_) {
-        obj_ = getComponentObjectMap();
-    }
-    cmd_ls(tokens);
-#else
-    SST::Core::Serialization::ObjectMap* baseObj = getComponentObjectMap();
-    auto&                                vars    = baseObj->getVariables();
-    for ( auto& x : vars ) {
-        if ( x.second->isFundamental() ) {
-            std::cout << x.first << " = " << x.second->get() << " (" << x.second->getType() << ")" << std::endl;
-        }
-        else {
-            std::cout << x.first.c_str() << "/ (" << x.second->getType() << ")\n";
-        }
-    }
-    std::cout << std::endl;
-#endif
-}
-#endif
 
 int
-SimpleDebugger::consoleExecute(const std::string& msg)
+DebugConsole::consoleExecute(const std::string& msg)
 {
+
     struct winsize size;
     if ( ioctl(STDERR_FILENO, TIOCGWINSZ, &size) == 0 ) {
         dout.setLineWidth(size.ws_col);
         dout.setLineCount(size.ws_row);
     }
 
-    // SKK TODO For now start with thread, rank of 0
-    // Eventually change to triggered or last thread
-    current_thread = 0;
-    current_rank = 0;
-    std::cout << "---- Rank" << current_rank << ":Thread" << current_thread << ": Entering interactive mode at time " 
-            << getCurrentSimCycle() << std::endl;
+    std::cout << "---- Rank" << current_rank << ":Thread" << current_thread << ": Entering interactive mode at time "
+              << getCurrentSimCycle() << std::endl;
     std::cout << msg << std::endl;
 
     // Create a new ObjectMap
@@ -474,13 +482,12 @@ SimpleDebugger::consoleExecute(const std::string& msg)
     cd_name_stack();
 
     exit_console = false;
-    done     = false;
-    retState = DONE;
+    done         = false;
+    retState     = DONE;
 
     // Select the input source and next command line
     std::string line;
-    //while ( !done ) {
-    while (!exit_console) {
+    while ( !exit_console ) {
         try {
             // User input prompt (except during user command)
             if ( eStack.size() == 0 ) std::cout << "> " << std::flush;
@@ -489,7 +496,6 @@ SimpleDebugger::consoleExecute(const std::string& msg)
             bool squashLogging = false;
 
             // User input prompt
-            // std::cout << "R" << rank_.rank << ":T" << rank_.thread << "> " << std::flush;
 
             if ( !injectedCommand.str().empty() ) {
                 // Injected commands allow sst command line options to cause actions (currently only replay)
@@ -544,6 +550,7 @@ SimpleDebugger::consoleExecute(const std::string& msg)
             std::cout << "Parsing error. Ignoring " << line << std::endl;
         }
     }
+
     // Save the position on the name_stack, and clear obj_
     save_name_stack();
     done = true;
@@ -552,7 +559,7 @@ SimpleDebugger::consoleExecute(const std::string& msg)
 
 // Save the name stack of the current position, and clear obj_
 void
-SimpleDebugger::save_name_stack()
+DebugConsole::save_name_stack()
 {
     name_stack.clear();
 
@@ -573,7 +580,7 @@ SimpleDebugger::save_name_stack()
 
 // Descend into the name_stack
 void
-SimpleDebugger::cd_name_stack()
+DebugConsole::cd_name_stack()
 {
     for ( const std::string& name : name_stack ) {
         std::vector<std::string> tokens { "cd", name };
@@ -585,7 +592,7 @@ SimpleDebugger::cd_name_stack()
 // Substitution actions (!!, !?, ...) can modify the command.
 // This ensure the final, resolved, command is captured in the command log
 bool
-SimpleDebugger::dispatch_cmd(std::string& cmd)
+DebugConsole::dispatch_cmd(std::string& cmd)
 {
     // empty command
     if ( cmd.size() == 0 ) return true;
@@ -642,14 +649,12 @@ SimpleDebugger::dispatch_cmd(std::string& cmd)
     switch ( line_entry_mode ) {
     case LINE_ENTRY_MODE::NORMAL:
     {
-        //RankInfo num_ranks_ = Simulation_impl::getSimulation()->getNumRanks();
-        //RankInfo rank = Simulation_impl::getSimulation()->getRank();
-        bool succeed = true;
+        bool succeed        = true;
         // normal execution
         auto consoleCommand = cmdRegistry.seek(tokens[0], CommandRegistry::SEARCH_TYPE::BUILTIN);
         if ( consoleCommand.second ) {
             // exec() will choose correct cmd_foo_* function based on exec_type
-            succeed = consoleCommand.first.exec(cmd);     
+            succeed = consoleCommand.first.exec(cmd);
             cmdHistoryBuf.append(cmd);
             return succeed;
         }
@@ -698,12 +703,12 @@ SimpleDebugger::dispatch_cmd(std::string& cmd)
 // Functions for the Explorer
 
 std::vector<std::string>
-SimpleDebugger::tokenize(std::vector<std::string>& tokens, const std::string& input)
+DebugConsole::tokenize(std::vector<std::string>& tokens, const std::string& input)
 {
     std::istringstream iss(input);
     std::string        token;
 
-    // SKK since tokens is now shared, clear it 
+    // since tokens is now shared, clear it
     tokens.clear();
     while ( iss >> token ) {
         tokens.push_back(token);
@@ -713,7 +718,7 @@ SimpleDebugger::tokenize(std::vector<std::string>& tokens, const std::string& in
 }
 
 bool
-SimpleDebugger::cmd_help(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_help(std::string& UNUSED(cmd_str))
 {
     // First check for specific command help
     if ( tokens.size() == 1 ) {
@@ -762,10 +767,10 @@ SimpleDebugger::cmd_help(std::string& UNUSED(cmd_str))
     return true;
 }
 
-
+// verbose [mask] : set verbosity mask or print if no mask specified
 bool
-SimpleDebugger::cmd_verbose_query()
-{ 
+DebugConsole::cmd_verbose_query()
+{
     if ( tokens.size() > 1 ) {
         try {
             verbosity = SST::Core::from_string<uint32_t>(tokens[1]);
@@ -775,18 +780,15 @@ SimpleDebugger::cmd_verbose_query()
             return false;
         }
     }
-#if 1
+
     // This messes up the auto-complete keyboard input
     std::cout << "verbose=0x" << std::hex << verbosity << std::endl;
-#else
-    std::cout << "verbose=" << verbosity << std::endl;
-#endif
 
     return true;
 }
 
 bool
-SimpleDebugger::cmd_verbose_remote(std::vector<std::string>& tokens) 
+DebugConsole::cmd_verbose_remote(std::vector<std::string>& tokens)
 {
     verbosity = SST::Core::from_string<uint32_t>(tokens[1]);
 
@@ -798,137 +800,136 @@ SimpleDebugger::cmd_verbose_remote(std::vector<std::string>& tokens)
     return true;
 }
 
-bool 
-SimpleDebugger::cmd_verbose_serial(std::string& UNUSED(cmd_str)) 
+bool
+DebugConsole::cmd_verbose_serial(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     // Valid verbosity?
-    if (!confirm_ || cmd_verbose_query()) {
-        // Clear result string 
+    if ( !confirm_ || cmd_verbose_query() ) {
+        // Clear R0 result string
         result.str("");
         result.clear();
         // Update verbosity for watchpoints
-        cmd_verbose_remote(tokens);
+        succeed = cmd_verbose_remote(tokens);
         std::cout << result.str();
-        return true;
+        return succeed;
     }
 
     return false;
 }
 
-bool 
-SimpleDebugger::cmd_verbose_thread(std::string& UNUSED(cmd_str)) {
-
+bool
+DebugConsole::cmd_verbose_thread(std::string& UNUSED(cmd_str))
+{
+    bool succeed;
     // Valid verbosity?
-    if (!confirm_ || cmd_verbose_query()) {
-        // Clear result string 
+    if ( !confirm_ || cmd_verbose_query() ) {
+        // Clear R0 result string
         result.str("");
         result.clear();
         // Update watchpoint verbosity for all rank 0 threads
-        handleCommandAll();
+        succeed = handleCommandAll();
         std::cout << result.str();
-        return true;
+        return succeed;
     }
 
     return false;
 }
 
-bool 
-SimpleDebugger::cmd_verbose_rank_serial(std::string& cmd_str) {
-
+bool
+DebugConsole::cmd_verbose_rank_serial(std::string& cmd_str)
+{
     // Valid verbosity?
-    if (!confirm_ || cmd_verbose_query()) {
-        // Clear result string 
+    if ( !confirm_ || cmd_verbose_query() ) {
+        // Clear R0 result string
         result.str("");
         result.clear();
-        // Update watchpoint verbosity for rank 0 
-        cmd_verbose_remote(tokens);
+        // Update watchpoint verbosity for rank 0
+        bool succeed = cmd_verbose_remote(tokens);
         std::cout << result.str();
 
-        // Clear result string 
+        // Clear result string
         result.str("");
         result.clear();
         // Update watchpoint verbosity for other ranks
-        sendCommandAll(cmd_str);
+        bool succeed2 = sendCommandAll(cmd_str);
         std::cout << result.str();
-        return true;
+        return succeed || succeed2;
     }
 
     return false;
 }
 
-bool 
-SimpleDebugger::cmd_verbose_rank_parallel(std::string& cmd_str) {
-
-    // Valid verbosity?
-    if (!confirm_ || cmd_verbose_query()) {
-        // Clear result string 
-        result.str("");
-        result.clear();
-        // Update watchpoint verbosity for rank 0 
-        handleCommandAll();
-        std::cout << result.str();
-
-        // Clear result string 
-        result.str("");
-        result.clear();
-        // Update watchpoitn verbosity for other ranks
-        sendCommandAll(cmd_str);
-        std::cout << result.str();
-        return true;
-    }
-
-    return false;
-}
-
-// Serial info - same for current and all
 bool
-SimpleDebugger::cmd_info_serial(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_verbose_rank_parallel(std::string& cmd_str)
 {
+    // Valid verbosity?
+    if ( !confirm_ || cmd_verbose_query() ) {
+        // Clear R0 result string
+        result.str("");
+        result.clear();
+        // Update watchpoint verbosity for rank 0
+        bool succeed = handleCommandAll();
+        std::cout << result.str();
+
+        // Clear R0 result string
+        result.str("");
+        result.clear();
+        // Update watchpoint verbosity for other ranks
+        bool succeed2 = sendCommandAll(cmd_str);
+        std::cout << result.str();
+        return succeed || succeed2;
+    }
+
+    return false;
+}
+
+// info current|all
+// print summary for current thread or all threads
+bool
+DebugConsole::cmd_info_serial(std::string& UNUSED(cmd_str))
+{
+    bool succeed;
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format for info command (info \"current\"|\"all\")" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
-    
-    if (tokens[1] == "current" || tokens[1] == "all") {
-        cmd_info_remote(tokens);
 
-        // Print result string
-        std::cout << "Printing result in console\n";
+    if ( tokens[1] == "current" || tokens[1] == "all" ) {
+        succeed = cmd_info_remote(tokens);
         std::cout << result.str();
-    }   
+        return succeed;
+    }
     else {
         std::cout << "Invalid argument for info command: " << tokens[1] << " (info \"current\"|\"all\")" << std::endl;
         return false;
     }
-    return true;
 }
 
-// Multithread info
 bool
-SimpleDebugger::cmd_info_thread(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_info_thread(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() != 2 ) {
-        std::cout << "Invalid format for info command (info \"current\"|\"all\")" << std::endl;        
+        std::cout << "Invalid format for info command (info \"current\"|\"all\")" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-   if ( tokens[1] == "current" ) {
-        handleCommand();
-        // Print result string
+    if ( tokens[1] == "current" ) {
+        succeed = handleCommand();
         std::cout << result.str();
     }
-    else if (tokens[1] == "all") {
+    else if ( tokens[1] == "all" ) {
         // Print info for all threads
-        handleCommandAll();
-        // Print result string
+        succeed = handleCommandAll();
         std::cout << result.str();
     }
     else {
@@ -936,126 +937,119 @@ SimpleDebugger::cmd_info_thread(std::string& UNUSED(cmd_str))
         return false;
     }
 
-    return true;
+    return succeed;
 }
 
-// Rank serial info
 bool
-SimpleDebugger::cmd_info_rank_serial(std::string& cmd_str)
+DebugConsole::cmd_info_rank_serial(std::string& cmd_str)
 {
-
+    bool succeed, succeed2;
     if ( tokens.size() != 2 ) {
-        std::cout << "Invalid format for info command (info \"current\"|\"all\")" << std::endl;        
+        std::cout << "Invalid format for info command (info \"current\"|\"all\")" << std::endl;
         return false;
     }
 
     if ( tokens[1] == "current" ) {
-        // Clear result string 
+        // Clear R0 result string
         result.str("");
         result.clear();
-        if (current_rank == 0) {
-            cmd_info_remote(tokens);
-            // Print result string
-            std::cout << result.str();
-        } else {
-            // Send to remote rank
-            sendCommand(current_rank, current_thread, cmd_str);
-            // Print result string
+        if ( current_rank == 0 ) {
+            succeed = cmd_info_remote(tokens);
             std::cout << result.str();
         }
+        else {
+            // Send to remote rank
+            succeed = sendCommand(current_rank, current_thread, cmd_str);
+            std::cout << result.str();
+        }
+        return succeed;
     }
-    else if (tokens[1] == "all") {
-        // Clear result string 
+    else if ( tokens[1] == "all" ) {
+        // Clear R0 result string
         result.str("");
         result.clear();
         // Print info for rank 0
-        cmd_info_remote(tokens);
-        // Print result string
+        succeed = cmd_info_remote(tokens);
         std::cout << result.str();
 
-        // Clear result string 
+        // Clear R0 result string
         result.str("");
         result.clear();
         // Send to remote ranks, all threads
-        sendCommandAll(cmd_str);
-        // Print result string
+        succeed2 = sendCommandAll(cmd_str);
         std::cout << result.str();
+        return succeed || succeed2;
     }
     else {
         std::cout << "Invalid argument for info command: " << tokens[1] << " (info \"current\"|\"all\")" << std::endl;
         return false;
     }
-    
-    return true;  // SKK Fix return values
 }
 
 bool
-SimpleDebugger::cmd_info_rank_parallel(std::string& cmd_str)
+DebugConsole::cmd_info_rank_parallel(std::string& cmd_str)
 {
-
+    bool succeed, succeed2;
     if ( tokens.size() != 2 ) {
-        std::cout << "Invalid format for info command (info \"current\"|\"all\")" << std::endl;        
+        std::cout << "Invalid format for info command (info \"current\"|\"all\")" << std::endl;
         return false;
     }
 
-    // SKK Must be executed by target rank because otherwise the process ID won't be correct
+    // Must be executed by target rank because otherwise the process ID won't be correct
     if ( tokens[1] == "current" ) {
-        // Clear result string 
+        // Clear R0 result string
         result.str("");
         result.clear();
-        if (current_rank == 0) {
-            handleCommand();
-            // Print result string
-            std::cout << result.str();
-        } else {
-            sendCommand(current_rank, current_thread, cmd_str);
-            // Print result string
+        if ( current_rank == 0 ) {
+            succeed = handleCommand();
             std::cout << result.str();
         }
+        else {
+            succeed = sendCommand(current_rank, current_thread, cmd_str);
+            std::cout << result.str();
+        }
+        return succeed;
     }
-    else if (tokens[1] == "all") {
-        // Clear result string 
+    else if ( tokens[1] == "all" ) {
+        // Clear result string
         result.str("");
         result.clear();
         // Print info for rank 0
-        handleCommandAll();
-        // Print result string
+        succeed = handleCommandAll();
         std::cout << result.str();
 
-        // Clear result string 
+        // Clear result string
         result.str("");
         result.clear();
         // Print info for other ranks, all threads
-        sendCommandAll(cmd_str);
-        // Print result string
+        succeed2 = sendCommandAll(cmd_str);
         std::cout << result.str();
-    } 
+        return succeed || succeed2;
+    }
     else {
         std::cout << "Invalid argument for info command: " << tokens[1] << " (info \"current\"|\"all\")" << std::endl;
         return false;
     }
-
-    return true;
 }
 
 bool
-SimpleDebugger::cmd_info_remote(std::vector<std::string>& UNUSED(tokens))
+DebugConsole::cmd_info_remote(std::vector<std::string>& UNUSED(tokens))
 {
-    result << "Rank " << rank_.rank << "/" << num_ranks_.rank << " Thread " << rank_.thread << "/" 
-        << num_ranks_.thread << " (Process " << getpid() << ")" << std::endl;
+    result << "Rank " << rank_.rank << "/" << num_ranks_.rank << " Thread " << rank_.thread << "/" << num_ranks_.thread
+           << " (Process " << getpid() << ")" << std::endl;
     return true;
 }
 
 
 // thread <threadID> : switches to new thread
 int
-SimpleDebugger::parse_thread()
+DebugConsole::parse_thread()
 {
-    int      threadID;  // Used int because converting from string
+    int threadID; // Used int because converting from string
 
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format for thread command (thread <threadID>)" << std::endl;
-        return -1; 
+        return -1;
     }
 
     // Get threadID
@@ -1072,8 +1066,8 @@ SimpleDebugger::parse_thread()
     }
 
     // Check if valid threadID
-    if ( threadID < 0 || threadID >= static_cast<int>(num_ranks_.thread ) ) {
-        std::cout << "ThreadID " << threadID << " out of range (0:" << num_ranks_.thread - 1 << ")" <<std::endl;
+    if ( threadID < 0 || threadID >= static_cast<int>(num_ranks_.thread) ) {
+        std::cout << "ThreadID " << threadID << " out of range (0:" << num_ranks_.thread - 1 << ")" << std::endl;
         return -1;
     }
 
@@ -1082,18 +1076,20 @@ SimpleDebugger::parse_thread()
 
 
 bool
-SimpleDebugger::cmd_thread_serial(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_thread_serial(std::string& UNUSED(cmd_str))
 {
     int threadID = parse_thread();
 
+    if ( threadID == -1 ) return false;
+
     // Set current thread and get interactive msg
-    if ( threadID >= 0 && static_cast<unsigned int>(threadID) != current_rank ) {
-        // Clear result string 
+    if ( threadID != static_cast<int>(current_thread) ) {
+        // Clear result string
         result.str("");
         result.clear();
-        current_thread = threadID;  
-        std::cout << "---- Rank" << current_rank << ":Thread" << current_thread << ": Entering interactive mode at time " 
-            << getCurrentSimCycle() << std::endl;
+        current_thread = threadID;
+        std::cout << "---- Rank" << current_rank << ":Thread" << current_thread
+                  << ": Entering interactive mode at time " << getCurrentSimCycle() << std::endl;
         cmd_thread_remote(tokens);
         std::cout << result.str();
         // May also need to do something to update the listings
@@ -1103,18 +1099,19 @@ SimpleDebugger::cmd_thread_serial(std::string& UNUSED(cmd_str))
 }
 
 bool
-SimpleDebugger::cmd_thread_thread(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_thread_thread(std::string& UNUSED(cmd_str))
 {
     int threadID = parse_thread();
+    if ( threadID == -1 ) return false;
 
     // Set current thread and get interactive msg
-    if ( threadID >= 0 && static_cast<unsigned int>(threadID) != current_rank ) {
-        // Clear result string 
+    if ( threadID != static_cast<int>(current_thread) ) {
+        // Clear R0 result string
         result.str("");
         result.clear();
-        current_thread = threadID;  
-        std::cout << "---- Rank" << current_rank << ":Thread" << current_thread 
-            << ": Entering interactive mode at time " << getCurrentSimCycle() << std::endl;
+        current_thread = threadID;
+        std::cout << "---- Rank" << current_rank << ":Thread" << current_thread
+                  << ": Entering interactive mode at time " << getCurrentSimCycle() << std::endl;
         handleCommand();
         std::cout << result.str();
         // May also need to do something to update the listings
@@ -1124,22 +1121,24 @@ SimpleDebugger::cmd_thread_thread(std::string& UNUSED(cmd_str))
 }
 
 bool
-SimpleDebugger::cmd_thread_rank_serial(std::string& cmd_str)
+DebugConsole::cmd_thread_rank_serial(std::string& cmd_str)
 {
     int threadID = parse_thread();
+    if ( threadID == -1 ) return false;
 
     // Set current thread and get interactive msg
-    if ( threadID >= 0 && static_cast<unsigned int>(threadID) != current_rank ) {
-        // Clear result string 
+    if ( threadID != static_cast<int>(current_thread) ) {
+        // Clear R0 result string
         result.str("");
         result.clear();
-        current_thread = threadID;  
-        std::cout << "---- Rank" << current_rank << ":Thread" << current_thread 
-            << ": Entering interactive mode at time " << getCurrentSimCycle() << std::endl;
-        if (current_rank == 0) {
+        current_thread = threadID;
+        std::cout << "---- Rank" << current_rank << ":Thread" << current_thread
+                  << ": Entering interactive mode at time " << getCurrentSimCycle() << std::endl;
+        if ( current_rank == 0 ) {
             cmd_thread_remote(tokens);
             std::cout << result.str();
-        } else {
+        }
+        else {
             // Send to remote rank
             sendCommand(current_rank, current_thread, cmd_str);
             std::cout << result.str();
@@ -1151,22 +1150,24 @@ SimpleDebugger::cmd_thread_rank_serial(std::string& cmd_str)
 }
 
 bool
-SimpleDebugger::cmd_thread_rank_parallel(std::string& cmd_str)
+DebugConsole::cmd_thread_rank_parallel(std::string& cmd_str)
 {
     int threadID = parse_thread();
+    if ( threadID == -1 ) return false;
 
     // Set current thread and get interactive msg
-    if ( threadID >= 0 && static_cast<unsigned int>(threadID) != current_rank ) {
-        // Clear result string 
+    if ( threadID != static_cast<int>(current_thread) ) {
+        // Clear R0 result string
         result.str("");
         result.clear();
-        current_thread = threadID;  
-        std::cout << "---- Rank" << current_rank << ":Thread" << current_thread 
-            << ": Entering interactive mode at time " << getCurrentSimCycle() << std::endl;
-        if (current_rank == 0) {
+        current_thread = threadID;
+        std::cout << "---- Rank" << current_rank << ":Thread" << current_thread
+                  << ": Entering interactive mode at time " << getCurrentSimCycle() << std::endl;
+        if ( current_rank == 0 ) {
             handleCommand();
             std::cout << result.str();
-        } else {
+        }
+        else {
             // Send to remote rank
             sendCommand(current_rank, current_thread, cmd_str);
             std::cout << result.str();
@@ -1178,7 +1179,7 @@ SimpleDebugger::cmd_thread_rank_parallel(std::string& cmd_str)
 }
 
 bool
-SimpleDebugger::cmd_thread_remote(std::vector<std::string>& UNUSED(tokens))
+DebugConsole::cmd_thread_remote(std::vector<std::string>& UNUSED(tokens))
 {
     result << Simulation_impl::getSimulation()->interactive_msg_ << std::endl;
     return true;
@@ -1186,9 +1187,9 @@ SimpleDebugger::cmd_thread_remote(std::vector<std::string>& UNUSED(tokens))
 
 // rank <rankID> : switches to new rank (same thread)
 int
-SimpleDebugger::parse_rank()
+DebugConsole::parse_rank()
 {
-    int      rankID;  // Used int because converting from string
+    int rankID; // Used int because converting from string
 
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format for rankcommand (rank <rankID>)" << std::endl;
@@ -1211,7 +1212,7 @@ SimpleDebugger::parse_rank()
     // Check if valid rankID
     if ( rankID < 0 || rankID >= static_cast<int>(num_ranks_.rank) ) {
         std::cout << "RankID " << rankID << " out of range (0:" << num_ranks_.rank - 1 << ")" << std::endl;
-        
+
         return -1;
     }
 
@@ -1219,18 +1220,19 @@ SimpleDebugger::parse_rank()
 }
 
 bool
-SimpleDebugger::cmd_rank_serial(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_rank_serial(std::string& UNUSED(cmd_str))
 {
     int rankID = parse_rank();
+    if ( rankID == -1 ) return false;
 
     // Set current thread and get interactive msg
-    if ( rankID >= 0 && static_cast<unsigned int>(rankID) != current_rank ) {
-        // Clear result string 
+    if ( rankID != static_cast<int>(current_rank) ) {
+        // Clear R0 result string
         result.str("");
         result.clear();
-        current_rank = rankID;  
-        std::cout << "---- Rank" << current_rank << ":Thread" << current_thread 
-            << ": Entering interactive mode at time " << getCurrentSimCycle() << std::endl;
+        current_rank = rankID;
+        std::cout << "---- Rank" << current_rank << ":Thread" << current_thread
+                  << ": Entering interactive mode at time " << getCurrentSimCycle() << std::endl;
         cmd_rank_remote(tokens);
         std::cout << result.str();
         // May also need to do something to update the listings
@@ -1240,18 +1242,19 @@ SimpleDebugger::cmd_rank_serial(std::string& UNUSED(cmd_str))
 }
 
 bool
-SimpleDebugger::cmd_rank_thread(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_rank_thread(std::string& UNUSED(cmd_str))
 {
     int rankID = parse_rank();
+    if ( rankID == -1 ) return false;
 
     // Set current thread and get interactive msg
-    if ( rankID >= 0 && static_cast<unsigned int>(rankID) != current_rank ) {
-        // Clear result string 
+    if ( rankID != static_cast<int>(current_rank) ) {
+        // Clear R0 result string
         result.str("");
         result.clear();
-        current_rank = rankID;  
-        std::cout << "---- Rank" << current_rank << ":Thread" << current_thread 
-            << ": Entering interactive mode at time " << getCurrentSimCycle() << std::endl;
+        current_rank = rankID;
+        std::cout << "---- Rank" << current_rank << ":Thread" << current_thread
+                  << ": Entering interactive mode at time " << getCurrentSimCycle() << std::endl;
         handleCommand();
         std::cout << result.str();
         // May also need to do something to update the listings
@@ -1261,22 +1264,24 @@ SimpleDebugger::cmd_rank_thread(std::string& UNUSED(cmd_str))
 }
 
 bool
-SimpleDebugger::cmd_rank_rank_serial(std::string& cmd_str)
+DebugConsole::cmd_rank_rank_serial(std::string& cmd_str)
 {
-     int rankID = parse_rank();
+    int rankID = parse_rank();
+    if ( rankID == -1 ) return false;
 
     // Set current thread and get interactive msg
-    if ( rankID >= 0 && static_cast<unsigned int>(rankID) != current_rank ) {
-        // Clear result string 
+    if ( rankID != static_cast<int>(current_rank) ) {
+        // Clear R0 result string
         result.str("");
         result.clear();
-        current_rank = rankID;  
-        std::cout << "---- Rank" << current_rank << ":Thread" << current_thread 
-            << ": Entering interactive mode at time " << getCurrentSimCycle() << std::endl;
-        if (current_rank == 0) {
+        current_rank = rankID;
+        std::cout << "---- Rank" << current_rank << ":Thread" << current_thread
+                  << ": Entering interactive mode at time " << getCurrentSimCycle() << std::endl;
+        if ( current_rank == 0 ) {
             cmd_rank_remote(tokens);
             std::cout << result.str();
-        } else {
+        }
+        else {
             // Send to remote rank
             sendCommand(current_rank, current_thread, cmd_str);
             std::cout << result.str();
@@ -1288,22 +1293,24 @@ SimpleDebugger::cmd_rank_rank_serial(std::string& cmd_str)
 }
 
 bool
-SimpleDebugger::cmd_rank_rank_parallel(std::string& cmd_str)
+DebugConsole::cmd_rank_rank_parallel(std::string& cmd_str)
 {
-     int rankID = parse_rank();
+    int rankID = parse_rank();
+    if ( rankID == -1 ) return false;
 
     // Set current thread and get interactive msg
-    if ( rankID >= 0 && static_cast<unsigned int>(rankID) != current_rank ) {
-        // Clear result string 
+    if ( rankID != static_cast<int>(current_rank) ) {
+        // Clear R0 result string
         result.str("");
         result.clear();
-        current_rank = rankID;  
-        std::cout << "---- Rank" << current_rank << ":Thread" << current_thread 
-            << ": Entering interactive mode at time " << getCurrentSimCycle() << std::endl;
-        if (current_rank == 0) {
+        current_rank = rankID;
+        std::cout << "---- Rank" << current_rank << ":Thread" << current_thread
+                  << ": Entering interactive mode at time " << getCurrentSimCycle() << std::endl;
+        if ( current_rank == 0 ) {
             handleCommand();
             std::cout << result.str();
-        } else {
+        }
+        else {
             // Send to remote rank
             sendCommand(current_rank, current_thread, cmd_str);
             std::cout << result.str();
@@ -1315,18 +1322,17 @@ SimpleDebugger::cmd_rank_rank_parallel(std::string& cmd_str)
 }
 
 bool
-SimpleDebugger::cmd_rank_remote(std::vector<std::string>& UNUSED(tokens))
+DebugConsole::cmd_rank_remote(std::vector<std::string>& UNUSED(tokens))
 {
     result << Simulation_impl::getSimulation()->interactive_msg_ << std::endl;
     return true;
 }
 
-
 // pwd: print current working directory
 bool
-SimpleDebugger::cmd_pwd_serial(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_pwd_serial(std::string& UNUSED(cmd_str))
 {
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
@@ -1337,9 +1343,9 @@ SimpleDebugger::cmd_pwd_serial(std::string& UNUSED(cmd_str))
 }
 
 bool
-SimpleDebugger::cmd_pwd_thread(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_pwd_thread(std::string& UNUSED(cmd_str))
 {
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
@@ -1350,45 +1356,47 @@ SimpleDebugger::cmd_pwd_thread(std::string& UNUSED(cmd_str))
 }
 
 bool
-SimpleDebugger::cmd_pwd_rank_serial(std::string& cmd_str)
+DebugConsole::cmd_pwd_rank_serial(std::string& cmd_str)
 {
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    if (current_rank == 0) {
-       cmd_pwd_remote(tokens);
-       std::cout << result.str();
-    } else {
+    if ( current_rank == 0 ) {
+        cmd_pwd_remote(tokens);
+        std::cout << result.str();
+    }
+    else {
         // Send to remote rank
         sendCommand(current_rank, current_thread, cmd_str);
         std::cout << result.str();
     }
-    return true;  // SKK Fix return values
+    return true;
 }
 
 bool
-SimpleDebugger::cmd_pwd_rank_parallel(std::string& cmd_str)
+DebugConsole::cmd_pwd_rank_parallel(std::string& cmd_str)
 {
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    if (current_rank == 0) {
+    if ( current_rank == 0 ) {
         // Execute in correct local thread
         handleCommand();
         std::cout << result.str();
-    } else {
+    }
+    else {
         // Send to remote rank
         sendCommand(current_rank, current_thread, cmd_str);
         std::cout << result.str();
     }
 
-    return true;  // SKK Fix return values
+    return true;
 }
 
 bool
-SimpleDebugger::cmd_pwd_remote(std::vector<std::string>& UNUSED(tokens))
+DebugConsole::cmd_pwd_remote(std::vector<std::string>& UNUSED(tokens))
 {
     std::string path = "/";
     if(!curObj_->isRoot()){
@@ -1407,13 +1415,14 @@ SimpleDebugger::cmd_pwd_remote(std::vector<std::string>& UNUSED(tokens))
 
 // ls: list current directory
 bool
-SimpleDebugger::cmd_ls_serial(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_ls_serial(std::string& UNUSED(cmd_str))
 {
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
     cmd_ls_remote(tokens);
+    // Use debug out to support paging
     dout << result.str();
     dout << dreset;
 
@@ -1421,13 +1430,14 @@ SimpleDebugger::cmd_ls_serial(std::string& UNUSED(cmd_str))
 }
 
 bool
-SimpleDebugger::cmd_ls_thread(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_ls_thread(std::string& UNUSED(cmd_str))
 {
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
     handleCommand();
+    // Use debug out to support paging
     dout << result.str();
     dout << dreset;
 
@@ -1435,46 +1445,50 @@ SimpleDebugger::cmd_ls_thread(std::string& UNUSED(cmd_str))
 }
 
 bool
-SimpleDebugger::cmd_ls_rank_serial(std::string& cmd_str)
+DebugConsole::cmd_ls_rank_serial(std::string& cmd_str)
 {
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    if (current_rank == 0) {
-       cmd_ls_remote(tokens);
-       dout << result.str();
-    } else {
+    if ( current_rank == 0 ) {
+        cmd_ls_remote(tokens);
+        // Use debug out to support paging
+        dout << result.str();
+    }
+    else {
         // Send to remote rank
         sendCommand(current_rank, current_thread, cmd_str);
         dout << result.str();
     }
     dout << dreset;
-    return true;  // SKK Fix return values
+    return true;
 }
 
 bool
-SimpleDebugger::cmd_ls_rank_parallel(std::string& cmd_str)
+DebugConsole::cmd_ls_rank_parallel(std::string& cmd_str)
 {
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
-    
-    if (current_rank == 0) {
+
+    if ( current_rank == 0 ) {
         // Execute in correct local thread
         handleCommand();
+        // Use debug out to support pagin
         dout << result.str();
-    } else {
+    }
+    else {
         // Send to remote rank
         sendCommand(current_rank, current_thread, cmd_str);
         dout << result.str();
     }
     dout << dreset;
-    return true;  // SKK Fix return values
+    return true;
 }
 
 bool
-SimpleDebugger::cmd_ls_remote(std::vector<std::string>& tokens)
+DebugConsole::cmd_ls_remote(std::vector<std::string>& tokens)
 {
 
     unsigned verbosity = 0;
@@ -1491,9 +1505,9 @@ SimpleDebugger::cmd_ls_remote(std::vector<std::string>& tokens)
     return true;
 }
 
-// callback for autofill of object string (similar to ls)
+// Callback for autofill of object string (similar to ls)
 void
-SimpleDebugger::get_listing_strings(std::list<std::string>& list)
+DebugConsole::get_listing_strings(std::list<std::string>& list)
 {
     list.clear();
     curObj_->applyRecursive([&] (SST::Core::Serialization::ObjTreeCont* child){
@@ -1504,101 +1518,98 @@ SimpleDebugger::get_listing_strings(std::list<std::string>& list)
 
 // cd <path>: change to new directory
 bool
-SimpleDebugger::cmd_cd_serial(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_cd_serial(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format for cd command (cd <obj>)" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    cmd_cd_remote(tokens);
+    succeed = cmd_cd_remote(tokens);
     std::cout << result.str();
 
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_cd_thread(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_cd_thread(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format for cd command (cd <obj>)" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    handleCommand();
+    succeed = handleCommand();
     std::cout << result.str();
 
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_cd_rank_serial(std::string& cmd_str)
+DebugConsole::cmd_cd_rank_serial(std::string& cmd_str)
 {
+    bool succeed;
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format for cd command (cd <obj>)" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    if (current_rank == 0) {
-       cmd_cd_remote(tokens);
-       std::cout << result.str();
-    } else {
-        // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+    if ( current_rank == 0 ) {
+        succeed = cmd_cd_remote(tokens);
         std::cout << result.str();
     }
-    return true;  // SKK Fix return values
+    else {
+        // Send to remote rank
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
+        std::cout << result.str();
+    }
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_cd_rank_parallel(std::string& cmd_str)
+DebugConsole::cmd_cd_rank_parallel(std::string& cmd_str)
 {
+    bool succeed;
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format for cd command (cd <obj>)" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    if (current_rank == 0) {
+    if ( current_rank == 0 ) {
         // Execute in correct local thread
-        handleCommand();
+        succeed = handleCommand();
         std::cout << result.str();
-    } else {
+    }
+    else {
         // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
         std::cout << result.str();
     }
 
-    return true;  // SKK Fix return values
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_cd_remote(std::vector<std::string>& tokens)
+DebugConsole::cmd_cd_remote(std::vector<std::string>& tokens)
 {
-    
-#if 0
-    // skk This works but doesn't delete/deactivate like objmap selectParent
-    if ( tokens.size() == 1 ) {
-        obj_ = getComponentObjectMap();
-        return;
-    }
-#endif
-
     // Allow for trailing '/'
     std::string selection = tokens[1];
     if ( !selection.empty() && selection.back() == '/' ) selection.pop_back();
@@ -1641,7 +1652,7 @@ SimpleDebugger::cmd_cd_remote(std::vector<std::string>& tokens)
 }
 
 std::vector<size_t> 
-SimpleDebugger::parseBracketIndices(std::string& token) {
+DebugConsole::parseBracketIndices(std::string& token) {
     std::vector<size_t> indices;
 
     size_t pos = token.find('[');
@@ -1662,7 +1673,7 @@ SimpleDebugger::parseBracketIndices(std::string& token) {
 
 // time: print current simulation cycle
 bool
-SimpleDebugger::cmd_time(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_time(std::string& UNUSED(cmd_str))
 {
     std::cout << "current time = " << getCurrentSimCycle() << std::endl;
     return true;
@@ -1670,90 +1681,96 @@ SimpleDebugger::cmd_time(std::string& UNUSED(cmd_str))
 
 // print [-rN] [<obj>]: print object
 bool
-SimpleDebugger::cmd_print_serial(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_print_serial(std::string& UNUSED(cmd_str))
 {
-    if ( tokens.size() < 2 ) {
-        std::cout << "Invalid format for print command (print [-rN] [<obj>])" << std::endl;
-        return false;
-    } 
-
-    // Clear result string 
-    result.str("");
-    result.clear();
-
-    cmd_print_remote(tokens);
-    std::cout << result.str();
-    return true;
-}
-
-bool
-SimpleDebugger::cmd_print_thread(std::string& UNUSED(cmd_str))
-{
+    bool succeed;
     if ( tokens.size() < 2 ) {
         std::cout << "Invalid format for print command (print [-rN] [<obj>])" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    handleCommand();
+    succeed = cmd_print_remote(tokens);
     std::cout << result.str();
-
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_print_rank_serial(std::string& cmd_str)
+DebugConsole::cmd_print_thread(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() < 2 ) {
         std::cout << "Invalid format for print command (print [-rN] [<obj>])" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    if (current_rank == 0) {
-       cmd_ls_remote(tokens);
-       std::cout << result.str();
-    } else {
-        // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+    succeed = handleCommand();
+    std::cout << result.str();
+
+    return succeed;
+}
+
+bool
+DebugConsole::cmd_print_rank_serial(std::string& cmd_str)
+{
+    bool succeed;
+    if ( tokens.size() < 2 ) {
+        std::cout << "Invalid format for print command (print [-rN] [<obj>])" << std::endl;
+        return false;
+    }
+
+    // Clear R0 result string
+    result.str("");
+    result.clear();
+
+    if ( current_rank == 0 ) {
+        succeed = cmd_ls_remote(tokens);
         std::cout << result.str();
     }
-    return true;  // SKK Fix return values
+    else {
+        // Send to remote rank
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
+        std::cout << result.str();
+    }
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_print_rank_parallel(std::string& cmd_str)
+DebugConsole::cmd_print_rank_parallel(std::string& cmd_str)
 {
+    bool succeed;
     if ( tokens.size() < 2 ) {
         std::cout << "Invalid format for print command (print [-rN] [<obj>])" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    if (current_rank == 0) {
+    if ( current_rank == 0 ) {
         // Execute in correct local thread
-        handleCommand();
+        succeed = handleCommand();
         std::cout << result.str();
-    } else {
+    }
+    else {
         // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
         std::cout << result.str();
     }
 
-    return true;  // SKK Fix return values
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_print_remote(std::vector<std::string>& tokens)
+DebugConsole::cmd_print_remote(std::vector<std::string>& tokens)
 {
     // Index in tokens array where we may find the variable name
     size_t var_index = 1;
@@ -1786,7 +1803,7 @@ SimpleDebugger::cmd_print_remote(std::vector<std::string>& tokens)
                     recurse = SST::Core::from_string<int>(num);
                 }
                 catch ( std::invalid_argument& e ) {
-                    result << "Invalid number format specified with -r: " << tok << std::endl;                   
+                    result << "Invalid number format specified with -r: " << tok << std::endl;
                     return false;
                 }
             }
@@ -1875,7 +1892,7 @@ SimpleDebugger::cmd_print_remote(std::vector<std::string>& tokens)
 }
 
 bool
-SimpleDebugger::containsArg(const std::string tok, const char arg ){
+DebugConsole::containsArg(const std::string tok, const char arg ){
      for (size_t i = 0; i + 1 < tok.size(); ++i) {
         if ((tok[i] == '-' && tok[i + 1] == arg) ) {
             return true;
@@ -1885,7 +1902,7 @@ SimpleDebugger::containsArg(const std::string tok, const char arg ){
 }
 
 size_t
-SimpleDebugger::containsArg(const std::vector<std::string> tokens, const std::string& arg ){
+DebugConsole::containsArg(const std::vector<std::string> tokens, const std::string& arg ){
     for (size_t i = 0; i < tokens.size(); ++i) {
         if(tokens[i] == arg){
             return i;
@@ -1897,91 +1914,97 @@ SimpleDebugger::containsArg(const std::vector<std::string> tokens, const std::st
 
 // set <obj> <value>: set object to value
 bool
-SimpleDebugger::cmd_set_serial(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_set_serial(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() < 3 ) {
         std::cout << "Invalid format for set command (set <obj> <value>)" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
-    
-    cmd_set_remote(tokens);
+
+    succeed = cmd_set_remote(tokens);
     std::cout << result.str();
 
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_set_thread(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_set_thread(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() < 3 ) {
         std::cout << "Invalid format for set command (set <obj> <value>)" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    handleCommand();
+    succeed = handleCommand();
     std::cout << result.str();
 
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_set_rank_serial(std::string& cmd_str)
+DebugConsole::cmd_set_rank_serial(std::string& cmd_str)
 {
+    bool succeed;
     if ( tokens.size() < 3 ) {
         std::cout << "Invalid format for set command (set <obj> <value>)" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    if (current_rank == 0) {
-       cmd_set_remote(tokens);
-       std::cout << result.str();
-    } else {
-        // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+    if ( current_rank == 0 ) {
+        succeed = cmd_set_remote(tokens);
         std::cout << result.str();
     }
-    return true;  // SKK Fix return values
+    else {
+        // Send to remote rank
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
+        std::cout << result.str();
+    }
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_set_rank_parallel(std::string& cmd_str)
+DebugConsole::cmd_set_rank_parallel(std::string& cmd_str)
 {
+    bool succeed;
     if ( tokens.size() < 3 ) {
         std::cout << "Invalid format for set command (set <obj> <value>)" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
-    
-    if (current_rank == 0) {
+
+    if ( current_rank == 0 ) {
         // Execute in correct local thread
-        handleCommand();
+        succeed = handleCommand();
         std::cout << result.str();
-    } else {
+    }
+    else {
         // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
         std::cout << result.str();
     }
 
-    return true;  // SKK Fix return values
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_set_remote(std::vector<std::string>& tokens)
+DebugConsole::cmd_set_remote(std::vector<std::string>& tokens)
 {
     // kg It may be safer to check for  exactly 3 params but because
     //    of strings we allow for more (until parser handled quoted strings)
@@ -2036,14 +2059,14 @@ SimpleDebugger::cmd_set_remote(std::vector<std::string>& tokens)
 }
     
 // run <time>: run simulation for time
-bool  
-SimpleDebugger::cmd_run(std::string& UNUSED(cmd_str))
+bool
+DebugConsole::cmd_run(std::string& UNUSED(cmd_str))
 {
     if ( tokens.size() == 2 ) {
         try {
-            TimeConverter* tc  = getTimeConverter(tokens[1]);
-            std::string    msg = format_string("Ran clock for %" PRI_SIMTIME " sim cycles", tc->getFactor());
-            schedule_interactive(tc->getFactor(), msg);
+            TimeConverter tc  = getTimeConverter(tokens[1]);
+            std::string   msg = format_string("Ran clock for %" PRI_SIMTIME " sim cycles", tc.getFactor());
+            schedule_interactive(tc.getFactor(), msg);
         }
         catch ( const std::exception& e ) {
             std::cout << "Unknown time in call to run: " << tokens[1] << std::endl;
@@ -2053,9 +2076,9 @@ SimpleDebugger::cmd_run(std::string& UNUSED(cmd_str))
     else if ( tokens.size() == 3 ) {
         std::string time = tokens[1] + tokens[2];
         try {
-            TimeConverter* tc  = getTimeConverter(time);
-            std::string    msg = format_string("Ran clock for %" PRI_SIMTIME " sim cycles", tc->getFactor());
-            schedule_interactive(tc->getFactor(), msg);
+            TimeConverter tc  = getTimeConverter(time);
+            std::string   msg = format_string("Ran clock for %" PRI_SIMTIME " sim cycles", tc.getFactor());
+            schedule_interactive(tc.getFactor(), msg);
         }
         catch ( std::exception& e ) {
             std::cout << "Unknown time in call to run: " << time << std::endl;
@@ -2070,96 +2093,100 @@ SimpleDebugger::cmd_run(std::string& UNUSED(cmd_str))
     return true;
 }
 
-
-#if 1
 // setHandler <wpIndex> <handlerType1> ... <handlerTypeN>
 // set where to do trigger checks and sampling (before/after clock/event handler)
 bool
-SimpleDebugger::cmd_setHandler_serial(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_setHandler_serial(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() < 3 ) {
         std::cout << "Invalid format: setHandler <watchpointIndex> <handlerType1> ... <handlerTypeN>" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
-    
-    cmd_setHandler_remote(tokens);
+
+    succeed = cmd_setHandler_remote(tokens);
     std::cout << result.str();
 
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_setHandler_thread(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_setHandler_thread(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() < 3 ) {
         std::cout << "Invalid format: setHandler <watchpointIndex> <handlerType1> ... <handlerTypeN>" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    handleCommand();
+    succeed = handleCommand();
     std::cout << result.str();
 
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_setHandler_rank_serial(std::string& cmd_str)
+DebugConsole::cmd_setHandler_rank_serial(std::string& cmd_str)
 {
+    bool succeed;
     if ( tokens.size() < 3 ) {
         std::cout << "Invalid format: setHandler <watchpointIndex> <handlerType1> ... <handlerTypeN>" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    if (current_rank == 0) {
-       cmd_setHandler_remote(tokens);
-       std::cout << result.str();
-    } else {
-        // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+    if ( current_rank == 0 ) {
+        succeed = cmd_setHandler_remote(tokens);
         std::cout << result.str();
     }
-    return true;  // SKK Fix return values
+    else {
+        // Send to remote rank
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
+        std::cout << result.str();
+    }
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_setHandler_rank_parallel(std::string& cmd_str)
+DebugConsole::cmd_setHandler_rank_parallel(std::string& cmd_str)
 {
+    bool succeed;
     if ( tokens.size() < 3 ) {
         std::cout << "Invalid format: setHandler <watchpointIndex> <handlerType1> ... <handlerTypeN>" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
-    
-    if (current_rank == 0) {
+
+    if ( current_rank == 0 ) {
         // Execute in correct local thread
-        handleCommand();
+        succeed = handleCommand();
         std::cout << result.str();
-    } else {
+    }
+    else {
         // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
         std::cout << result.str();
     }
 
-    return true;  // SKK Fix return values
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_setHandler_remote(std::vector<std::string>& tokens)
+DebugConsole::cmd_setHandler_remote(std::vector<std::string>& tokens)
 {
     size_t wpIndex = watch_points_.size();
     try {
@@ -2213,91 +2240,97 @@ SimpleDebugger::cmd_setHandler_remote(std::vector<std::string>& tokens)
 
 // addTraceVar <wpIndex> <var1> ... <varN>
 bool
-SimpleDebugger::cmd_addTraceVar_serial(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_addTraceVar_serial(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() < 3 ) {
         std::cout << "Invalid format: addTraceVar <watchpointIndex> <var1> ... <varN>" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
-    
-    cmd_addTraceVar_remote(tokens);
+
+    succeed = cmd_addTraceVar_remote(tokens);
     std::cout << result.str();
 
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_addTraceVar_thread(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_addTraceVar_thread(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() < 3 ) {
         std::cout << "Invalid format: addTraceVar <watchpointIndex> <var1> ... <varN>" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    handleCommand();
+    succeed = handleCommand();
     std::cout << result.str();
 
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_addTraceVar_rank_serial(std::string& cmd_str)
+DebugConsole::cmd_addTraceVar_rank_serial(std::string& cmd_str)
 {
+    bool succeed;
     if ( tokens.size() < 3 ) {
         std::cout << "Invalid format: addTraceVar <watchpointIndex> <var1> ... <varN>" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    if (current_rank == 0) {
-       cmd_addTraceVar_remote(tokens);
-       std::cout << result.str();
-    } else {
-        // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+    if ( current_rank == 0 ) {
+        succeed = cmd_addTraceVar_remote(tokens);
         std::cout << result.str();
     }
-    return true;  // SKK Fix return values
+    else {
+        // Send to remote rank
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
+        std::cout << result.str();
+    }
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_addTraceVar_rank_parallel(std::string& cmd_str)
+DebugConsole::cmd_addTraceVar_rank_parallel(std::string& cmd_str)
 {
+    bool succeed;
     if ( tokens.size() < 3 ) {
         std::cout << "Invalid format: addTraceVar <watchpointIndex> <var1> ... <varN>" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
-    
-    if (current_rank == 0) {
+
+    if ( current_rank == 0 ) {
         // Execute in correct local thread
-        handleCommand();
+        succeed = handleCommand();
         std::cout << result.str();
-    } else {
+    }
+    else {
         // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
         std::cout << result.str();
     }
 
-    return true;  // SKK Fix return values
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_addTraceVar_remote(std::vector<std::string>& tokens)
+DebugConsole::cmd_addTraceVar_remote(std::vector<std::string>& tokens)
 {
     size_t wpIndex = watch_points_.size();
     try {
@@ -2353,92 +2386,98 @@ SimpleDebugger::cmd_addTraceVar_remote(std::vector<std::string>& tokens)
     return true;
 }
 
-// resetTraceBuffer <wpIndex>
+// resetTraceBuffer <wpIndex> : resets trace buffer for indexed watchpoint
 bool
-SimpleDebugger::cmd_resetTraceBuffer_serial(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_resetTraceBuffer_serial(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format: resetTraceBuffer <watchpointIndex>\n";
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
-    
-    cmd_resetTraceBuffer_remote(tokens);
+
+    succeed = cmd_resetTraceBuffer_remote(tokens);
     std::cout << result.str();
 
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_resetTraceBuffer_thread(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_resetTraceBuffer_thread(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format: resetTraceBuffer <watchpointIndex>\n";
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    handleCommand();
+    succeed = handleCommand();
     std::cout << result.str();
 
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_resetTraceBuffer_rank_serial(std::string& cmd_str)
+DebugConsole::cmd_resetTraceBuffer_rank_serial(std::string& cmd_str)
 {
+    bool succeed;
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format: resetTraceBuffer <watchpointIndex>\n";
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    if (current_rank == 0) {
-       cmd_resetTraceBuffer_remote(tokens);
-       std::cout << result.str();
-    } else {
-        // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+    if ( current_rank == 0 ) {
+        succeed = cmd_resetTraceBuffer_remote(tokens);
         std::cout << result.str();
     }
-    return true;  // SKK Fix return values
+    else {
+        // Send to remote rank
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
+        std::cout << result.str();
+    }
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_resetTraceBuffer_rank_parallel(std::string& cmd_str)
+DebugConsole::cmd_resetTraceBuffer_rank_parallel(std::string& cmd_str)
 {
+    bool succeed;
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format: resetTraceBuffer <watchpointIndex>\n";
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
-    
-    if (current_rank == 0) {
+
+    if ( current_rank == 0 ) {
         // Execute in correct local thread
-        handleCommand();
+        succeed = handleCommand();
         std::cout << result.str();
-    } else {
+    }
+    else {
         // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
         std::cout << result.str();
     }
 
-    return true;  // SKK Fix return values
+    return succeed;
 }
 bool
-SimpleDebugger::cmd_resetTraceBuffer_remote(std::vector<std::string>& tokens)
+DebugConsole::cmd_resetTraceBuffer_remote(std::vector<std::string>& tokens)
 {
     size_t wpIndex = watch_points_.size();
     try {
@@ -2467,93 +2506,99 @@ SimpleDebugger::cmd_resetTraceBuffer_remote(std::vector<std::string>& tokens)
     return true;
 }
 
-// printTrace <wpIndex>
+// printTrace <wpIndex> : prints trace buffer for indexed watchpoint
 bool
-SimpleDebugger::cmd_printTrace_serial(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_printTrace_serial(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format: printTrace <watchpointIndex>" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
-    
-    cmd_printTrace_remote(tokens);
+
+    succeed = cmd_printTrace_remote(tokens);
     std::cout << result.str();
 
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_printTrace_thread(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_printTrace_thread(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format: printTrace <watchpointIndex>" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    handleCommand();
+    succeed = handleCommand();
     std::cout << result.str();
 
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_printTrace_rank_serial(std::string& cmd_str)
+DebugConsole::cmd_printTrace_rank_serial(std::string& cmd_str)
 {
+    bool succeed;
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format: printTrace <watchpointIndex>" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    if (current_rank == 0) {
-       cmd_printTrace_remote(tokens);
-       std::cout << result.str();
-    } else {
-        // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+    if ( current_rank == 0 ) {
+        succeed = cmd_printTrace_remote(tokens);
         std::cout << result.str();
     }
-    return true;  // SKK Fix return values
+    else {
+        // Send to remote rank
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
+        std::cout << result.str();
+    }
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_printTrace_rank_parallel(std::string& cmd_str)
+DebugConsole::cmd_printTrace_rank_parallel(std::string& cmd_str)
 {
+    bool succeed;
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format: printTrace <watchpointIndex>" << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
-    
-    if (current_rank == 0) {
+
+    if ( current_rank == 0 ) {
         // Execute in correct local thread
-        handleCommand();
+        succeed = handleCommand();
         std::cout << result.str();
-    } else {
+    }
+    else {
         // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
         std::cout << result.str();
     }
 
-    return true;  // SKK Fix return values
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_printTrace_remote(std::vector<std::string>& tokens)
+DebugConsole::cmd_printTrace_remote(std::vector<std::string>& tokens)
 {
     size_t wpIndex = watch_points_.size();
     try {
@@ -2583,91 +2628,98 @@ SimpleDebugger::cmd_printTrace_remote(std::vector<std::string>& tokens)
     return true;
 }
 
-// printWatchpoint <wpIndex>
+// printWatchpoint <wpIndex> : prints detailed info for indexed watchpoint
 bool
-SimpleDebugger::cmd_printWatchpoint_serial(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_printWatchpoint_serial(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format: printWatchpoint <watchpointIndex>\n";
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
-    
-    cmd_printWatchpoint_remote(tokens);
+
+    succeed = cmd_printWatchpoint_remote(tokens);
     std::cout << result.str();
 
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_printWatchpoint_thread(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_printWatchpoint_thread(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format: printWatchpoint <watchpointIndex>\n";
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    handleCommand();
+    succeed = handleCommand();
     std::cout << result.str();
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_printWatchpoint_rank_serial(std::string& cmd_str)
+DebugConsole::cmd_printWatchpoint_rank_serial(std::string& cmd_str)
 {
+    bool succeed;
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format: printWatchpoint <watchpointIndex>\n";
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    if (current_rank == 0) {
-       cmd_printWatchpoint_remote(tokens);
-       std::cout << result.str();
-    } else {
-        // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+    if ( current_rank == 0 ) {
+        succeed = cmd_printWatchpoint_remote(tokens);
         std::cout << result.str();
     }
-    return true;  // SKK Fix return values
+    else {
+        // Send to remote rank
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
+        std::cout << result.str();
+    }
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_printWatchpoint_rank_parallel(std::string& cmd_str)
+DebugConsole::cmd_printWatchpoint_rank_parallel(std::string& cmd_str)
 {
+    bool succeed;
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format: printWatchpoint <watchpointIndex>\n";
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
-    
-    if (current_rank == 0) {
+
+    if ( current_rank == 0 ) {
         // Execute in correct local thread
-        handleCommand();
+        succeed = handleCommand();
         std::cout << result.str();
-    } else {
+    }
+    else {
         // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
         std::cout << result.str();
     }
 
-    return true;  // SKK Fix return values
+    return succeed;
 }
+
 bool
-SimpleDebugger::cmd_printWatchpoint_remote(std::vector<std::string>& tokens)
+DebugConsole::cmd_printWatchpoint_remote(std::vector<std::string>& tokens)
 {
     size_t wpIndex = watch_points_.size();
     try {
@@ -2699,10 +2751,9 @@ SimpleDebugger::cmd_printWatchpoint_remote(std::vector<std::string>& tokens)
     return true;
 }
 
-#endif
-// logging <filepath>
+// logging <filepath> : logs commands to the specified file
 bool
-SimpleDebugger::cmd_logging(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_logging(std::string& UNUSED(cmd_str))
 {
     if ( loggingFile.is_open() ) {
         std::cout << "Logging file is already set to " << loggingFilePath << std::endl;
@@ -2721,9 +2772,9 @@ SimpleDebugger::cmd_logging(std::string& UNUSED(cmd_str))
     return true;
 }
 
-// replay <filepath>
+// replay <filepath> : replays commands from the specified file
 bool
-SimpleDebugger::cmd_replay(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_replay(std::string& UNUSED(cmd_str))
 {
     if ( replayFile.is_open() ) {
         std::cout << "Replay file is already set to " << replayFilePath << std::endl;
@@ -2742,8 +2793,9 @@ SimpleDebugger::cmd_replay(std::string& UNUSED(cmd_str))
     return true;
 }
 
+// history : prints command history
 bool
-SimpleDebugger::cmd_history(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_history(std::string& UNUSED(cmd_str))
 {
     int recs = 0; // 0 indicates all history
     if ( tokens.size() > 1 ) {
@@ -2758,6 +2810,7 @@ SimpleDebugger::cmd_history(std::string& UNUSED(cmd_str))
     return true;
 }
 
+// helper function for parsing logic operator
 WatchPoint::LogicOp
 getLogicOpFromString(const std::string& opStr)
 {
@@ -2772,71 +2825,75 @@ getLogicOpFromString(const std::string& opStr)
     }
 }
 
-// watchlist
+// watchlist : prints the watchlists from all threads
 bool
-SimpleDebugger::cmd_watchlist_serial(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_watchlist_serial(std::string& UNUSED(cmd_str))
 {
-    // Clear result string 
+    bool succeed;
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    cmd_watchlist_remote(tokens);
+    succeed = cmd_watchlist_remote(tokens);
     std::cout << result.str();
 
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_watchlist_thread(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_watchlist_thread(std::string& UNUSED(cmd_str))
 {
-    // Clear result string 
+    bool succeed;
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    handleCommandAll();
+    succeed = handleCommandAll();
     std::cout << result.str();
 
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_watchlist_rank_serial(std::string& cmd_str)
+DebugConsole::cmd_watchlist_rank_serial(std::string& cmd_str)
 {
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
-    cmd_watchlist_remote(tokens);
+    bool succeed = cmd_watchlist_remote(tokens);
     std::cout << result.str();
 
     // Send to remote rank
     result.str("");
     result.clear();
-    sendCommandAll(cmd_str);
+    bool succeed2 = sendCommandAll(cmd_str);
     std::cout << result.str();
 
-    return true;  // SKK Fix return values
+    return succeed || succeed2;
 }
 
 bool
-SimpleDebugger::cmd_watchlist_rank_parallel(std::string& cmd_str)
+DebugConsole::cmd_watchlist_rank_parallel(std::string& cmd_str)
 {
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
-    handleCommandAll();
+    // Handle local threads
+    bool succeed = handleCommandAll();
     std::cout << result.str();
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
-    sendCommandAll(cmd_str);
+    // Send to remote ranks
+    bool succeed2 = sendCommandAll(cmd_str);
     std::cout << result.str();
 
-    return true;  // SKK Fix return values
+    return succeed || succeed2;
 }
 
 bool
-SimpleDebugger::cmd_watchlist_remote(std::vector<std::string>& UNUSED(tokens))
+DebugConsole::cmd_watchlist_remote(std::vector<std::string>& UNUSED(tokens))
 {
     // Print the watch points
     result << "R" << rank_.rank << ",T" << rank_.thread << ": Current watch points:" << std::endl;
@@ -2853,24 +2910,27 @@ SimpleDebugger::cmd_watchlist_remote(std::vector<std::string>& UNUSED(tokens))
     return true;
 }
 
+// autoComplete : toggle command line auto-completion enable
 bool
-SimpleDebugger::cmd_autoComplete(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_autoComplete(std::string& UNUSED(cmd_str))
 {
     autoCompleteEnable = !autoCompleteEnable;
     std::cout << "auto completion is now " << autoCompleteEnable << std::endl;
     return true;
 }
 
+// clear : reset terminal
 bool
-SimpleDebugger::cmd_clear(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_clear(std::string& UNUSED(cmd_str))
 {
     // clear screen and move cursor to (0,0)
     std::cout << "\033[2J\033[1;1H";
     return true;
 }
 
+// define <foo> : define a user command sequence
 bool
-SimpleDebugger::cmd_define(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_define(std::string& UNUSED(cmd_str))
 {
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid\nsyntax: define <cmd_name>" << std::endl;
@@ -2883,8 +2943,9 @@ SimpleDebugger::cmd_define(std::string& UNUSED(cmd_str))
     return true;
 }
 
+// document <foo> : document help for a user defined command
 bool
-SimpleDebugger::cmd_document(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_document(std::string& UNUSED(cmd_str))
 {
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid\nsyntax: document <cmd_name>" << std::endl;
@@ -3008,6 +3069,120 @@ parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serializa
     return op;
 }
 
+//Create a helper object that contains the paths to the objects, the types being compared
+// as well as the operators used. Creates and returns a new ObjTreeComparison that the caller owns.
+// nullptr returned as an error condition.
+Core::Serialization::ObjTreeComparison* 
+parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serialization::ObjTreeCont* curObj, Core::Serialization::ObjTreeComparison* op = nullptr){
+
+    const std::string& var = tokens[index++];
+    if ( index >= tokens.size() ) {
+        std::cout << "Invalid format for trigger test" << std::endl;
+        return nullptr;
+    }
+    const std::string&                      opstr = tokens[index++];
+    if(nullptr == op){
+        op = new Core::Serialization::ObjTreeComparison();
+    }
+    op->operators.push_back(Core::Serialization::ObjTreeComparison::getOperationFromString(opstr));
+
+    std::string v2;
+    if( Core::Serialization::ObjTreeComparison::Op::CHANGED != op->operators.back()){
+        if( index >= tokens.size() ){
+            std::cout << "Invalid format for trigger test. Valid formats are <var> changed and <var> <op> <val>" 
+                << std::endl;
+            return nullptr;
+        }
+        v2 = tokens[index++];
+    }
+     
+    // Is operator valid
+    if ( op->operators.back() == Core::Serialization::ObjTreeComparison::Op::INVALID ) {
+        std::cout << "Unknown comparison operation specified in trigger test" << std::endl;
+        return nullptr;
+    }
+
+        //DDD: There is a lot of code duplicated ... this can clearly be a loop
+    SST::Core::Serialization::ObjTreeCont* opObj = curObj->findByName(var);
+    SST::Core::Serialization::ObjTreeCont* parent = nullptr;
+    std::deque<std::string> path;
+    if ( nullptr != opObj ) {
+
+        parent =  opObj->getParent();
+        path.push_front(opObj->getObjName());
+        while (parent && !parent->isRoot())
+        {
+            path.push_front(parent->getObjName());
+            parent =  parent->getParent();
+        }
+        op->objectsToCompare.emplace_back(std::move(path), Core::Serialization::ObjTreeComparison::valType::OBJ, opObj->clone());
+
+        // In changed mode, we do not use v2, but add a "placeholder" object to the compairson list. This is a touch
+            // wasteful, but makes our life a lot easier later 
+        if ( op->operators.back() == Core::Serialization::ObjTreeComparison::Op::CHANGED ) {
+            op->objectsToCompare.emplace_back(std::move(path), Core::Serialization::ObjTreeComparison::valType::UNKNOWN, opObj->clone());
+            return op;
+        }
+    }else {
+          std::unique_ptr<Core::Serialization::ObjTreeCont> constNode = nullptr;
+        //Convert the string value to an Integer or FloatObj
+        try {
+            int64_t v = std::stoll(var);
+            constNode = std::make_unique<Core::Serialization::IntegerObj>(v, nullptr);
+        } catch (...) {}
+        try {
+            double v = std::stod(var);
+            constNode = std::make_unique<Core::Serialization::FloatObj>(v, nullptr);
+        } catch (...) {}
+        if(constNode == nullptr){
+            std::cout << "Unknown Constant in expression" << std::endl;
+            return nullptr;
+        }
+        std::deque<std::string> const_arg;
+        const_arg.push_back(var);
+        op->objectsToCompare.emplace_back(std::move(const_arg), Core::Serialization::ObjTreeComparison::valType::CONST, constNode->clone());
+    }
+    
+
+    // Check if v2 is a variable
+    Core::Serialization::ObjTreeCont* opObj2 = curObj->findByName(v2);
+
+    // V2 is valid variable
+    if ( nullptr != opObj2 ) {
+        parent =  opObj2->getParent();
+        path.clear();
+        path.push_front(opObj2->getObjName());
+        while (parent && !parent->isRoot())
+        {
+            path.push_front(parent->getObjName());
+            parent =  parent->getParent();
+        }
+        op->objectsToCompare.emplace_back(std::move(path), Core::Serialization::ObjTreeComparison::valType::OBJ, opObj2->clone());
+    }
+    else { // V2 is value string
+        std::unique_ptr<Core::Serialization::ObjTreeCont> constNode = nullptr;
+        //Convert the string value to an Integer or FloatObj
+        try {
+            int64_t v = std::stoll(v2);
+            constNode = std::make_unique<Core::Serialization::IntegerObj>(v, nullptr);
+        } catch (...) {}
+        try {
+            double v = std::stod(v2);
+            constNode = std::make_unique<Core::Serialization::FloatObj>(v, nullptr);
+        } catch (...) {}
+        if(constNode == nullptr){
+            std::cout << "Unknown Constant in expression" << std::endl;
+            return nullptr;
+        }
+        std::deque<std::string> const_arg;
+        const_arg.push_back(v2);
+        op->objectsToCompare.emplace_back(std::move(const_arg), Core::Serialization::ObjTreeComparison::valType::CONST, constNode->clone());
+    }
+    
+    return op;
+}
+
+// helper function to parse watchpoint comparison string
 Core::Serialization::ObjectMapComparison*
 parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serialization::ObjectMap* obj, std::string& name)
 {
@@ -3024,8 +3199,8 @@ parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serializa
     std::string v2;
     if ( op != Core::Serialization::ObjectMapComparison::Op::CHANGED ) {
         if ( index >= tokens.size() ) {
-            std::cout << "Invalid format for trigger test. Valid formats are <var> changed and <var> <op> <val>" 
-                << std::endl;
+            std::cout << "Invalid format for trigger test. Valid formats are <var> changed and <var> <op> <val>"
+                      << std::endl;
             return nullptr;
         }
         v2 = tokens[index++];
@@ -3043,8 +3218,7 @@ parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serializa
 
     // Is variable fundamental
     if ( !map->isFundamental() ) {
-        std::cout << "Triggers can only use fundamental types; " 
-            << var << " is not fundamental" << std::endl;
+        std::cout << "Triggers can only use fundamental types; " << var << " is not fundamental" << std::endl;
         return nullptr;
     }
 
@@ -3062,8 +3236,7 @@ parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serializa
             return map->getComparison(name, op, ""); // Can throw an exception
         }
         catch ( const std::exception& e ) {
-            std::cout << "Invalid argument passed to trigger test: " 
-                << var << " " << opstr << std::endl;
+            std::cout << "Invalid argument passed to trigger test: " << var << " " << opstr << std::endl;
             return nullptr;
         }
     }
@@ -3076,8 +3249,7 @@ parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serializa
 
         // Is variable fundamental
         if ( !map2->isFundamental() ) {
-            std::cout << "Triggers can only use fundamental types; " << var << 
-                " is not fundamental" << std::endl;
+            std::cout << "Triggers can only use fundamental types; " << var << " is not fundamental" << std::endl;
             return nullptr;
         }
 
@@ -3086,8 +3258,7 @@ parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serializa
             return map->getComparisonVar(name, op, name2, map2); // Can throw an exception
         }
         catch ( const std::exception& e ) {
-            std::cout << "Invalid argument passed to trigger test: " << var 
-                << " " << opstr << " " << v2 << std::endl;
+            std::cout << "Invalid argument passed to trigger test: " << var << " " << opstr << " " << v2 << std::endl;
             return nullptr;
         }
     }
@@ -3096,14 +3267,13 @@ parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serializa
             return map->getComparison(name, op, v2); // Can throw an exception
         }
         catch ( const std::exception& e ) {
-            std::cout << "Invalid argument passed to trigger test: " << var 
-                << " " << opstr << " " << v2 << std::endl;
+            std::cout << "Invalid argument passed to trigger test: " << var << " " << opstr << " " << v2 << std::endl;
             return nullptr;
         }
     }
 }
 
-
+// helper function to parse watchpoint action string
 WatchPoint::WPAction*
 parseAction(std::vector<std::string>& tokens, size_t& index, Core::Serialization::ObjectMap* obj)
 {
@@ -3146,8 +3316,7 @@ parseAction(std::vector<std::string>& tokens, size_t& index, Core::Serialization
 
         // Is variable fundamental
         if ( !map->isFundamental() ) {
-            std::cout << "Can only set fundamental variable, " << tvar 
-                << " is not fundamental" << std::endl;
+            std::cout << "Can only set fundamental variable, " << tvar << " is not fundamental" << std::endl;
             return nullptr;
         }
 
@@ -3166,7 +3335,7 @@ parseAction(std::vector<std::string>& tokens, size_t& index, Core::Serialization
 
         return new WatchPoint::SetVarWPAction(name, map, tval);
     }
-#if 0
+#if 0 // Do users want a heartbeat action?
     else if (action == "heartbeat") {
         return new WatchPoint::HeartbeatWPAction();
     }
@@ -3191,83 +3360,89 @@ parseAction(std::vector<std::string>& tokens, size_t& index, Core::Serialization
 //  watch size > 90 && value == 100
 //  watch size changed || value == 100 && index == 55
 bool
-SimpleDebugger::cmd_watch_serial(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_watch_serial(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() < 3 ) {
         std::cout << "Invalid format for watch command" << std::endl;
         return false;
     }
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    cmd_watch_remote(tokens);
+    succeed = cmd_watch_remote(tokens);
     std::cout << result.str();
 
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_watch_thread(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_watch_thread(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() < 3 ) {
         std::cout << "Invalid format for watch command" << std::endl;
         return false;
     }
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    handleCommand();
+    succeed = handleCommand();
     std::cout << result.str();
 
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_watch_rank_serial(std::string& cmd_str)
+DebugConsole::cmd_watch_rank_serial(std::string& cmd_str)
 {
+    bool succeed;
     if ( tokens.size() < 3 ) {
         std::cout << "Invalid format for watch command" << std::endl;
         return false;
     }
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    if (current_rank == 0) {
-       cmd_watch_remote(tokens);
-       std::cout << result.str();
-    } else {
-        // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+    if ( current_rank == 0 ) {
+        succeed = cmd_watch_remote(tokens);
         std::cout << result.str();
     }
-    return true;  // SKK Fix return values
+    else {
+        // Send to remote rank
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
+        std::cout << result.str();
+    }
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_watch_rank_parallel(std::string& cmd_str)
+DebugConsole::cmd_watch_rank_parallel(std::string& cmd_str)
 {
+    bool succeed;
     if ( tokens.size() < 3 ) {
         std::cout << "Invalid format for watch command" << std::endl;
         return false;
     }
-    // Clear result string 
+    // Clear result string
     result.str("");
     result.clear();
 
-    if (current_rank == 0) {
+    if ( current_rank == 0 ) {
         // Execute in correct local thread
-        handleCommand();
+        succeed = handleCommand();
         std::cout << result.str();
-    } else {
+    }
+    else {
         // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
         std::cout << result.str();
     }
 
-    return true;  // SKK Fix return values
+    return succeed;
 }
 
 /*
@@ -3286,8 +3461,24 @@ SimpleDebugger::cmd_watch_rank_parallel(std::string& cmd_str)
     return true;
 */
 
+/*
+    std::string path = "/";
+    if(!curObj_->isRoot()){
+        SST::Core::Serialization::ObjTreeCont* parent =  curObj_->getParent();
+        path.append(curObj_->getObjName()); 
+        while (parent && !parent->isRoot())
+        {
+            path.insert(0,parent->getObjName());
+            path.insert(0,"/");
+            parent =  parent->getParent();
+        }
+    }
+    result << path << std::endl; 
+    return true;
+*/
+
 bool
-SimpleDebugger::cmd_watch_remote(std::vector<std::string>& tokens)
+DebugConsole::cmd_watch_remote(std::vector<std::string>& tokens)
 {
     size_t      index = 1;
     std::string name  = "";
@@ -3392,6 +3583,104 @@ SimpleDebugger::cmd_watch_remote(std::vector<std::string>& tokens)
 
     try {
         // Get first comparison
+        // allocate ObjTreeCompairson 
+        Core::Serialization::ObjTreeComparison* c = parseComparison(tokens, index, curObj_, nullptr);
+        if ( c == nullptr ) {
+            result << "Invalid comparison argument passed to watch command" << std::endl;
+            return false;
+        }
+        size_t wpIndex = watch_points_.size();
+        auto*  pt      = new WatchPoint(wpIndex, name, c);
+
+#if 0 // watch variables currently don't trace, but they could automatically
+      // trace test vars
+        auto* tb = map->getTraceBuffer(obj_, 32, 4);
+        pt->addTraceBuffer(tb);
+
+        auto* ob = map->getObjectBuffer(obj_->getFullName() + "/" + var, 32);
+        pt->addObjectBuffer(ob);
+#endif
+
+        // Add additional comparisons and logical ops
+        while ( index < tokens.size() ) {
+
+            // Get Logical Operator
+            WatchPoint::LogicOp logicOp = getLogicOpFromString(tokens[index++]);
+            if ( logicOp == WatchPoint::LogicOp::UNDEFINED ) {
+                result << "Invalid logic operator: " << tokens[index - 1] << std::endl;
+                return false;
+            }
+            else {
+                pt->addLogicOp(logicOp);
+            }
+            if ( index == tokens.size() ) {
+                result << "Invalid format for watch command" << std::endl;
+                return false;
+            }
+
+            // Get next comparison
+            c = parseComparison(tokens, index, curObj_, c);
+            if ( c == nullptr ) {
+                result << "Invalid comparison argument passed to watch command" << std::endl;
+                return false;
+            }
+        } // while index < tokens.size(), add another logic op and test comparision
+
+        // Parse action
+        std::string           action    = "interactive";
+        WatchPoint::WPAction* actionObj = new WatchPoint::InteractiveWPAction();
+        if ( actionObj == nullptr ) {
+            result << "Error in action: " << action << std::endl;
+            return false;
+        }
+        else {
+            // Every action gets the same verbosity as the console object
+            actionObj->setVerbosity(verbosity);
+            pt->setAction(actionObj);
+        }
+
+        // Get the top level component to set the watch point
+        BaseComponent* comp = nullptr;
+        Core::Serialization::ObjTreeCont* parent = curObj_;
+        while (!parent->isComponent() && !parent->isRoot())
+        {
+            parent = parent->getParent();
+        }
+        
+        comp = static_cast<Core::Serialization::ComponentObj*>(parent)->getVal();
+        if ( comp ) {
+            comp->addWatchPoint(pt);
+            watch_points_.emplace_back(pt, comp);
+            result << "Added watchpoint #" << wpIndex << std::endl;
+        }
+        else {
+            result << "Not a component" << std::endl;
+            return false;
+        }
+    } // try/catch  TODO: need to revisit what can actually throw an exception
+    catch ( const std::exception& e ) {
+        result << "Invalid format for watch command" << std::endl;
+        return false;
+    }
+
+    // Check for extra arguments
+    if ( index != tokens.size() ) {
+        result << "Invalid format for watch command: too many arguments" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+/*
+bool
+DebugConsole::cmd_watch_remote(std::vector<std::string>& tokens)
+{
+    size_t      index = 1;
+    std::string name  = "";
+
+    try {
+        // Get first comparison
         Core::Serialization::ObjectMapComparison* c = parseComparison(tokens, index, obj_, name);
         if ( c == nullptr ) {
             result << "Invalid comparison argument passed to watch command" << std::endl;
@@ -3475,9 +3764,9 @@ SimpleDebugger::cmd_watch_remote(std::vector<std::string>& tokens)
     return true;
 }
 */
-// confirm <true/false>
+// confirm <true/false> : set confirmation requests on (default) or off
 bool
-SimpleDebugger::cmd_setConfirm(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_setConfirm(std::string& UNUSED(cmd_str))
 {
 
     if ( tokens.size() != 2 ) {
@@ -3500,8 +3789,10 @@ SimpleDebugger::cmd_setConfirm(std::string& UNUSED(cmd_str))
     return false;
 }
 
+// prompt user to delete all watchpoints
 bool
-SimpleDebugger::query_clear_watchlist() {
+DebugConsole::query_clear_watchlist()
+{
     if ( confirm_ ) {
         std::string line;
         std::cout << "Do you want to delete all watchpoints? [yes, no]\n";
@@ -3518,8 +3809,9 @@ SimpleDebugger::query_clear_watchlist() {
     }
 }
 
+// clear all watchlists at all threads
 bool
-SimpleDebugger::clear_watchlist(std::vector<std::string>& UNUSED(tokens))
+DebugConsole::clear_watchlist(std::vector<std::string>& UNUSED(tokens))
 {
     // Remove watchpoints
     // Does this delete the objects correctly?
@@ -3535,20 +3827,21 @@ SimpleDebugger::clear_watchlist(std::vector<std::string>& UNUSED(tokens))
     return true;
 }
 
-// unwatch <wpIndex>
+// unwatch <wpIndex> : remove 1 or all watchpoints
 bool
-SimpleDebugger::cmd_unwatch_serial(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_unwatch_serial(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     // If no arguments, unwatch all watchpoints
     if ( tokens.size() == 1 ) {
-        if (!confirm_ || query_clear_watchlist()) {
-            clear_watchlist(tokens);
+        if ( !confirm_ || query_clear_watchlist() ) {
+            succeed = clear_watchlist(tokens);
             std::cout << "Watchlist cleared\n";
-            return true;
+            return succeed;
         }
         return true;
     }
-        
+
     if ( tokens.size() != 2 ) {
         std::cout << "Invalid format for unwatch command" << std::endl;
         return false;
@@ -3561,13 +3854,16 @@ SimpleDebugger::cmd_unwatch_serial(std::string& UNUSED(cmd_str))
     }
     catch ( const std::invalid_argument& e ) {
         std::cout << "Invalid index format specified. The unwatch command requires"
-               "a watchpoint index from the \"watchlist\" command" << std::endl;
+                     "a watchpoint index from the \"watchlist\" command"
+                  << std::endl;
         return false;
     }
 
     if ( watch_points_.size() <= index ) {
-        std::cout << "Watch point " << tokens[1] << " not found. The unwatch command requires"
-            "a watchpoint index from the \"watchlist\" command" << std::endl;
+        std::cout << "Watch point " << tokens[1]
+                  << " not found. The unwatch command requires"
+                     "a watchpoint index from the \"watchlist\" command"
+                  << std::endl;
         return false;
     }
 
@@ -3581,21 +3877,22 @@ SimpleDebugger::cmd_unwatch_serial(std::string& UNUSED(cmd_str))
         watch_points_[index].second = nullptr;
     }
     return true;
-}   
+}
 
-  
+
 bool
-SimpleDebugger::cmd_unwatch_thread(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_unwatch_thread(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     // If no arguments, unwatch all watchpoints
     if ( tokens.size() == 1 ) {
-        if (!confirm_ || query_clear_watchlist()) {
-            // Clear result string 
+        if ( !confirm_ || query_clear_watchlist() ) {
+            // Clear R0 result string
             result.str("");
             result.clear();
-            handleCommandAll();  // clear all watchpoints
+            succeed = handleCommandAll(); // clear all watchpoints
             std::cout << result.str();
-            return true;
+            return succeed;
         }
         return true;
     }
@@ -3604,33 +3901,34 @@ SimpleDebugger::cmd_unwatch_thread(std::string& UNUSED(cmd_str))
         std::cout << "Invalid format for unwatch command" << std::endl;
         return false;
     }
-    // Clear result string 
+    // Clear result string
     result.str("");
     result.clear();
-    
+
     // Clear specific watchpoint
-    handleCommand();
+    succeed = handleCommand();
     std::cout << result.str();
-    
-    return true;
+
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_unwatch_rank_serial(std::string& cmd_str)
+DebugConsole::cmd_unwatch_rank_serial(std::string& cmd_str)
 {
+    bool succeed, succeed2;
     // If no arguments, unwatch all watchpoints
     if ( tokens.size() == 1 ) {
-        if (!confirm_ || query_clear_watchlist()) {
-            // Clear result string 
+        if ( !confirm_ || query_clear_watchlist() ) {
+            // Clear R0 result string
             result.str("");
             result.clear();
 
             // Clear local watchlist
-            cmd_unwatch_remote(tokens);
+            succeed  = cmd_unwatch_remote(tokens);
             // Send to remote ranks
-            sendCommandAll(cmd_str);
+            succeed2 = sendCommandAll(cmd_str);
             std::cout << result.str();
-            return true;
+            return succeed || succeed2;
         }
         return true;
     }
@@ -3639,42 +3937,43 @@ SimpleDebugger::cmd_unwatch_rank_serial(std::string& cmd_str)
         std::cout << "Invalid format for unwatch command" << std::endl;
         return false;
     }
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
     // Clear specific watchpoint
-    if (current_rank == 0) {
-        cmd_unwatch_remote(tokens);
-        std::cout << result.str();
-    } else {
-        // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+    if ( current_rank == 0 ) {
+        succeed = cmd_unwatch_remote(tokens);
         std::cout << result.str();
     }
-    return true;  // SKK Fix return values
+    else {
+        // Send to remote rank
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
+        std::cout << result.str();
+    }
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_unwatch_rank_parallel(std::string& cmd_str)
+DebugConsole::cmd_unwatch_rank_parallel(std::string& cmd_str)
 {
-   // If no arguments, unwatch all watchpoints
+    bool succeed, succeed2;
+    // If no arguments, unwatch all watchpoints
     if ( tokens.size() == 1 ) {
-        if (!confirm_ || query_clear_watchlist()) {
-            // Clear result string 
+        if ( !confirm_ || query_clear_watchlist() ) {
+            // Clear R0 result string
             result.str("");
             result.clear();
             // Clear local watchlists
-            handleCommandAll();
+            succeed = handleCommandAll();
             std::cout << result.str();
 
-            // Clear result string 
             result.str("");
             result.clear();
             // Send to remote ranks
-            sendCommandAll(cmd_str);
+            succeed2 = sendCommandAll(cmd_str);
             std::cout << result.str();
-            return true;
+            return succeed || succeed2;
         }
         return true;
     }
@@ -3683,31 +3982,32 @@ SimpleDebugger::cmd_unwatch_rank_parallel(std::string& cmd_str)
         std::cout << "Invalid format for unwatch command" << std::endl;
         return false;
     }
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
     // Clear specific watchpoint
-    if (current_rank == 0) {
-       handleCommand();
-       std::cout << result.str();
-    } else {
+    if ( current_rank == 0 ) {
+        succeed = handleCommand();
+        std::cout << result.str();
+    }
+    else {
         // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
         std::cout << result.str();
     }
 
-    return true;  // SKK Fix return values
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_unwatch_remote(std::vector<std::string>& tokens)
+DebugConsole::cmd_unwatch_remote(std::vector<std::string>& tokens)
 {
     // If no arguments, unwatch all watchpoints
     if ( tokens.size() == 1 ) {
-            clear_watchlist(tokens);
-            result << "Watchlist cleared\n";
-            return true;
+        clear_watchlist(tokens);
+        result << "Watchlist cleared\n";
+        return true;
     }
 
     // Remove specified watchpoint
@@ -3717,13 +4017,16 @@ SimpleDebugger::cmd_unwatch_remote(std::vector<std::string>& tokens)
     }
     catch ( const std::invalid_argument& e ) {
         result << "Invalid index format specified. The unwatch command requires"
-               "a watchpoint index from the \"watchlist\" command" << std::endl;
+                  "a watchpoint index from the \"watchlist\" command"
+               << std::endl;
         return false;
     }
 
     if ( watch_points_.size() <= index ) {
-        result << "Watch point " << tokens[1] << " not found. The unwatch command "
-            "requires a watchpoint index from the \"watchlist\" command" << std::endl;
+        result << "Watch point " << tokens[1]
+               << " not found. The unwatch command "
+                  "requires a watchpoint index from the \"watchlist\" command"
+               << std::endl;
         return false;
     }
 
@@ -3871,6 +4174,27 @@ parseTraceVar(std::string& tvar, Core::Serialization::ObjTreeCont* obj, Core::Se
 }
 
 
+Core::Serialization::ObjTreeCont*
+parseTraceVar(std::string& tvar, Core::Serialization::ObjTreeCont* obj, Core::Serialization::ObjTreeTraceBuffer* tb)
+{
+    // Find and check trace variable
+    auto* map = obj->findByName(tvar);
+    if ( nullptr == map ) {
+        std::cout << "Unknown variable: " << tvar << std::endl;
+        return nullptr;
+    }
+
+    // Is variable fundamental
+    //if ( !map->isFundamental() ) {
+   //     std::cout << "Traces can only be placed on fundamental types; " << tvar << "is not fundamental\n";
+   //     return nullptr;
+   // }
+   // std::string name = obj->getFullName() + "/" + tvar;
+    return map; //map->getObjectBuffer(name, tb->getBufferSize());
+}
+
+
+// Parse trace variable string
 Core::Serialization::ObjectBuffer*
 parseTraceVar(std::string& tvar, Core::Serialization::ObjectMap* obj, Core::Serialization::TraceBuffer* tb)
 {
@@ -3896,91 +4220,101 @@ parseTraceVar(std::string& tvar, Core::Serialization::ObjectMap* obj, Core::Seri
 // Could also consider having multiple actions and/or default buffer config
 // TODO check at each step that we haven't exceeded token size
 bool
-SimpleDebugger::cmd_trace_serial(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_trace_serial(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() < 9 ) {
         std::cout << "Invalid format: trace <var> <op> <value> : <bufsize> <postdelay> : "
-               "<v1> ... <vN> : <action>" << std::endl;
+                     "<v1> ... <vN> : <action>"
+                  << std::endl;
         return false;
     }
 
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    cmd_trace_remote(tokens);
-    std::cout << result.str(); 
-    return true;
-}
-
-bool
-SimpleDebugger::cmd_trace_thread(std::string& UNUSED(cmd_str))
-{
-    if ( tokens.size() < 9 ) {
-        std::cout << "Invalid format: trace <var> <op> <value> : <bufsize> <postdelay> : "
-               "<v1> ... <vN> : <action>" << std::endl;
-        return false;
-    }
-    // Clear result string 
-    result.str("");
-    result.clear();
-
-    handleCommand();
+    succeed = cmd_trace_remote(tokens);
     std::cout << result.str();
-    return true;
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_trace_rank_serial(std::string& cmd_str)
+DebugConsole::cmd_trace_thread(std::string& UNUSED(cmd_str))
 {
+    bool succeed;
     if ( tokens.size() < 9 ) {
         std::cout << "Invalid format: trace <var> <op> <value> : <bufsize> <postdelay> : "
-               "<v1> ... <vN> : <action>" << std::endl;
+                     "<v1> ... <vN> : <action>"
+                  << std::endl;
         return false;
     }
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
 
-    if (current_rank == 0) {
-       cmd_trace_remote(tokens);
-       std::cout << result.str();
-    } else {
-        // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+    succeed = handleCommand();
+    std::cout << result.str();
+    return succeed;
+}
+
+bool
+DebugConsole::cmd_trace_rank_serial(std::string& cmd_str)
+{
+    bool succeed;
+    if ( tokens.size() < 9 ) {
+        std::cout << "Invalid format: trace <var> <op> <value> : <bufsize> <postdelay> : "
+                     "<v1> ... <vN> : <action>"
+                  << std::endl;
+        return false;
+    }
+    // Clear R0 result string
+    result.str("");
+    result.clear();
+
+    if ( current_rank == 0 ) {
+        succeed = cmd_trace_remote(tokens);
         std::cout << result.str();
     }
-    return true;  // SKK Fix return values
+    else {
+        // Send to remote rank
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
+        std::cout << result.str();
+    }
+    return succeed;
 }
 
 bool
-SimpleDebugger::cmd_trace_rank_parallel(std::string& cmd_str)
+DebugConsole::cmd_trace_rank_parallel(std::string& cmd_str)
 {
+    bool succeed;
     if ( tokens.size() < 9 ) {
         std::cout << "Invalid format: trace <var> <op> <value> : <bufsize> <postdelay> : "
-               "<v1> ... <vN> : <action>" << std::endl;
+                     "<v1> ... <vN> : <action>"
+                  << std::endl;
         return false;
     }
-    // Clear result string 
+    // Clear R0 result string
     result.str("");
     result.clear();
-    
-    if (current_rank == 0) {
+
+    if ( current_rank == 0 ) {
         // Execute in correct local thread
-        handleCommand();
+        succeed = handleCommand();
         std::cout << result.str();
-    } else {
+    }
+    else {
         // Send to remote rank
-        sendCommand(current_rank, current_thread, cmd_str);
+        succeed = sendCommand(current_rank, current_thread, cmd_str);
         std::cout << result.str();
     }
 
-    return true;  // SKK Fix return values
+    return succeed;
 }
 
 
 bool
-SimpleDebugger::cmd_trace_remote(std::vector<std::string>& tokens)
+DebugConsole::cmd_trace_remote(std::vector<std::string>& tokens)
 {
     size_t      index = 1;
     std::string name  = "";
@@ -3988,7 +4322,7 @@ SimpleDebugger::cmd_trace_remote(std::vector<std::string>& tokens)
     // Get first comparison
     Core::Serialization::ObjTreeComparison* c = parseComparison(tokens, index, curObj_, nullptr);
     if ( c == nullptr ) {
-       std::cout << "Invalid argument passed in comparison trigger command" << std::endl;
+        std::cout << "Invalid argument passed in comparison trigger command" << std::endl;
         return false;
     }
     size_t wpIndex = watch_points_.size();
@@ -4093,12 +4427,12 @@ SimpleDebugger::cmd_trace_remote(std::vector<std::string>& tokens)
     return true;
 };
 
-// exit OR quit
+// exit OR quit : clears watchlists if prompted (or confirm off) then continues execution
 bool
-SimpleDebugger::cmd_exit_serial(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_exit_serial(std::string& UNUSED(cmd_str))
 {
     // Remove all watchpoints before exit?
-    if (!confirm_ || query_clear_watchlist()) {
+    if ( !confirm_ || query_clear_watchlist() ) {
         clear_watchlist(tokens);
         std::cout << "Removing all watchpoints and exiting ObjectExplorer\n";
     }
@@ -4109,12 +4443,11 @@ SimpleDebugger::cmd_exit_serial(std::string& UNUSED(cmd_str))
     return true;
 }
 
-// exit OR quit
 bool
-SimpleDebugger::cmd_exit_thread(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_exit_thread(std::string& UNUSED(cmd_str))
 {
     // Remove all watchpoints?
-    if (!confirm_ || query_clear_watchlist()) {
+    if ( !confirm_ || query_clear_watchlist() ) {
         // Clear watchlists for rank 0 threads
         handleCommandAll();
         std::cout << "Removing all watchpoints and exiting ObjectExplorer\n";
@@ -4126,12 +4459,11 @@ SimpleDebugger::cmd_exit_thread(std::string& UNUSED(cmd_str))
     return true;
 }
 
-// exit OR quit
 bool
-SimpleDebugger::cmd_exit_rank_serial(std::string& cmd_str)
+DebugConsole::cmd_exit_rank_serial(std::string& cmd_str)
 {
     // Remove all watchpoints?
-    if (!confirm_ || query_clear_watchlist()) {
+    if ( !confirm_ || query_clear_watchlist() ) {
         // Clear watchlist for rank 0
         clear_watchlist(tokens);
 
@@ -4147,13 +4479,11 @@ SimpleDebugger::cmd_exit_rank_serial(std::string& cmd_str)
     return true;
 }
 
-
-// exit OR quit
 bool
-SimpleDebugger::cmd_exit_rank_parallel(std::string& cmd_str)
+DebugConsole::cmd_exit_rank_parallel(std::string& cmd_str)
 {
     // Remove all watchpoints?
-    if (!confirm_ || query_clear_watchlist()) {
+    if ( !confirm_ || query_clear_watchlist() ) {
         // Clear watchlists for rank 0 threads
         handleCommandAll();
 
@@ -4169,17 +4499,18 @@ SimpleDebugger::cmd_exit_rank_parallel(std::string& cmd_str)
     return true;
 }
 
+// shutdown : exit the debugger and cleanly shutdown simulator
 bool
-SimpleDebugger::cmd_shutdown(std::string& UNUSED(cmd_str))
+DebugConsole::cmd_shutdown(std::string& UNUSED(cmd_str))
 {
     simulationShutdown();
     exit_console = true;
-    std::cout << "R" << rank_.rank << ", T" << rank_.thread 
-        << ": Exiting ObjectExplorer and shutting down simulation" << std::endl;
+    std::cout << "R" << rank_.rank << ", T" << rank_.thread << ": Exiting ObjectExplorer and shutting down simulation"
+              << std::endl;
     return true;
 }
 
-
+// ---- Command History Buffer Functions ----
 void
 CommandHistoryBuffer::append(std::string s)
 {
@@ -4379,9 +4710,9 @@ CommandHistoryBuffer::searchAny(const std::string& s, std::string& newcmd)
     return false;
 }
 
-
+// print message based on verbosity
 void
-SimpleDebugger::msg(VERBOSITY_MASK mask, std::string message)
+DebugConsole::msg(VERBOSITY_MASK mask, std::string message)
 {
     if ( (!static_cast<uint32_t>(mask)) & verbosity ) return;
     std::cout << message << std::endl;
@@ -4522,58 +4853,40 @@ CommandRegistry::addHelp(std::string key, std::vector<std::string>& vec)
     ;
 }
 
+
 // Handle Command sends command to all threads on current rank
 // If current_thread is total number of threads, all threads execute the function
-// Otherwise just current_thread executes the function 
+// Otherwise just current_thread executes the function
 bool
-SimpleDebugger::handleCommand()
+DebugConsole::handleCommand()
 {
-#if 0
-    std::cout << "**Enter HandleCommand: R" << rank_.rank << " T" << rank_.thread << std::endl;
-    for (const std::string& token : tokens) {
-        std::cout << token;
-    }
-    std::cout << std::endl;
-#endif
-
     static Core::ThreadSafe::Barrier exchange_barrier(num_ranks_.thread);
     static Core::ThreadSafe::Barrier process_barrier(num_ranks_.thread);
 
     // Wait for shared variables to be stored by T0 (unpack and tokenize)
     exchange_barrier.wait();
-    bool succeed = true; // Change to false once debugged
+    bool succeed = true;
 
-    if (tokens[0] == "done") {
+    if ( tokens[0] == "done" ) {
         done = true;
-    } else if (tokens[0] == "summary") {
-        if (current_thread == rank_.thread) {
+    }
+    else if ( tokens[0] == "summary" ) {
+        if ( current_thread == rank_.thread ) {
             summary();
         }
     }
     // If not DONE, process command
-    else if (!done) {
+    else if ( !done ) {
         // If I am target thread, handle the incoming command
-        if (current_thread == rank_.thread) {
-#if 0
-            std::cout << "**HandleCommand: R" << rank_.rank << " T" << rank_.thread << std::endl;
-            for (const std::string& token : tokens) {
-                std::cout << token;
-            }
-            std::cout << std::endl;
-#endif
-             
-            if (obj_ == nullptr) {
+        if ( current_thread == rank_.thread ) {
+            if ( obj_ == nullptr ) {
                 // Create a new ObjectMap
                 obj_ = getComponentObjectMap();
                 // Descend into the name_stack
                 cd_name_stack();
             }
             auto consoleCommand = cmdRegistry.seek(tokens[0], CommandRegistry::SEARCH_TYPE::BUILTIN);
-            succeed = consoleCommand.first.exec_remote(tokens);            
-        }  
-    } else {  // DONE - currently this needs to be set separately for all?
-        if (rank_.thread == current_thread) {
-            result << "**Worker DONE: R" << rank_.rank << ", T" << rank_.thread << "\n";
+            succeed             = consoleCommand.first.exec_remote(tokens);
         }
     }
 
@@ -4584,52 +4897,42 @@ SimpleDebugger::handleCommand()
 
 // Handle command for all threads in current rank
 bool
-SimpleDebugger::handleCommandAll() 
+DebugConsole::handleCommandAll()
 {
+    bool    succeed = true;
+    bool    ret;
     int32_t orig_thread = current_thread;
     for ( current_thread = 0; current_thread < num_ranks_.thread; current_thread++ ) {
-        handleCommand();
+        ret     = handleCommand();
+        succeed = succeed || ret;
     }
     current_thread = orig_thread;
-    return true;
+    return succeed;
 }
 
-int 
-SimpleDebugger::packResultBuffer( std::stringstream& result, char** result_buffer) {
-    std::string result_str = result.str();
-    //result_buffer = new char[result_str.length() +1];
-    *result_buffer = (char *) malloc(result_str.length() +1);
-    int length = result_str.length() +1;
-    std::strcpy(*result_buffer, result_str.c_str());
-
-    // Clear result for next time
-    result.str("");
-    result.clear();
-
-    return length;
-}
-
-void 
-SimpleDebugger::sendCommand( uint32_t rank_id, uint32_t thread_id,  const std::string& cmd) {
-    #ifdef SST_CONFIG_HAVE_MPI
-    char* cmd_buffer;  // SKK Could share buffer
-    int str_length;
-    int buf_size;
-    int position = 0;
-    int tag = 0;
-    int rcv_buf_size;
+bool
+DebugConsole::sendCommand(uint32_t rank_id, uint32_t thread_id, const std::string& cmd)
+{
+#ifdef SST_CONFIG_HAVE_MPI
+    char*      cmd_buffer;
+    uint32_t   str_length;
+    int        buf_size;
+    int        position = 0;
+    int        tag      = 0;
+    int        rcv_buf_size;
     MPI_Status status;
-    char* result_buffer;
+    bool       succeed = true;
+    char*      result_buffer;
 
     // Pack and Send message
     str_length = cmd.length() + 1;
-    buf_size = 3 * sizeof(int32_t) + str_length;
-    cmd_buffer = (char*) malloc(buf_size);
+    buf_size   = 3 * sizeof(uint32_t) + str_length;
+    cmd_buffer = (char*)malloc(buf_size);
 
     // Pack rank_id, thread_id, cmd str length, and cmd string
     MPI_Pack(&rank_id, 1, MPI_UINT32_T, cmd_buffer, buf_size, &position, MPI_COMM_WORLD);
     MPI_Pack(&thread_id, 1, MPI_UINT32_T, cmd_buffer, buf_size, &position, MPI_COMM_WORLD);
-    MPI_Pack(&str_length, 1, MPI_INT32_T, cmd_buffer, buf_size, &position, MPI_COMM_WORLD);
+    MPI_Pack(&str_length, 1, MPI_UINT32_T, cmd_buffer, buf_size, &position, MPI_COMM_WORLD);
     MPI_Pack(cmd.c_str(), str_length, MPI_CHAR, cmd_buffer, buf_size, &position, MPI_COMM_WORLD);
     // Send command buffer to destination rank
     MPI_Send(cmd_buffer, position, MPI_PACKED, rank_id, tag, MPI_COMM_WORLD);
@@ -4638,171 +4941,218 @@ SimpleDebugger::sendCommand( uint32_t rank_id, uint32_t thread_id,  const std::s
     // Probe for incoming message to get its length
     MPI_Probe(rank_id, tag, MPI_COMM_WORLD, &status);
     // Get the actual number of elements (characters)
-    MPI_Get_count(&status, MPI_CHAR, &rcv_buf_size);
-    result_buffer = (char*) malloc(rcv_buf_size * sizeof(char));
-    MPI_Recv(result_buffer, rcv_buf_size, MPI_CHAR, rank_id, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    result << result_buffer;
+    MPI_Get_count(&status, MPI_PACKED, &rcv_buf_size);
+    result_buffer = (char*)malloc(rcv_buf_size * sizeof(char));
+    MPI_Recv(result_buffer, rcv_buf_size, MPI_PACKED, rank_id, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+    // Unpack the succeed return code, string length, cmd string
+    position = 0;
+    MPI_Unpack(result_buffer, rcv_buf_size, &position, &succeed, 1, MPI_CXX_BOOL, MPI_COMM_WORLD);
+    MPI_Unpack(result_buffer, rcv_buf_size, &position, &str_length, 1, MPI_UINT32_T, MPI_COMM_WORLD);
+    if ( str_length > 1 ) { // not empty string
+        char* result_str = (char*)malloc(str_length * sizeof(char));
+        MPI_Unpack(result_buffer, rcv_buf_size, &position, result_str, str_length, MPI_CHAR, MPI_COMM_WORLD);
+        result << result_str;
+        free(result_str);
+    }
 
     free(cmd_buffer);
     free(result_buffer);
-    // SKK Need to return result string to calling function
-    #endif
+
+    return succeed;
+#endif
 }
 
+// Send command to all ranks and threads
+bool
+DebugConsole::sendCommandAll(const std::string& cmd_str)
+{
 
-void 
-SimpleDebugger::receiveCommandRankSerial() {  
-    #ifdef SST_CONFIG_HAVE_MPI
-    //const int default_size = 100;
-    char* cmd_buffer;
-    int buf_size;
-    int position = 0;
-    int src = 0;
-    int dst = 0;
-    int tag = 0;
+    bool succeed = true;
+    bool ret;
+
+    for ( uint32_t rank_id = 1; rank_id < num_ranks_.rank; rank_id++ ) {
+        ret     = sendCommand(rank_id, num_ranks_.thread, cmd_str);
+        succeed = succeed || ret;
+    }
+
+    return succeed;
+}
+
+void
+DebugConsole::receiveCommandRankSerial()
+{
+#ifdef SST_CONFIG_HAVE_MPI
+    // const int default_size = 100;
+    bool       succeed = true;
+    char*      cmd_buffer;
+    int        buf_size;
+    int        position = 0;
+    int        src      = 0;
+    int        dst      = 0;
+    int        tag      = 0;
     MPI_Status status;
-    int str_length;
-    char* cmd_str;
-    uint32_t rank_id, thread_id;
+    uint32_t   str_length;
+    char*      cmd_str;
+    uint32_t   rank_id, thread_id;
 
     // Receive the incoming command
     // Probe for incoming message to get its length
     MPI_Probe(src, tag, MPI_COMM_WORLD, &status);
     // Get the actual number of elements (characters)
     MPI_Get_count(&status, MPI_PACKED, &buf_size);
-    cmd_buffer = (char*) malloc(buf_size * sizeof(char));
+    cmd_buffer = (char*)malloc(buf_size * sizeof(char));
     MPI_Recv(cmd_buffer, buf_size, MPI_PACKED, src, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
     // Unpack the rank_id, thread_id, string length, cmd string
+    position = 0;
     MPI_Unpack(cmd_buffer, buf_size, &position, &rank_id, 1, MPI_UINT32_T, MPI_COMM_WORLD);
     MPI_Unpack(cmd_buffer, buf_size, &position, &thread_id, 1, MPI_UINT32_T, MPI_COMM_WORLD);
-    MPI_Unpack(cmd_buffer, buf_size, &position, &str_length, 1, MPI_INT32_T, MPI_COMM_WORLD);
-    cmd_str = (char*) malloc(str_length * sizeof(char));
+    MPI_Unpack(cmd_buffer, buf_size, &position, &str_length, 1, MPI_UINT32_T, MPI_COMM_WORLD);
+    cmd_str = (char*)malloc(str_length * sizeof(char));
     MPI_Unpack(cmd_buffer, buf_size, &position, cmd_str, str_length, MPI_CHAR, MPI_COMM_WORLD);
-    current_rank = rank_id;
+    current_rank   = rank_id;
     current_thread = thread_id;
-    
+
     // Tokenize cmd string (shared so all threads can access)
     std::string cmd(cmd_str);
     tokenize(tokens, cmd);
 
+    // Clear local result string
+    result.str("");
+    result.clear();
+
     // Set done for all threads
-    if (tokens[0] == "done") {
+    if ( tokens[0] == "done" ) {
         done = true;
-        result << "**Worker DONE: R" << rank_.rank << ", T" << rank_.thread << "\n";
-    } else if (tokens[0] == "summary") {
+    }
+    else if ( tokens[0] == "summary" ) {
         summary();
     }
-    #if 0
+#if 0 // Will we need an init with object tree?
     else if (tokens[0] == "init") {
         if (obj_ == nullptr) {
             // Create a new ObjectMap
             obj_ = getComponentObjectMap();
             // Descend into the name_stack
             cd_name_stack();
-        }   
+        }
     }
-    #endif
+#endif
     // Execute command
     else {
         auto consoleCommand = cmdRegistry.seek(tokens[0], CommandRegistry::SEARCH_TYPE::BUILTIN);
         if ( consoleCommand.second ) {
-#if 1 
             // Execute in target thread
-            if (obj_ == nullptr) {
+            if ( obj_ == nullptr ) {
                 // Create a new ObjectMap
                 obj_ = getComponentObjectMap();
                 // Descend into the name_stack
                 cd_name_stack();
-            } 
-#endif  
-            consoleCommand.first.exec_remote(tokens);
-
-        } else {
+            }
+            succeed = consoleCommand.first.exec_remote(tokens);
+            // Output::getDefaultObject().output("ReceiveCmdRankSerial: succeed %d\n", succeed);
+        }
+        else {
             std::cout << "Error: Command not found in remote rank: " << tokens[0] << std::endl;
             assert(false);
         }
     }
 
-    // Send result back to Rank 0 Thread 0
-    char* result_buffer;
-    buf_size = packResultBuffer(result, &result_buffer);
-    MPI_Send(result_buffer, buf_size, MPI_CHAR, dst, tag, MPI_COMM_WORLD);
+    // Send succeed and result string back to Rank 0 Thread 0
+    char*       result_buffer;
+    std::string result_str = result.str();
+    str_length             = result_str.length() + 1;
+    buf_size               = 2 * sizeof(uint32_t) + str_length;
+    result_buffer          = (char*)malloc(buf_size);
+    position               = 0;
+    MPI_Pack(&succeed, 1, MPI_CXX_BOOL, result_buffer, buf_size, &position, MPI_COMM_WORLD);
+    MPI_Pack(&str_length, 1, MPI_UINT32_T, result_buffer, buf_size, &position, MPI_COMM_WORLD);
+    if ( str_length > 1 ) { // not empty string
+        MPI_Pack(result_str.c_str(), str_length, MPI_CHAR, result_buffer, buf_size, &position, MPI_COMM_WORLD);
+    }
+    MPI_Send(result_buffer, position, MPI_PACKED, dst, tag, MPI_COMM_WORLD);
 
     free(cmd_buffer);
     free(cmd_str);
     free(result_buffer);
-    #endif
+#endif
 }
 
-void 
-SimpleDebugger::receiveCommandRankParallel() {
-    #ifdef SST_CONFIG_HAVE_MPI   
-    //const int default_size = 100;
-
-    char* cmd_buffer;
-    int buf_size;
-    int position = 0;
-    int src = 0;
-    int dst = 0;
-    int tag = 0;
+void
+DebugConsole::receiveCommandRankParallel()
+{
+#ifdef SST_CONFIG_HAVE_MPI
+    // const int default_size = 100;
+    bool       succeed = true;
+    char*      cmd_buffer;
+    int        buf_size;
+    int        position = 0;
+    int        src      = 0;
+    int        dst      = 0;
+    int        tag      = 0;
     MPI_Status status;
-    int str_length;
-    char* cmd_str;
-    uint32_t rank_id, thread_id;
-
+    uint32_t   str_length;
+    char*      cmd_str;
+    uint32_t   rank_id, thread_id;
 
     // Receive the incoming command
     // Probe for incoming message to get its length
     MPI_Probe(src, tag, MPI_COMM_WORLD, &status);
     // Get the actual number of elements (characters)
     MPI_Get_count(&status, MPI_PACKED, &buf_size);
-    cmd_buffer = (char*) malloc(buf_size * sizeof(char));
+    cmd_buffer = (char*)malloc(buf_size * sizeof(char));
     MPI_Recv(cmd_buffer, buf_size, MPI_PACKED, src, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
     // Unpack the rank_id, thread_id, string length, cmd string
     MPI_Unpack(cmd_buffer, buf_size, &position, &rank_id, 1, MPI_UINT32_T, MPI_COMM_WORLD);
     MPI_Unpack(cmd_buffer, buf_size, &position, &thread_id, 1, MPI_UINT32_T, MPI_COMM_WORLD);
-    MPI_Unpack(cmd_buffer, buf_size, &position, &str_length, 1, MPI_INT32_T, MPI_COMM_WORLD);
-    cmd_str = (char*) malloc(str_length * sizeof(char));
+    MPI_Unpack(cmd_buffer, buf_size, &position, &str_length, 1, MPI_UINT32_T, MPI_COMM_WORLD);
+    cmd_str = (char*)malloc(str_length * sizeof(char));
     MPI_Unpack(cmd_buffer, buf_size, &position, cmd_str, str_length, MPI_CHAR, MPI_COMM_WORLD);
-    current_rank = rank_id;
+    current_rank   = rank_id;
     current_thread = thread_id;
-    
+
     // Tokenize cmd string (shared so all threads can access)
     std::string cmd(cmd_str);
     tokenize(tokens, cmd);
 
+    // Clear local result string
+    result.str("");
+    result.clear();
+
     // Set done for all threads
-    if (tokens[0] == "done") {
+    if ( tokens[0] == "done" ) {
         handleCommand();
-    } else if (tokens[0] == "summary") {
+    }
+    else if ( tokens[0] == "summary" ) {
         handleCommandAll();
     }
-    #if 0
+#if 0 // Will we need an init with object tree?
     else if (tokens[0] == "init") {
         if (obj_ == nullptr) {
             // Create a new ObjectMap
             obj_ = getComponentObjectMap();
             // Descend into the name_stack
             cd_name_stack();
-        }   
+        }
     }
-    #endif
+#endif
 
     // Execute command for target thread
     else {
         auto consoleCommand = cmdRegistry.seek(tokens[0], CommandRegistry::SEARCH_TYPE::BUILTIN);
-        if ( consoleCommand.second ) {          
-            // Execute function for all threads    
-            if (current_thread == num_ranks_.thread) { 
+        if ( consoleCommand.second ) {
+            // Execute function for all threads
+            if ( current_thread == num_ranks_.thread ) {
                 for ( current_thread = 0; current_thread < num_ranks_.thread; current_thread++ ) {
-                    handleCommand();
+                    bool ret = handleCommand();
+                    succeed  = succeed || ret;
                 }
             }
             // Execute function for current_thread
             else {
-                handleCommand();
+                succeed = handleCommand();
             }
         }
         else {
@@ -4811,55 +5161,56 @@ SimpleDebugger::receiveCommandRankParallel() {
         }
     }
 
-    // Send result back to Rank 0 Thread 0
-    char* result_buffer;
-    buf_size = packResultBuffer(result, &result_buffer);
-    MPI_Send(result_buffer, buf_size, MPI_CHAR, dst, tag, MPI_COMM_WORLD);
+    // Send succeed and result string back to Rank 0 Thread 0
+    char*       result_buffer;
+    std::string result_str = result.str();
+    str_length             = result_str.length() + 1;
+    buf_size               = 2 * sizeof(uint32_t) + str_length;
+    result_buffer          = (char*)malloc(buf_size);
+    position               = 0;
+    MPI_Pack(&succeed, 1, MPI_CXX_BOOL, result_buffer, buf_size, &position, MPI_COMM_WORLD);
+    MPI_Pack(&str_length, 1, MPI_UINT32_T, result_buffer, buf_size, &position, MPI_COMM_WORLD);
+    if ( str_length > 1 ) { // not empty string
+        MPI_Pack(result_str.c_str(), str_length, MPI_CHAR, result_buffer, buf_size, &position, MPI_COMM_WORLD);
+    }
+    MPI_Send(result_buffer, position, MPI_PACKED, dst, tag, MPI_COMM_WORLD);
 
     free(cmd_buffer);
     free(cmd_str);
     free(result_buffer);
-    #endif
+#endif
 }
 
-// Send command to all ranks and threads
-void 
-SimpleDebugger::sendCommandAll(const std::string& cmd_str) {
-
-    for ( uint32_t rank_id = 1; rank_id < num_ranks_.rank; rank_id++ ) {
-        sendCommand(rank_id, num_ranks_.thread, cmd_str);
-    }  
-}
-
-void 
-SimpleDebugger::sendDone() {
-    #ifdef SST_CONFIG_HAVE_MPI
-    std::string cmd = "done";
-    char* cmd_buffer = nullptr;  // SKK Could share buffer
-    int str_length;
-    int buf_size;
-    int position;
-    int tag = 0;
-    int rcv_buf_size;
-    int prev_size = 0;
-    MPI_Status status;
-    char* result_buffer = nullptr;
-
+bool
+DebugConsole::sendDone()
+{
+#ifdef SST_CONFIG_HAVE_MPI
+    std::string cmd        = "done";
+    char*       cmd_buffer = nullptr;
+    uint32_t    str_length;
+    int         buf_size;
+    int         position;
+    int         tag = 0;
+    int         rcv_buf_size;
+    int         prev_size = 0;
+    MPI_Status  status;
+    bool        succeed;
+    char*       result_buffer = nullptr;
 
     // Pack and Send message
     str_length = cmd.length() + 1;
-    buf_size = 3 * sizeof(int32_t) + str_length;
-    cmd_buffer = (char*) malloc(buf_size);
-   
+    buf_size   = 3 * sizeof(int32_t) + str_length;
+    cmd_buffer = (char*)malloc(buf_size);
+
     int32_t thread_id = 0;
-    for (uint32_t rank_id = 1; rank_id < num_ranks_.rank; rank_id++ ) {
+    for ( uint32_t rank_id = 1; rank_id < num_ranks_.rank; rank_id++ ) {
         position = 0;
 
         // Pack rank_id, thread_id, cmd str length, and cmd string
         MPI_Pack(&rank_id, 1, MPI_UINT32_T, cmd_buffer, buf_size, &position, MPI_COMM_WORLD);
         MPI_Pack(&thread_id, 1, MPI_UINT32_T, cmd_buffer, buf_size, &position, MPI_COMM_WORLD);
 
-        MPI_Pack(&str_length, 1, MPI_INT32_T, cmd_buffer, buf_size, &position, MPI_COMM_WORLD);
+        MPI_Pack(&str_length, 1, MPI_UINT32_T, cmd_buffer, buf_size, &position, MPI_COMM_WORLD);
 
         MPI_Pack(cmd.c_str(), str_length, MPI_CHAR, cmd_buffer, buf_size, &position, MPI_COMM_WORLD);
 
@@ -4871,59 +5222,67 @@ SimpleDebugger::sendDone() {
         MPI_Probe(rank_id, tag, MPI_COMM_WORLD, &status);
         // Get the actual number of elements (characters)
         MPI_Get_count(&status, MPI_CHAR, &rcv_buf_size);
-        if (rcv_buf_size > prev_size) {
-            if (result_buffer != nullptr) {
+        // Consider using this in sendCommand - all done messages should be the same size
+        if ( rcv_buf_size > prev_size ) {
+            if ( result_buffer != nullptr ) {
                 free(result_buffer);
             }
-            result_buffer = (char*) malloc(rcv_buf_size * sizeof(char));
-            prev_size = rcv_buf_size;
+            result_buffer = (char*)malloc(rcv_buf_size * sizeof(char));
+            prev_size     = rcv_buf_size;
         }
         MPI_Recv(result_buffer, rcv_buf_size, MPI_CHAR, rank_id, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+        // Unpack the rank_id, thread_id, string length, cmd string
+        position = 0;
+        MPI_Unpack(result_buffer, buf_size, &position, &succeed, 1, MPI_CXX_BOOL, MPI_COMM_WORLD);
     } // End for each rank
 
     free(cmd_buffer);
-    #endif
+    return succeed;
+#endif
 }
 
 // Could just call the correct execute directly now
 int
-SimpleDebugger::execute(const std::string& msg)  
+DebugConsole::execute(const std::string& msg)
 {
-    //Simulation_impl::getSimulation()->interactive_msg_ = msg;
+    int ret;
     // Serial (single rank, single thread)
-    if (num_ranks_.rank == 1 && num_ranks_.thread == 1) {
+    if ( num_ranks_.rank == 1 && num_ranks_.thread == 1 ) {
         // ExecutionType::SERIAL;
-        //std::cout << "Serial execute" << std::endl;
-        //std::cout << "\nINTERACTIVE CONSOLE" << std::endl;
-        //summary();
-        consoleExecute(msg);
+        // Currently we don't print summary because it would break existing tests
+        // but we may want the components to print for consistency
+        // std::cout << "Serial execute" << std::endl;
+        // std::cout << "\nINTERACTIVE CONSOLE" << std::endl;
+        // summary();
+        ret = consoleExecute(msg);
     }
     // Thread (single rank, multiple threads)
-    else if (num_ranks_.rank == 1) {
+    else if ( num_ranks_.rank == 1 ) {
         // ExecutionType::THREAD;
-        //std::cout << "Thread execute" << std::endl;
-        executeThread(msg);
+        // std::cout << "Thread execute" << std::endl;
+        ret = executeThread(msg);
     }
     // Rank Serial (multiple ranks, single thread per rank)
-    else if (num_ranks_.thread == 1) {
+    else if ( num_ranks_.thread == 1 ) {
         // ExecutionType::RANK_SERIAL;
-        //std::cout << "RankSerial execute" << std::endl;
-        executeRankSerial(msg);
+        // std::cout << "RankSerial execute" << std::endl;
+        ret = executeRankSerial(msg);
     }
     // Rank Parallel (multiple ranks, multiple threads per rank)
-    else  {
+    else {
         // ExecutionType::RANK_PARALLEL;
-        //std::cout << "RankParallel execute" << std::endl;
-        executeRankParallel(msg);
+        // std::cout << "RankParallel execute" << std::endl;
+        ret = executeRankParallel(msg);
     }
-    return 1;  // SKK Fix handling of return codes
+    return ret; // Return code currently unused by sync manager
 }
 
 int
-SimpleDebugger::executeThread(const std::string& msg) 
+DebugConsole::executeThread(const std::string& msg)
 {
-    if (rank_.thread == 0)  { 
-        // Clear result string 
+    if ( rank_.thread == 0 ) {
+        // Clear R0 result string
         result.str("");
         result.clear();
 
@@ -4941,33 +5300,33 @@ SimpleDebugger::executeThread(const std::string& msg)
         tokens[0] = "done";
         handleCommand();
     }
-    else { 
+    else {
         // Init object map
-        if (obj_ == nullptr) {
+        if ( obj_ == nullptr ) {
             // Create a new ObjectMap
             obj_ = getComponentObjectMap();
             // Descend into the name_stack
             cd_name_stack();
-        }  
-        
+        }
+
         // Enter done loop
-        while (!done) {
+        while ( !done ) {
             // Wait for commands
             handleCommand();
         }
     }
-    done = false; 
-    return -1; // SKK Fix handling of return codes
+    done = false;
+    return 0; // Return codes currently unused
 }
 
 int
-SimpleDebugger::executeRankSerial(const std::string& msg) 
+DebugConsole::executeRankSerial(const std::string& msg)
 {
-    #ifdef SST_CONFIG_HAVE_MPI
+#ifdef SST_CONFIG_HAVE_MPI
     // -- Rank 0
     // Executes the console and sends commands to other threads/ranks as needed
-    if (rank_.rank == 0)  { 
-        // Clear result string 
+    if ( rank_.rank == 0 ) {
+        // Clear R0 result string
         result.str("");
         result.clear();
 
@@ -4978,20 +5337,20 @@ SimpleDebugger::executeRankSerial(const std::string& msg)
         summary();
         std::cout << result.str();
 
-        // Clear result string 
+        // Clear R0 result string
         result.str("");
         result.clear();
         sendCommandAll(str);
         std::cout << result.str();
 
-        //sendInit();
+        // sendInit();
 
         // Enter console to handle commands
         consoleExecute(msg);
-        
+
         // Set done locally
         done = true;
-        
+
         // Send done to remote ranks
         sendDone();
 
@@ -4999,25 +5358,25 @@ SimpleDebugger::executeRankSerial(const std::string& msg)
     // -- Rank i!=0
     // Handles incoming/outgoing mpi messages and executes command
     else { // Other ranks
-        while (!done) {
+        while ( !done ) {
             receiveCommandRankSerial();
         } // while !done
-    }  // end Rank i!=0
+    } // end Rank i!=0
 
-    done = false;  // SKK Fix handling of return codes
-    return -1;
-#endif  // SST_CONFIG_HAVE_MPI
+    done = false; // Return codes currently unused
+    return 0;
+#endif // SST_CONFIG_HAVE_MPI
 }
 
 int
-SimpleDebugger::executeRankParallel(const std::string& msg) 
+DebugConsole::executeRankParallel(const std::string& msg)
 {
-    #ifdef SST_CONFIG_HAVE_MPI
+#ifdef SST_CONFIG_HAVE_MPI
 
     // -- Rank 0, Thread 0
     // Executes the console and sends commands to other threads/ranks as needed
-    if (rank_.rank == 0 && rank_.thread == 0)  { 
-        // Clear result string 
+    if ( rank_.rank == 0 && rank_.thread == 0 ) {
+        // Clear R0 result string
         result.str("");
         result.clear();
         // Print Summary
@@ -5027,21 +5386,21 @@ SimpleDebugger::executeRankParallel(const std::string& msg)
         handleCommandAll();
         std::cout << result.str();
 
-         // Clear result string 
+        // Clear R0 result string
         result.str("");
         result.clear();
         sendCommandAll(str);
         std::cout << result.str();
 
-        //sendInit();
+        // sendInit();
 
         // Enter console to handle commands
         consoleExecute(msg);
-        
+
         // Set done in local rank threads
         tokens.clear();
         tokens[0] = "done";
-        handleCommand();    
+        handleCommand();
 
         // Send done to remote ranks
         sendDone();
@@ -5049,25 +5408,25 @@ SimpleDebugger::executeRankParallel(const std::string& msg)
     } // end Rank 0, Thread 0
     // -- Rank i!=0, Thread 0
     // Handles incoming/outgoing mpi messages and invokes command with target thread(s)
-    else if (rank_.rank !=0 && rank_.thread == 0) { // Other ranks, thread 0
+    else if ( rank_.rank != 0 && rank_.thread == 0 ) { // Other ranks, thread 0
 
-        while (!done) {
+        while ( !done ) {
             receiveCommandRankParallel();
         } // while !done
-    }  // end Rank i!=0, Thread 0
+    } // end Rank i!=0, Thread 0
     // -- Rank i!=0, Thread j!=0
     // All other threads wait for commands
-    else { 
-        while (!done) {
+    else {
+        while ( !done ) {
             handleCommand();
         }
     }
 
     done = false;
-    // SKK Maybe check shutdown here as well?
-    #endif
-    return -1; // SKK Fix handling of return codes
-}  //end rankParallelExecute
+    // Maybe check shutdown here as well?
+    return 0; // Return codes currently unused
+#endif
+} // end rankParallelExecute
 
 
 } // namespace SST::IMPL::Interactive

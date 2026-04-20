@@ -27,6 +27,10 @@ namespace SST {
 class RankSyncQueue;
 class TimeConverter;
 
+namespace Profile {
+class SyncProfileToolList;
+};
+
 class RankSyncParallelSkip : public RankSync
 {
 public:
@@ -52,18 +56,17 @@ public:
     bool getSignals(int& end, int& usr, int& alrm) override;
 
     /** Set interactive flags to exchange during sync */
-    // SKK Separated enter_interactive from from shutdown since they may be needed separately
+    // Separated enter_interactive from from shutdown since they may be needed separately
     void setShutdownFlags(bool enter_shutdown, Simulation_impl::ShutdownMode_t shutdown_mode) override;
     void setCkptFlag(bool generate_ckpt) override;
     void setFlags(bool enter_interactive, bool enter_shutdown, Simulation_impl::ShutdownMode_t shutdown_mode) override;
     /** Return exchanged interactive flags after sync */
-    void getShutdownFlags( bool& enter_shutdown, Simulation_impl::ShutdownMode_t& shutdown_mode) override;
+    void getShutdownFlags(bool& enter_shutdown, Simulation_impl::ShutdownMode_t& shutdown_mode) override;
     void getCkptFlag(bool& generate_ckpt) override;
-    void getFlags( bool& enter_interactive, bool& enter_shutdown, Simulation_impl::ShutdownMode_t& shutdown_mode) override;
-     /** Clear interactive flags before next run */
-    void clearFlags() override;   
-    void interactiveExchange() override;
-    void shutdownExchange() override; 
+    void getFlags(
+        bool& enter_interactive, bool& enter_shutdown, Simulation_impl::ShutdownMode_t& shutdown_mode) override;
+    /** Clear interactive flags before next run */
+    void clearFlags() override;
 
     SimTime_t getNextSyncTime() override { return myNextSyncTime; }
 
@@ -71,8 +74,7 @@ public:
 
     uint64_t getDataSize() const override;
 
-     // Test manager/worker 
-    void testManager() override;
+    void setProfileToolList(Profile::SyncProfileToolList* profile_tools) override;
 
 private:
     static SimTime_t myNextSyncTime;
@@ -149,20 +151,16 @@ private:
     Core::ThreadSafe::Barrier slaveExchangeDoneBarrier;
     Core::ThreadSafe::Barrier allDoneBarrier;
 
-    Core::ThreadSafe::Spinlock lock;
-    static int                 sig_end_;
-    static int                 sig_usr_;
-    static int                 sig_alrm_;
-    static std::atomic<bool>         enter_interactive_;
-    static std::atomic<bool>         enter_shutdown_;
-    static std::atomic<unsigned>     shutdown_mode_;
-    static std::atomic<bool>         generate_ckpt_;
+    Profile::SyncProfileToolList* profile_tools_ = nullptr;
 
-    // Test Manager/worker 
-    // SKK Test Producer Consumer
-    static int32_t test_rid_;
-    static int32_t test_tid_;
-    static int32_t test_cmd_;  // 0 = DONE, 1 = PRINT
+    Core::ThreadSafe::Spinlock   lock;
+    static int                   sig_end_;
+    static int                   sig_usr_;
+    static int                   sig_alrm_;
+    static std::atomic<bool>     enter_interactive_;
+    static std::atomic<bool>     enter_shutdown_;
+    static std::atomic<unsigned> shutdown_mode_;
+    static std::atomic<bool>     generate_ckpt_;
 };
 
 } // namespace SST

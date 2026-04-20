@@ -27,9 +27,11 @@
 #include <exception>
 #include <functional>
 #include <iostream>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <ostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -565,48 +567,7 @@ public:
        @return ObjectMap representing the requested variable if it is
        found, nullptr otherwise
      */
-    ObjectMap* findVariable(const std::string& name, bool confirm = false) const
-    {
-// TODO move body into objectMap.cc
-#if 1
-        // Would prefer we can uniquify the variable list whilst mapping and not use a multimap.
-        // Assuming multimap is sorted.
-        auto& variables = getVariables();
-        auto  range     = variables.equal_range(name);
-        auto  count     = std::distance(range.first, range.second);
-        if ( count == 0 ) return nullptr;
-        if ( count == 1 || (!confirm) ) return range.first->second;
-        // more than 1 found and confirm is true
-        std::vector<ObjectMap*> selections = {};
-        for ( auto [it, end] = variables.equal_range(name); it != end; ++it )
-            selections.push_back(it->second);
-
-        std::cout << "[Found multiple entries for <" << name << ">]" << std::endl;
-        int         remaining = 3;
-        int         n;
-        std::string user_input;
-        while ( remaining-- > 0 ) {
-            for ( size_t i = 0; i < selections.size(); i++ )
-                std::cout << i << ": " << selections[i]->getName() << " " << selections[i]->getType() << std::endl;
-            std::cout << "-1:  None" << std::endl;
-            std::cout << "[?] ";
-            std::getline(std::cin, user_input);
-            std::stringstream ss(user_input);
-            if ( (ss >> n) && ss.eof() ) {
-                if ( n < 0 ) return nullptr;
-                if ( n < (int)selections.size() ) return selections[n];
-            }
-            std::cout << "Invalid entry" << std::endl;
-        }
-        std::cout << "Too many attempts\n" << std::endl;
-        return nullptr;
-#else
-        auto& variables = getVariables();
-        for ( auto [it, end] = variables.equal_range(name); it != end; ++it )
-            return it->second; // For now, we return only the first match if multiple matches
-        return nullptr;
-#endif
-    }
+    ObjectMap* findVariable(const std::string& name, bool confirm = false) const;
 
     /**
        Refresh the ObjectMap, reconstructing children
@@ -1204,7 +1165,7 @@ public:
                 ObjectBuffer* varBuffer_ = objBuffers_[obj];
                 std::cout << SST::Core::to_string(varBuffer_->getName()) << "=" << varBuffer_->get(i) << " ";
             }
-            std::cout << std::endl;
+            std::cout << "\n";
 
             if ( i == end ) {
                 break;
@@ -1214,17 +1175,19 @@ public:
 
     void dumpTriggerRecord()
     {
+        std::stringstream ss;
         if ( numRecs_ == 0 ) {
             std::cout << "No trace samples in current buffer" << std::endl;
             return;
         }
         if ( state_ != CLEAR ) {
-            std::cout << "LastTriggerRecord:@cycle" << triggerCycle << ": SamplesLost=" << samplesLost_ << ": ";
+            ss << "LastTriggerRecord:@cycle" << triggerCycle << ": SamplesLost=" << samplesLost_ << ": ";
             for ( size_t obj = 0; obj < numObjects; obj++ ) {
                 ObjectBuffer* varBuffer_ = objBuffers_[obj];
-                std::cout << SST::Core::to_string(varBuffer_->getName()) << "=" << varBuffer_->getTriggerVal() << " ";
+                ss << SST::Core::to_string(varBuffer_->getName()) << "=" << varBuffer_->getTriggerVal() << " ";
             }
-            std::cout << std::endl;
+            ss << "\n";
+            std::cout << ss.str();
         }
     }
 
