@@ -57,7 +57,7 @@ REENABLE_WARNING
 #include "sst/core/unitAlgebra.h"
 #include "sst/core/util/bit_util.h"
 #include "sst/core/util/perfReporter.h"
-
+#include "sst/core/tcldbg.h"
 #include <cinttypes>
 #include <csignal>
 #include <ctime>
@@ -463,7 +463,7 @@ start_simulation(uint32_t tid, SimThreadInfo_t& info, Core::ThreadSafe::Barrier&
     // Setup Mempools
     Core::MemPoolAccessor::initializeLocalData(tid);
     info.myRank.thread = tid;
-
+    tcldbg::spinner("SST_SPINNER");
     bool restart = cfg.load_from_checkpoint();
 
     ////// Create Simulation Objects //////
