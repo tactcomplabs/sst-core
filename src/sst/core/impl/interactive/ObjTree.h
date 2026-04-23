@@ -154,6 +154,9 @@ namespace SST::Core::Serialization {
                                   || kind_ == NodeKind::String  || kind_ == NodeKind::Bool
                                   || kind_ == NodeKind::GenericVal; }
 
+        virtual void clear() {
+            children_.clear();
+        }
         protected:
         ObjTreeCont*                                parent_;
         std::vector<std::unique_ptr<ObjTreeCont>>   children_;
@@ -216,6 +219,10 @@ namespace SST::Core::Serialization {
         bool isEmpty(){return objects_.empty();}
 
         void Dump([[maybe_unused]] const int verbosity, std::ostream& os = std::cout) override { os << "Root/" << std::endl;}
+        void clear() override {
+            ObjTreeCont::clear();
+            objects_.clear();
+        }
 
         protected:
         std::vector<std::unique_ptr<ObjTreeCont>> objects_;
@@ -525,6 +532,7 @@ public:
             os << name_ << " [" << size_ << " elements] (" << type_ << ")"<< std::endl;
         }
         else {
+            os << name_ << " [" << size_ << " elements] (" << type_ << ")"<< std::endl;
             applyRecursive([&](ObjTreeCont* child) {
                 child->Dump(verbosity - 1, os);
             });

@@ -21,7 +21,7 @@
 #include "sst/core/sst_mpi.h"
 #include "sst/core/threadsafe.h"
 #include "sst/core/watchPoint.h"
-include "sst/core/impl/interactive/ObjTree.h"
+#include "sst/core/impl/interactive/ObjTree.h"
 
 #include <atomic>
 #include <cassert>
