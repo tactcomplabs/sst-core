@@ -66,10 +66,10 @@ public:
     // Constructor for built-in commands has callback - remote calls
     ConsoleCommand(std::string str_long, std::string str_short, std::string str_help, ConsoleCommandGroup group,
         ExecutionType exec_type, std::function<bool(std::string& cmd_str)> func_serial,
-        std::function<bool(std::string& cmd_str)>                     func_thread,
-        std::function<bool(std::string& cmd_str)>                     func_rank_serial,
-        std::function<bool(std::string& cmd_str)>                     func_rank_parallel,
-        std::function<bool(std::vector<std::string>& UNUSED(tokens))> func_remote) :
+        std::function<bool(std::string& cmd_str)>             func_thread,
+        std::function<bool(std::string& cmd_str)>             func_rank_serial,
+        std::function<bool(std::string& cmd_str)>             func_rank_parallel,
+        std::function<bool(std::vector<std::string>& tokens)> func_remote) :
         str_long_(str_long),
         str_short_(str_short),
         str_help_(str_help),
@@ -119,7 +119,7 @@ public:
     bool                       exec_thread(std::string& cmd_str) { return func_thread_(cmd_str); }
     bool                       exec_rank_serial(std::string& cmd_str) { return func_rank_serial_(cmd_str); }
     bool                       exec_rank_parallel(std::string& cmd_str) { return func_rank_parallel_(cmd_str); }
-    bool                       exec_remote(std::vector<std::string>& UNUSED(tokens)) { return func_remote_(tokens); }
+    bool                       exec_remote(std::vector<std::string>& tokens) { return func_remote_(tokens); }
     bool                       match(const std::string& token)
     {
         std::string lctoken = toLower(token);
@@ -140,12 +140,12 @@ private:
     ConsoleCommandGroup group_;
     ExecutionType       exec_type_;
 
-    std::function<bool(std::string& cmd_str)>                     func_;
-    std::function<bool(std::string& cmd_str)>                     func_serial_;
-    std::function<bool(std::string& cmd_str)>                     func_thread_;
-    std::function<bool(std::string& cmd_str)>                     func_rank_serial_;
-    std::function<bool(std::string& cmd_str)>                     func_rank_parallel_;
-    std::function<bool(std::vector<std::string>& UNUSED(tokens))> func_remote_;
+    std::function<bool(std::string& cmd_str)>             func_;
+    std::function<bool(std::string& cmd_str)>             func_serial_;
+    std::function<bool(std::string& cmd_str)>             func_thread_;
+    std::function<bool(std::string& cmd_str)>             func_rank_serial_;
+    std::function<bool(std::string& cmd_str)>             func_rank_parallel_;
+    std::function<bool(std::vector<std::string>& tokens)> func_remote_;
 
     std::string toLower(std::string s)
     {
