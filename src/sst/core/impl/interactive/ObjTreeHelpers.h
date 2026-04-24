@@ -128,7 +128,6 @@ public:
     void addObjectBuffer(ObjTreeCont* vb)
     {
         objBuffers_.push_back(vb);
-        numObjects++;
     }
 
     enum BufferState : int {
@@ -174,7 +173,7 @@ public:
 
         // Sample all the trace object buffers
         ObjTreeCont* varBuffer_;
-        for ( size_t obj = 0; obj < numObjects; obj++ ) {
+        for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
             varBuffer_ = objBuffers_[obj];
             //varBuffer_->sample(cur_, trigger);
             if(trigger){
@@ -242,7 +241,7 @@ public:
             std::cout << "buf[" << i << "] " << handlerBuffer_.at(i) << " @" << cycleBuffer_.at(i) << " ("
                       << state2char.at(tagBuffer_.at(i)) << ") ";
 
-            for ( size_t obj = 0; obj < numObjects; obj++ ) {
+            for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
                 ObjTreeCont* varBuffer_ = objBuffers_[obj];
                 varBuffer_->Dump(2);
                 //std::cout << varBuffer_->getObjName() << "=" << varBuffer_->get() << " ";
@@ -263,7 +262,7 @@ public:
         }
         if ( state_ != CLEAR ) {
             std::cout << "LastTriggerRecord:@cycle" << triggerCycle << ": SamplesLost=" << samplesLost_ << ": ";
-            for ( size_t obj = 0; obj < numObjects; obj++ ) {
+            for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
                 ObjTreeCont* varBuffer_ = objBuffers_[obj];
                 //std::cout << SST::Core::to_string(varBuffer_->getName()) << "=" << varBuffer_->getTriggerVal() << " ";
                 varBuffer_->Dump(1);
@@ -274,7 +273,7 @@ public:
 
     void printVars(std::stringstream& ss)
     {
-        for ( size_t obj = 0; obj < numObjects; obj++ ) {
+        for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
             ObjTreeCont* varBuffer_ = objBuffers_[obj];
             //ss << SST::Core::to_string(varBuffer_->getName()) << " ";
             ss << varBuffer_->getObjName() << " ";
@@ -299,7 +298,6 @@ public:
     bool                            reset_       = false;
     BufferState                     state_       = CLEAR;
 
-    size_t                     numObjects = 0;
     std::vector<BufferState>   tagBuffer_;
     std::vector<std::string>   handlerBuffer_;
     std::vector<ObjTreeCont*>  objBuffers_;

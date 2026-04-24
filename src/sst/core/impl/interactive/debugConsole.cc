@@ -553,8 +553,7 @@ DebugConsole::consoleExecute(const std::string& msg)
 
     // Save the position on the name_stack, and clear obj_
     save_name_stack();
-    objTree_->clear();     // tear down the children so we refresh next time we break in
-    curObj_ = nullptr;    
+     
     done = true;
     return retState;
 }
@@ -574,6 +573,9 @@ DebugConsole::save_name_stack()
             parent =  parent->getParent();
         }
     }
+
+    objTree_->clear();     // tear down the children so we refresh next time we break in
+    curObj_ = nullptr;    
 
     //DDD: remove this
     obj_->decRefCount();
@@ -3009,7 +3011,9 @@ parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serializa
         // In changed mode, we do not use v2, but add a "placeholder" object to the compairson list. This is a touch
             // wasteful, but makes our life a lot easier later 
         if ( op->operators.back() == Core::Serialization::ObjTreeComparison::Op::CHANGED ) {
-            op->objectsToCompare.emplace_back(std::move(path), Core::Serialization::ObjTreeComparison::valType::UNKNOWN, opObj->clone());
+            std::deque<std::string> tmpPath;
+            tmpPath.push_front("unnit");
+            op->objectsToCompare.emplace_back(std::move(tmpPath), Core::Serialization::ObjTreeComparison::valType::UNKNOWN, opObj->clone());
             return op;
         }
     }else {
@@ -4527,6 +4531,11 @@ DebugConsole::handleCommand()
     else if ( !done ) {
         // If I am target thread, handle the incoming command
         if ( current_thread == rank_.thread ) {
+            if(curObj_== nullptr || objTree_->isEmpty()){
+                objTree_->BuildTree(getComponentInfoMap());
+                curObj_ = objTree_;
+                cd_name_stack();
+            }
             if ( obj_ == nullptr ) {
                 // Create a new ObjectMap
                 obj_ = getComponentObjectMap();
@@ -4692,6 +4701,11 @@ DebugConsole::receiveCommandRankSerial()
         auto consoleCommand = cmdRegistry.seek(tokens[0], CommandRegistry::SEARCH_TYPE::BUILTIN);
         if ( consoleCommand.second ) {
             // Execute in target thread
+            if(curObj_ == nullptr || objTree_->isEmpty()){
+                objTree_->BuildTree(getComponentInfoMap());
+                curObj_ = objTree_;
+                cd_name_stack();
+            }
             if ( obj_ == nullptr ) {
                 // Create a new ObjectMap
                 obj_ = getComponentObjectMap();
@@ -4956,6 +4970,11 @@ DebugConsole::executeThread(const std::string& msg)
             // Descend into the name_stack
             cd_name_stack();
         }
+       if( curObj_ == nullptr || objTree_->isEmpty() ){
+            objTree_->BuildTree(getComponentInfoMap());
+            curObj_ = objTree_;
+            cd_name_stack();
+       } 
 
         // Enter done loop
         while ( !done ) {

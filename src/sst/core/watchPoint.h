@@ -141,7 +141,6 @@ public:
     void afterHandler(uintptr_t UNUSED(key), const bool& UNUSED(ret)) override;
 
     // Local
-    inline void        setName(std::string& name){name_ = name;}
     inline std::string getName() { return name_; }
     size_t             getBufferSize();
     void               printTriggerRecord();

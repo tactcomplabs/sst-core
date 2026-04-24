@@ -399,11 +399,19 @@ namespace SST::Core::Serialization {
             }
             else if(verbosity == 1){
                 visit([&](auto val) {
-                    os << getObjName()  << std::setprecision(12) << " = " << val << std::endl;
+                    auto old_flags = os.flags();
+                    auto old_prec = os.precision();
+                    os << getObjName()  << std::fixed << std::setprecision(12) << " = " << val << std::endl;
+                    os.flags(old_flags);
+                    os.precision(old_prec);
                 });
             }else{
                 visit([&](auto val) {
-                    os << getObjName() << std::setprecision(12) << " = " << val << " (" << getType() << ")" << std::endl;
+                    auto old_flags = os.flags();
+                    auto old_prec = os.precision();
+                    os << getObjName() << std::fixed << std::setprecision(12) << " = " << val << " (" << getType() << ")" << std::endl;
+                    os.flags(old_flags);
+                    os.precision(old_prec);
                 });
             }
         }
@@ -477,6 +485,7 @@ namespace SST::Core::Serialization {
 
     template<typename Obj_T>
     void ObjTree<Obj_T>::BuildTree(const ComponentInfoMap& compMap){
+        if(!children_.empty()){std::cout << "WARNING: Calling BuildTree on non-empty ObjTree" << std::endl;}
         for ( auto comp = compMap.begin(); comp != compMap.end(); comp++ ) {
         ComponentInfo* compinfo = *comp;
         BaseComponent* bc = compinfo->getComponent();

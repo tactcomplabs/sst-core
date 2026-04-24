@@ -84,7 +84,6 @@ public:
 
     BaseComponent(const BaseComponent&)            = delete;
     BaseComponent& operator=(const BaseComponent&) = delete;
-
     /**
        Gets the ELI type for this BaseComponent
 

@@ -27,7 +27,9 @@ ObjTreeComparison::evaluateComparison(unsigned index, [[maybe_unused]] SST::Core
         { return false; }
 
     if(operators[index] == Op::CHANGED ){ 
-        return std::get<std::unique_ptr<Core::Serialization::ObjTreeCont>>(objectsToCompare[index*2])->hasChanged();
+        bool result = std::get<std::unique_ptr<Core::Serialization::ObjTreeCont>>(objectsToCompare[index*2])->hasChanged();
+        std::get<std::unique_ptr<Core::Serialization::ObjTreeCont>>(objectsToCompare[index*2])->syncFromSim();
+        return result;
     }else {
         std::get<std::unique_ptr<Core::Serialization::ObjTreeCont>>(objectsToCompare[index*2])->syncFromSim();
         std::get<std::unique_ptr<Core::Serialization::ObjTreeCont>>(objectsToCompare[(index*2)+1])->syncFromSim();
