@@ -69,7 +69,7 @@ void
 WatchPoint::SetVarWPAction::invokeAction(WatchPoint* wp)
 {
     try {
-        obj_->set(valStr_);
+        obj_->setFromString(valStr_);
     }
     catch ( const std::exception& e ) {
         printf("Invalid set var: %s\n", valStr_.c_str());

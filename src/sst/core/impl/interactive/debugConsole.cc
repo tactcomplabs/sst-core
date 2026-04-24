@@ -462,14 +462,10 @@ DebugConsole::consoleExecute(const std::string& msg)
               << getCurrentSimCycle() << std::endl;
     std::cout << msg << std::endl;
 
-    // Create a new ObjectMap
-    obj_ = getComponentObjectMap();
-
     // Try and serialize the entire map
    // auto totalMap = SST::Core::Serialization::ObjectMapToTree::convertAndSerialize("root", obj_);
    // printf("---- total map:\n ----");
    // totalMap->Dump(2);
-
 
    // if(objTree_->isEmpty()){
         objTree_->BuildTree(getComponentInfoMap());
@@ -551,14 +547,14 @@ DebugConsole::consoleExecute(const std::string& msg)
         }
     }
 
-    // Save the position on the name_stack, and clear obj_
+    // Save the position on the name_stack, and clear objTree_ and curObj_
     save_name_stack();
      
     done = true;
     return retState;
 }
 
-// Save the name stack of the current position, and clear obj_
+// Save the name stack of the current position, and clear objTree and curObj_
 void
 DebugConsole::save_name_stack()
 {
@@ -577,9 +573,6 @@ DebugConsole::save_name_stack()
     objTree_->clear();     // tear down the children so we refresh next time we break in
     curObj_ = nullptr;    
 
-    //DDD: remove this
-    obj_->decRefCount();
-    obj_ = nullptr;
 }
 
 // Descend into the name_stack
@@ -2366,25 +2359,17 @@ DebugConsole::cmd_addTraceVar_remote(std::vector<std::string>& tokens)
         const std::string& tvar = tokens[tindex++];
 
         // Find and check trace variable
-        //Core::Serialization::ObjectMap* map = obj_->findVariable(tvar);
         auto* map = curObj_->findByName(tvar);
         if ( nullptr == map ) {
             result << "Unknown variable: " << tvar << std::endl;
             return false;
         }
 
-        // Is variable fundamental
-        //if ( !map->isFundamental() ) {
-        //    result << "Traces can only be placed on fundamental types; " << tvar 
-        //        << " is not fundamental" << std::endl;
-        //    return false;
-       // }
         size_t bufsize = wp->getBufferSize();
         if ( bufsize == 0 ) {
             result << "Watchpoint " << wpIndex << " does not have tracing enabled" << std::endl;
             return false;
         }
-        //auto* ob = map->getObjectBuffer(obj_->getFullName() + "/" + tvar, bufsize);
         wp->addObjectBuffer(map);
     }
     return true;
@@ -3168,7 +3153,7 @@ parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serializa
 
 // helper function to parse watchpoint action string
 WatchPoint::WPAction*
-parseAction(std::vector<std::string>& tokens, size_t& index, Core::Serialization::ObjectMap* obj)
+parseAction(std::vector<std::string>& tokens, size_t& index, Core::Serialization::ObjTreeCont* obj)
 {
     const std::string& action = tokens[index++];
 
@@ -3201,32 +3186,42 @@ parseAction(std::vector<std::string>& tokens, size_t& index, Core::Serialization
         const std::string& tval = tokens[index++];
 
         // Find and check variable
-        Core::Serialization::ObjectMap* map = obj->findVariable(tvar);
+        Core::Serialization::ObjTreeCont* map = obj->findByName(tvar);
         if ( nullptr == map ) {
             std::cout << "Unknown variable: " << tvar << std::endl;
             return nullptr;
         }
 
         // Is variable fundamental
-        if ( !map->isFundamental() ) {
-            std::cout << "Can only set fundamental variable, " << tvar << " is not fundamental" << std::endl;
-            return nullptr;
-        }
+      //  if ( !map->isFundamental() ) {
+       //     std::cout << "Can only set fundamental variable, " << tvar << " is not fundamental" << std::endl;
+       //     return nullptr;
+       // }
 
         // Is variable read-only
-        if ( map->isReadOnly() ) {
-            std::cout << "Object specified in set command is read-only: " << tvar << std::endl;
-            return nullptr;
-        }
+      //  if ( map->isReadOnly() ) {
+       //     std::cout << "Object specified in set command is read-only: " << tvar << std::endl;
+      //      return nullptr;
+      //  }
 
         // Check for valid value
-        if ( !map->checkValue(tval) ) {
-            return nullptr;
+       // if ( !map->checkValue(tval) ) {
+      //      return nullptr;
+      //  }
+
+       
+        std::string name;
+        Core::Serialization::ObjTreeCont* parent =  obj->getParent();
+        name.append("/" + tvar);
+        name.insert(0, obj->getObjName());
+        while (parent && !parent->isRoot())
+        {
+            name.insert(0, "/");
+            name.insert(0, parent->getObjName());
+            parent =  parent->getParent();
         }
 
-        std::string name = obj->getFullName() + "/" + tvar;
-
-        return new WatchPoint::SetVarWPAction(name, map, tval);
+        return new WatchPoint::SetVarWPAction(name, map->clone(), tval);
     }
 #if 0 // Do users want a heartbeat action?
     else if (action == "heartbeat") {
@@ -3240,6 +3235,7 @@ parseAction(std::vector<std::string>& tokens, size_t& index, Core::Serialization
         return nullptr;
     }
 }
+
 
 // watch <trigger>   where
 //  <trigger> is <comparison> OR <comparison> <logicOp> <comparison> ...
@@ -3716,7 +3712,7 @@ DebugConsole::cmd_unwatch_remote(std::vector<std::string>& tokens)
 }
 
 Core::Serialization::ObjTreeTraceBuffer*
-parseTraceBuffer(std::vector<std::string>& tokens, size_t& index, SST::Core::Serialization::ObjTreeCont* obj)
+parseTraceBuffer(std::vector<std::string>& tokens, size_t& index)
 {
     size_t bufsize = 32;
     size_t pdelay  = 0;
@@ -3771,64 +3767,8 @@ parseTraceBuffer(std::vector<std::string>& tokens, size_t& index, SST::Core::Ser
     }
 }
 
-Core::Serialization::TraceBuffer*
-parseTraceBuffer(std::vector<std::string>& tokens, size_t& index, Core::Serialization::ObjectMap* obj)
-{
-    size_t bufsize = 32;
-    size_t pdelay  = 0;
-
-    // Get buffer config
-    if ( tokens[index++] != ":" ) {
-        std::cout << "Invalid format: trace <trigger> : <bufsize> <postdelay> : <v1> ... "
-                     "<vN> : <action>\n";
-        return nullptr;
-    }
-    // Could check for ":" here and assume that means they just want default
-    // values for buffer size and post delay
-
-    try {
-        bufsize = std::stoi(tokens[index++]);
-    }
-    catch ( const std::invalid_argument& e ) {
-        std::cerr << "Error: Invalid argument for buffer size: " << tokens[5] << std::endl;
-        return nullptr;
-    }
-    catch ( const std::out_of_range& e ) {
-        std::cerr << "Error: Out of range for buffer size: " << tokens[5] << std::endl;
-        return nullptr;
-    }
-
-    // Get post delay
-    try {
-        pdelay = std::stoi(tokens[index++]);
-    }
-    catch ( const std::invalid_argument& e ) {
-        std::cerr << "Error: Invalid argument for post trigger delay: " << tokens[6] << std::endl;
-        return nullptr;
-    }
-    catch ( const std::out_of_range& e ) {
-        std::cerr << "Error: Out of range for post trigger delay: " << tokens[6] << std::endl;
-        return nullptr;
-    }
-
-    if ( tokens[index++] != ":" ) {
-        std::cout << "Invalid format: trace <var> <op> <value> : <bufsize> <postdelay> : "
-                     "<v1> ... <vN> : <action>\n";
-        return nullptr;
-    }
-
-    try {
-        // Setup Trace Buffer
-        return new Core::Serialization::TraceBuffer(obj, bufsize, pdelay);
-    }
-    catch ( const std::exception& e ) {
-        std::cout << "Invalid buffer argument passed to trace command\n";
-        return nullptr;
-    }
-}
-
 Core::Serialization::ObjTreeCont*
-parseTraceVar(std::string& tvar, Core::Serialization::ObjTreeCont* obj, Core::Serialization::ObjTreeTraceBuffer* tb)
+parseTraceVar(std::string& tvar, Core::Serialization::ObjTreeCont* obj)
 {
     // Find and check trace variable
     auto* map = obj->findByName(tvar);
@@ -3836,34 +3776,7 @@ parseTraceVar(std::string& tvar, Core::Serialization::ObjTreeCont* obj, Core::Se
         std::cout << "Unknown variable: " << tvar << std::endl;
         return nullptr;
     }
-
-    // Is variable fundamental
-    //if ( !map->isFundamental() ) {
-   //     std::cout << "Traces can only be placed on fundamental types; " << tvar << "is not fundamental\n";
-   //     return nullptr;
-   // }
-   // std::string name = obj->getFullName() + "/" + tvar;
-    return map; //map->getObjectBuffer(name, tb->getBufferSize());
-}
-
-// Parse trace variable string
-Core::Serialization::ObjectBuffer*
-parseTraceVar(std::string& tvar, Core::Serialization::ObjectMap* obj, Core::Serialization::TraceBuffer* tb)
-{
-    // Find and check trace variable
-    Core::Serialization::ObjectMap* map = obj->findVariable(tvar);
-    if ( nullptr == map ) {
-        std::cout << "Unknown variable: " << tvar << std::endl;
-        return nullptr;
-    }
-
-    // Is variable fundamental
-    if ( !map->isFundamental() ) {
-        std::cout << "Traces can only be placed on fundamental types; " << tvar << "is not fundamental\n";
-        return nullptr;
-    }
-    std::string name = obj->getFullName() + "/" + tvar;
-    return map->getObjectBuffer(name, tb->getBufferSize());
+    return map;
 }
 
 // trace <trigger> : <bufsize> <postdelay> : <v1> ... <vN> :  <action>
@@ -4014,7 +3927,7 @@ DebugConsole::cmd_trace_remote(std::vector<std::string>& tokens)
     } // while index < tokens.size(), add another logic op and test comparision
 
     try {
-        auto* tb = parseTraceBuffer(tokens, index, curObj_);
+        auto* tb = parseTraceBuffer(tokens, index);
         if ( tb == nullptr ) {
             std::cout << "Invalid trace buffer argument in trace command\n";
             return false;
@@ -4029,7 +3942,7 @@ DebugConsole::cmd_trace_remote(std::vector<std::string>& tokens)
                 break;
             }
 
-            auto* objBuf = parseTraceVar(tvar, curObj_, tb);
+            auto* objBuf = parseTraceVar(tvar, curObj_);
             if ( objBuf == nullptr ) {
                 std::cout << "Invalid trace variable argument passed to trace command\n";
                 return false;
@@ -4040,7 +3953,7 @@ DebugConsole::cmd_trace_remote(std::vector<std::string>& tokens)
         // Parse action
         std::string action = tokens[index];
 
-        WatchPoint::WPAction* actionObj = parseAction(tokens, index, obj_);
+        WatchPoint::WPAction* actionObj = parseAction(tokens, index, curObj_);
         if ( actionObj == nullptr ) {
             std::cout << "Error in action: " << action << std::endl;
             return false;
@@ -4056,7 +3969,6 @@ DebugConsole::cmd_trace_remote(std::vector<std::string>& tokens)
         }
 
         // Get the top level component to set the watch point
-        //BaseComponent* comp = static_cast<BaseComponent*>(base_comp_->getAddr());
         BaseComponent* comp = nullptr;
         Core::Serialization::ObjTreeCont* parent = curObj_;
         while (!parent->isComponent() && !parent->isRoot())
@@ -4539,12 +4451,6 @@ DebugConsole::handleCommand()
                 curObj_ = objTree_;
                 cd_name_stack();
             }
-            if ( obj_ == nullptr ) {
-                // Create a new ObjectMap
-                obj_ = getComponentObjectMap();
-                // Descend into the name_stack
-                cd_name_stack();
-            }
             auto consoleCommand = cmdRegistry.seek(tokens[0], CommandRegistry::SEARCH_TYPE::BUILTIN);
             succeed             = consoleCommand.first.exec_remote(tokens);
         }
@@ -4707,12 +4613,6 @@ DebugConsole::receiveCommandRankSerial()
             if(curObj_ == nullptr || objTree_->isEmpty()){
                 objTree_->BuildTree(getComponentInfoMap());
                 curObj_ = objTree_;
-                cd_name_stack();
-            }
-            if ( obj_ == nullptr ) {
-                // Create a new ObjectMap
-                obj_ = getComponentObjectMap();
-                // Descend into the name_stack
                 cd_name_stack();
             }
             succeed = consoleCommand.first.exec_remote(tokens);
@@ -4966,13 +4866,7 @@ DebugConsole::executeThread(const std::string& msg)
         handleCommand();
     }
     else {
-        // Init object map
-        if ( obj_ == nullptr ) {
-            // Create a new ObjectMap
-            obj_ = getComponentObjectMap();
-            // Descend into the name_stack
-            cd_name_stack();
-        }
+        // Init object tree
        if( curObj_ == nullptr || objTree_->isEmpty() ){
             objTree_->BuildTree(getComponentInfoMap());
             curObj_ = objTree_;

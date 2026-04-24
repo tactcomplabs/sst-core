@@ -100,7 +100,7 @@ public:
     class SetVarWPAction : public WPAction
     {
     public:
-        SetVarWPAction(std::string vname, Core::Serialization::ObjectMap* obj, std::string tval) :
+        SetVarWPAction(std::string vname, Core::Serialization::ObjTreeCont* obj, std::string tval) :
             name_(vname),
             obj_(obj),
             valStr_(tval)
@@ -111,7 +111,7 @@ public:
 
     private:
         std::string                     name_   = "";
-        Core::Serialization::ObjectMap* obj_    = nullptr;
+        Core::Serialization::ObjTreeCont* obj_    = nullptr;
         std::string                     valStr_ = "";
     }; // class SetVarWPAction
 

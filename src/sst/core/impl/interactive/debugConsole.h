@@ -79,12 +79,9 @@ private:
     // directory as far as we can.
     std::deque<std::string> name_stack;
 
-    SST::Core::Serialization::ObjectMap* obj_         = nullptr;
     bool                                 done         = false;
     SST::Core::Serialization::ComponentObj* objTree_  = nullptr;;
     SST::Core::Serialization::ObjTreeCont* curObj_  = nullptr;;
-    SST::Core::Serialization::ObjTreeCont* objTreeRoot_ = nullptr;
-    SST::Core::Serialization::ObjTreeCont* curObjCont_ = nullptr;
     bool                                 exit_console = false;
     int                                  retState     = -1; // -1 DONE, -2 SUMMARY, positive number is threadID
 
@@ -110,9 +107,6 @@ private:
     // execution state management for nested user commands
     ExecState             eState = {};
     std::stack<ExecState> eStack = {};
-
-    // Keep a pointer to the ObjectMap for the top level Component
-    SST::Core::Serialization::ObjectMapDeferred<BaseComponent>* base_comp_ = nullptr;
 
     // Keep track of all the WatchPoints
     std::vector<std::pair<WatchPoint*, BaseComponent*>> watch_points_;
