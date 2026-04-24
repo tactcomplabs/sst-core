@@ -3970,6 +3970,7 @@ DebugConsole::cmd_trace_remote(std::vector<std::string>& tokens)
 {
     size_t      index = 1;
     std::string name  = "";
+    std::stringstream ss;
 
     // Get first comparison
     Core::Serialization::ObjTreeComparison* c = parseComparison(tokens, index, curObj_, nullptr);
@@ -3978,6 +3979,8 @@ DebugConsole::cmd_trace_remote(std::vector<std::string>& tokens)
         return false;
     }
     size_t wpIndex = watch_points_.size();
+    c->print(ss, 0, c->operators.size()*2);
+    name = ss.str();
     auto*  pt      = new WatchPoint(wpIndex, name, c);
 
     // Add additional comparisons and logical ops
@@ -4031,7 +4034,7 @@ DebugConsole::cmd_trace_remote(std::vector<std::string>& tokens)
                 std::cout << "Invalid trace variable argument passed to trace command\n";
                 return false;
             }
-            pt->addObjectBuffer(objBuf);
+            pt->addObjectBuffer(objBuf->clone());
         } // end while get trace vars
 
         // Parse action
