@@ -98,17 +98,17 @@ public:
         }
         if (isIntegerType(type)) {
             if (auto o = makeIntegerObj(type, addr)) {
-                o->setName(name); o->setType(type); return o.release();
+                o->setName(name); o->setType(type); if(objMap->isReadOnly()){o->makeReadOnly();} return o.release();
             }
         }
         if (isFloatType(type)) {
             if (auto o = makeFloatObj(type, addr)) {
-                o->setName(name); o->setType(type); return o.release();
+                o->setName(name); o->setType(type); if(objMap->isReadOnly()){o->makeReadOnly();} return o.release();
             }
         }
         if (isStringType(type) && addr) {
             auto* o = new StringObj(*static_cast<std::string*>(addr), addr);
-            o->setName(name); o->setType(type); return o;
+            o->setName(name); o->setType(type); if(objMap->isReadOnly()){o->makeReadOnly();} return o;
         }
         // Unknown fundamental — wrap in GenericObj with the value as string
             //Note: we pass a nullptr in for objMap as the objMap used here is destroyed by the caller
@@ -116,7 +116,7 @@ public:
             //      value of objMap. For now, we just pass in a nullptr rather than carry the (potentially) 
             //      heavy ObjMap around in this container 
         auto* g = new GenericValObj(objMap->get(), addr, nullptr);
-        g->setName(name); g->setType(type); return g;
+        g->setName(name); g->setType(type); if(objMap->isReadOnly()){g->makeReadOnly();} return g;
     }
 
     if (objMap->isContainer() || isContainerType(type)) {
@@ -130,7 +130,7 @@ public:
     if (objMap->getCategory() == ObjectMap::ObjectCategory::Component) {
         if (auto* comp = static_cast<BaseComponent*>(addr)) {
             auto* co = new ComponentObj(comp, nullptr);
-            co->setName(name); co->setType(type); return co;
+            co->setName(name); co->setType(type); if(objMap->isReadOnly()){co->makeReadOnly();} return co;
         }
     }
 

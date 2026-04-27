@@ -49,13 +49,13 @@ namespace SST::Core::Serialization {
         public:
         enum class NodeKind { Generic, Integer, Float, String, Bool, Component, Container, GenericVal };
 
-        ObjTreeCont() : parent_(nullptr), children_(), name_("uninit"), type_("uninit"), kind_(NodeKind::Generic)  {};
+        ObjTreeCont() : parent_(nullptr), children_(), name_("uninit"), type_("uninit"), kind_(NodeKind::Generic), readOnly_(false)  {};
         ObjTreeCont(const std::string& name, const std::string& type, NodeKind kind = NodeKind::Generic)
-        : parent_(nullptr), children_(), name_(name), type_(type), kind_(kind) {}
+        : parent_(nullptr), children_(), name_(name), type_(type), kind_(kind), readOnly_(false) {}
         virtual ~ObjTreeCont() = default;
 
         ObjTreeCont(const ObjTreeCont& rhs)
-        : parent_(nullptr), children_(), name_(rhs.name_), type_(rhs.type_), kind_(rhs.kind_)
+        : parent_(nullptr), children_(), name_(rhs.name_), type_(rhs.type_), kind_(rhs.kind_), readOnly_(rhs.readOnly_)
         {
             children_.reserve(rhs.children_.size());
             for (const auto& child : rhs.children_) {
@@ -97,6 +97,8 @@ namespace SST::Core::Serialization {
         void setName(const std::string& name) { name_ = name; }
         void setType(const std::string& type) { type_ = type; }
         bool isRoot(){ return parent_ == nullptr; }
+        void makeReadOnly(){readOnly_ = true;}
+        bool isReadOnly(){return readOnly_;}
 
         template<typename Func>
         void applyRecursive(Func&& func){
@@ -163,6 +165,7 @@ namespace SST::Core::Serialization {
         std::string                                 name_;
         std::string                                 type_;
         NodeKind                                    kind_;
+        bool                                        readOnly_;
 
 
     };
@@ -311,6 +314,7 @@ namespace SST::Core::Serialization {
             }
         }
         bool setFromString(const std::string& value) override {
+        if(readOnly_){return false;}
         try {
             visit([&](auto& current) {
                 using T = std::decay_t<decltype(current)>;
@@ -417,6 +421,7 @@ namespace SST::Core::Serialization {
         }
         
         bool setFromString(const std::string& value) override {
+        if(readOnly_){return false;}
         try {
                 visit([&](auto& current) {
                     using T = std::decay_t<decltype(current)>;
@@ -624,6 +629,7 @@ public:
     void setVal(const std::string& v) { val_ = v; }
     void setSimVal(const std::string& v){ val_ = v; *static_cast<std::string*>(addr_) = val_;}
     bool setFromString(const std::string& value) override {
+        if(readOnly_){return false;}
         setSimVal(value);
         return true;
     }
@@ -674,6 +680,7 @@ public:
     void setVal(bool v) { val_ = v; }
     void setSimVal(bool v) { *(static_cast<bool*>(addr_)) = v; val_ = v;}
     bool setFromString(const std::string& value) override { 
+        if(readOnly_){return false;}
         setSimVal(value == "true" || value == "1");
         return true;
     }
@@ -730,6 +737,7 @@ public:
     // Write-back through ObjectMap's string-based set interface,
     // which knows the real type and handles conversion internally.
     bool setFromString(const std::string& value) override {
+        if(readOnly_){return false;}
         if (!sourceMap_) return false;
         if (sourceMap_->isReadOnly()) return false;
         sourceMap_->set(value);
