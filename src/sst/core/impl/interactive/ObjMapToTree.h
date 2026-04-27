@@ -85,171 +85,67 @@ class ObjectMapToTree {
 public:
     // Convert a single ObjectMap* into an ObjTreeCont*
     // Caller takes ownership of the returned pointer
-    static ObjTreeCont* convert(const std::string& name, ObjectMap* objMap) {
-        if (!objMap) return nullptr;
+    static ObjTreeCont* convert(const std::string& name, ObjectMap* objMap, bool recursive = true) {
+    if (!objMap) return nullptr;
 
-        std::string type = objMap->getType();
-        void* addr = objMap->getAddr();
+    const std::string type = objMap->getType();
+    void* addr = objMap->getAddr();
 
-        // --- Fundamental types ---
-        if (objMap->isFundamental()) {
-            // Bool
-            if (type == "bool" && addr) {
-                auto boolObj = new BoolObj(*static_cast<bool*>(addr), addr);
-                boolObj->setName(name);
-                boolObj->setType(type);
-                return boolObj;
+    if (objMap->isFundamental()) {
+        if (type == "bool" && addr) {
+            auto* o = new BoolObj(*static_cast<bool*>(addr), addr);
+            o->setName(name); o->setType(type); return o;
+        }
+        if (isIntegerType(type)) {
+            if (auto o = makeIntegerObj(type, addr)) {
+                o->setName(name); o->setType(type); return o.release();
             }
-
-            // Integer types
-            if (isIntegerType(type)) {
-                auto intObj = makeIntegerObj(type, addr);
-                intObj->setName(name);
-                intObj->setType(type);
-                if (intObj) return intObj.release();
+        }
+        if (isFloatType(type)) {
+            if (auto o = makeFloatObj(type, addr)) {
+                o->setName(name); o->setType(type); return o.release();
             }
-
-            // Float types
-            if (isFloatType(type)) {
-                auto floatObj = makeFloatObj(type, addr);
-                floatObj->setName(name);
-                floatObj->setType(type);
-                if (floatObj) return floatObj.release();
-            }
-
-            // String 
-            if (isStringType(type) && addr) {
-                auto stringObj = new StringObj(*static_cast<std::string*>(addr), addr);
-                stringObj->setName(name);
-                stringObj->setType(type);
-                return stringObj;
-            }
-
-            // Unknown fundamental — wrap in GenericObj with the value as string
+        }
+        if (isStringType(type) && addr) {
+            auto* o = new StringObj(*static_cast<std::string*>(addr), addr);
+            o->setName(name); o->setType(type); return o;
+        }
+        // Unknown fundamental — wrap in GenericObj with the value as string
             //Note: we pass a nullptr in for objMap as the objMap used here is destroyed by the caller
             //      If it is necessary to set one of these generic values we will need to preserve the
             //      value of objMap. For now, we just pass in a nullptr rather than carry the (potentially) 
             //      heavy ObjMap around in this container 
-            auto* generic = new GenericValObj(objMap->get(), addr, nullptr);
-            generic->setName(name);
-            generic->setType(type);
-            return generic;
-        }
-
-        // --- Containers (vector, map, set, etc.) ---
-        if (objMap->isContainer() || isContainerType(type)) {
-            const auto& variables = objMap->getVariables();
-            auto* container = new ContainerObj(name, type, variables.size());
-
-            for (const auto& [childName, childMap] : variables) {
-                ObjTreeCont* child = convertNode(childName, childMap);
-                if (child) container->addChildObj(child);
-            }
-
-            return container;
-        }
-
-        // --- BaseComponent types ---
-        if (objMap->getCategory() == ObjectMap::ObjectCategory::Component) {
-            auto* comp = static_cast<BaseComponent*>(objMap->getAddr());
-            if (comp) {
-                auto* compObj = new ComponentObj(comp, nullptr);
-                compObj->setName(name);
-                compObj->setType(type);
-                return compObj;
-            }
-        }
-        
-        // --- Generic non-fundamental, non-container (user-defined classes) ---
-        auto* node = new ObjTreeCont(name, type);
-        const auto& variables = objMap->getVariables();
-        for (const auto& [childName, childMap] : variables) {
-            ObjTreeCont* childNode = convertNode(childName, childMap);
-            if (childNode) {
-                node->addChildObj(childNode);
-            }
-        }
-
-        return node;
+        auto* g = new GenericValObj(objMap->get(), addr, nullptr);
+        g->setName(name); g->setType(type); return g;
     }
 
-     static ObjTreeCont* convertNode(const std::string& name, ObjectMap* objMap) {
-        if (!objMap) return nullptr;
-
-        std::string type = objMap->getType();
-        void* addr = objMap->getAddr();
-
-        // Fundamental types
-        if (objMap->isFundamental()) {
-            if (type == "bool" && addr) {
-                auto boolObj = new BoolObj(*static_cast<bool*>(addr), addr);
-                boolObj->setName(name);
-                boolObj->setType(type);
-                return boolObj;
-            }
-            if (isIntegerType(type)) {
-                auto intObj = makeIntegerObj(type, addr);
-                if (intObj) {
-                    intObj->setName(name);
-                    intObj->setType(type);
-                    return intObj.release();
-                }
-            }
-            if (isFloatType(type)) {
-                auto floatObj = makeFloatObj(type, addr);
-                if (floatObj){
-                    floatObj->setName(name);
-                    floatObj->setType(type);
-                    return floatObj.release();
-                }
-            }
-            if (isStringType(type) && addr) {
-                auto stringObj = new StringObj(*static_cast<std::string*>(addr), addr);
-                stringObj->setName(name);
-                stringObj->setType(type);
-                return stringObj;
-            }
-            // Unknown fundamental — wrap in GenericObj with the value as name
-            //Note: we pass a nullptr in for objMap as the objMap used here is destroyed by the caller
-            //      If it is necessary to set one of these generic values we will need to preserve the
-            //      value of objMap. For now, we just pass in a nullptr rather than carry the (potentially) 
-            //      heavy ObjMap around in this container 
-            auto* generic = new GenericValObj(objMap->get(), addr, nullptr);
-            generic->setName(name);
-            generic->setType(type);
-            return generic;
-        }
-
-        // Container
-        if (objMap->isContainer() || isContainerType(type)) {
-            const auto& variables = objMap->getVariables();
-            auto* container = new ContainerObj(name, type, variables.size());
-            for (const auto& [childName, childMap] : variables) {
-                ObjTreeCont* child = convertNode(childName, childMap);
-                if (child) container->addChildObj(child);
-            }
-            return container;
-        }
-
-        // BaseComponent (using category flag)
-        if (objMap->getCategory() == ObjectMap::ObjectCategory::Component) {
-            auto* comp = static_cast<BaseComponent*>(objMap->getAddr());
-            if (comp){
-                auto* compObj = new ComponentObj(comp, nullptr);
-                compObj->setName(name);
-                compObj->setType(objMap->getType());
-                return compObj;
-            } 
-        }
-
-        // Generic
-        return new ObjTreeCont(name, type);
+    if (objMap->isContainer() || isContainerType(type)) {
+        const auto& vars = objMap->getVariables();
+        auto* c = new ContainerObj(name, type, vars.size());
+        for (const auto& [n, m] : vars)
+            if (auto* child = convert(n, m, recursive)) c->addChildObj(child);
+        return c;
     }
+
+    if (objMap->getCategory() == ObjectMap::ObjectCategory::Component) {
+        if (auto* comp = static_cast<BaseComponent*>(addr)) {
+            auto* co = new ComponentObj(comp, nullptr);
+            co->setName(name); co->setType(type); return co;
+        }
+    }
+
+    auto* node = new ObjTreeCont(name, type);
+    if (recursive) {
+        for (const auto& [n, m] : objMap->getVariables())
+            if (auto* child = convert(n, m, false)) node->addChildObj(child);
+    }
+    return node;
+}
 
     static void addChildrenFromMap(ObjTreeCont* parent, const ObjectMultimap& variables) {
         if (!parent) return;
         for (const auto& [name, objMap] : variables) {
-            ObjTreeCont* child = convertNode(name, objMap);
+            ObjTreeCont* child = convert(name, objMap, false);
             if (child) parent->addChildObj(child);
         }
     }
@@ -257,7 +153,7 @@ public:
      static void addChildrenFromMapRecursive(ObjTreeCont* parent, const ObjectMultimap& variables) {
         if (!parent) return;
         for (const auto& [name, objMap] : variables) {
-            ObjTreeCont* child = convert(name, objMap);
+            ObjTreeCont* child = convert(name, objMap, true);
             if (child) parent->addChildObj(child);
         }
     }
@@ -267,7 +163,7 @@ public:
         auto root = std::make_unique<ObjTreeCont>(rootName, objMap->getType());
         const auto& variables = objMap->getVariables();
         for (const auto& [name, childMap] : variables) {
-            ObjTreeCont* child = convert(name, childMap);
+            ObjTreeCont* child = convert(name, childMap, true);
             if (child) {
                 root->addChildObj(child);
             }
@@ -312,9 +208,10 @@ public:
             // Skip variables that are sub-components
             if (std::find(subCompAddrs.begin(), subCompAddrs.end(), objMap->getAddr()) != subCompAddrs.end()) continue;
 
-            ObjTreeCont* child = recursive 
-                ? convert(name, objMap) 
-                : convertNode(name, objMap);
+            //ObjTreeCont* child = recursive 
+            //    ? convert(name, objMap) 
+            //    : convertNode(name, objMap);
+            ObjTreeCont* child = convert(name, objMap, recursive);
             if (child) compNode->addChildObj(child);
         }
     }
@@ -404,9 +301,10 @@ public:
                     if (!objMap) continue;
                     if (std::find(nestedAddrs.begin(), nestedAddrs.end(), objMap->getAddr()) != nestedAddrs.end()) continue;
 
-                    ObjTreeCont* child = recursive
-                        ? convert(name, objMap)
-                        : convertNode(name, objMap);
+                    //ObjTreeCont* child = recursive
+                    //    ? convert(name, objMap)
+                    //    : convertNode(name, objMap);
+                    ObjTreeCont* child = convert(name, objMap, recursive);
                     if (child) subObj->addChildObj(child);
                 }
             }
