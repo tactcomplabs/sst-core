@@ -137,11 +137,11 @@ namespace SST::Core::Serialization {
 
         virtual void apply() {};
         virtual std::string getTypeName() const {return type_;};
-        virtual void Dump(const int verbosity, std::ostream& os = std::cout){
+        virtual void Dump(const int verbosity, std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout){
             os << name_ << "/ " << std::endl; //(" << type_ << ")" << std::endl;
             if (verbosity > 0) {
                 applyRecursive([&](ObjTreeCont* child) {
-                    child->Dump(verbosity - 1, os);
+                    child->Dump(verbosity - 1, base, os);
                 });
             }
         }
@@ -221,7 +221,7 @@ namespace SST::Core::Serialization {
 
         bool isEmpty(){return objects_.empty();}
 
-        void Dump([[maybe_unused]] const int verbosity, std::ostream& os = std::cout) override { os << "Root/" << std::endl;}
+        void Dump([[maybe_unused]] const int verbosity, std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override { os << "Root/" << std::endl;}
         void clear() override {
             ObjTreeCont::clear();
             objects_.clear();
@@ -299,17 +299,26 @@ namespace SST::Core::Serialization {
             });
         }
 
-        void Dump(const int verbosity, std::ostream& os = std::cout) override{
+        void Dump(const int verbosity, std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override{
+            std::string ro = (readOnly_) ? " (ro)" : "";
             if(verbosity == 0){
-                os << getObjName() << std::endl;
+                os << getObjName() << ro << std::endl;
             }
             else if(verbosity == 1){ 
                 visit([&](auto val) {
-                    os << getObjName() << " = " << static_cast<int64_t>(val) << std::endl;
+                    auto old_flags = os.flags();
+                    os.setf(base, std::ios_base::basefield);
+                    if(base != std::ios_base::dec){os.setf(std::ios_base::showbase);}
+                    os << getObjName() << ro << " = " << static_cast<int64_t>(val) << std::endl;
+                    os.flags(old_flags);
                 });
             }else{
                 visit([&](auto val) {
-                    os << getObjName() << " = " << static_cast<int64_t>(val) << " (" << getType() << ")" << std::endl;
+                    auto old_flags = os.flags();
+                    os.setf(base, std::ios_base::basefield);
+                    if(base != std::ios_base::dec){os.setf(std::ios_base::showbase);}
+                    os << getObjName() << ro << " = " << static_cast<int64_t>(val) << " (" << getType() << ")" << std::endl;
+                    os.flags(old_flags);
                 });
             }
         }
@@ -397,15 +406,18 @@ namespace SST::Core::Serialization {
                 std::cout << "Processing float: " << val << std::endl;
             });
         }
-        void Dump(const int verbosity, std::ostream& os = std::cout) override{
+        void Dump(const int verbosity, std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override{
+            std::string ro = (readOnly_) ? " (ro)" : "";
             if(verbosity == 0){
-                os << getObjName() << std::endl;
+                os << getObjName() << ro << std::endl;
             }
             else if(verbosity == 1){
                 visit([&](auto val) {
                     auto old_flags = os.flags();
                     auto old_prec = os.precision();
-                    os << getObjName()  << std::fixed << std::setprecision(12) << " = " << val << std::endl;
+                    os.setf(base, std::ios_base::basefield);
+                    if(base != std::ios_base::dec){os.setf(std::ios_base::showbase);}
+                    os << getObjName()  << ro << std::fixed << std::setprecision(12) << " = " << val << std::endl;
                     os.flags(old_flags);
                     os.precision(old_prec);
                 });
@@ -413,7 +425,9 @@ namespace SST::Core::Serialization {
                 visit([&](auto val) {
                     auto old_flags = os.flags();
                     auto old_prec = os.precision();
-                    os << getObjName() << std::fixed << std::setprecision(12) << " = " << val << " (" << getType() << ")" << std::endl;
+                    os.setf(base, std::ios_base::basefield);
+                    if(base != std::ios_base::dec){os.setf(std::ios_base::showbase);}
+                    os << getObjName() << ro << std::fixed << std::setprecision(12) << " = " << val << " (" << getType() << ")" << std::endl;
                     os.flags(old_flags);
                     os.precision(old_prec);
                 });
@@ -473,7 +487,7 @@ namespace SST::Core::Serialization {
         void apply() override {
             std::cout << "Processing component: " << val_->getName() << std::endl;
         }
-        void Dump([[maybe_unused]] const int verbosity, std::ostream& os = std::cout) override{
+        void Dump([[maybe_unused]] const int verbosity, std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override{
             os << val_->getName() << "/" << std::endl;
         }
 
@@ -541,14 +555,14 @@ public:
                   << ") size=" << size_ << std::endl;
     }
 
-    void Dump(const int verbosity, std::ostream& os = std::cout) override {
+    void Dump(const int verbosity, std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override {
         if(verbosity == 0) {
             os << name_ << " [" << size_ << " elements] (" << type_ << ")"<< std::endl;
         }
         else {
             os << name_ << " [" << size_ << " elements] (" << type_ << ")"<< std::endl;
             applyRecursive([&](ObjTreeCont* child) {
-                child->Dump(verbosity - 1, os);
+                child->Dump(verbosity - 1, base, os);
             });
         }
     }
@@ -567,10 +581,10 @@ public:
     return current;
 }
 
-void printElementAt(std::vector<size_t> indices, int verbosity = 1, std::ostream& os = std::cout) const {
+void printElementAt(std::vector<size_t> indices, int verbosity = 1, std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) const {
     ObjTreeCont* elem = getElementAt(indices);
     if (elem) {
-        elem->Dump(verbosity, os);
+        elem->Dump(verbosity, base, os);
     } else {
         os << "Element not found at path {";
         bool first = true;
@@ -643,14 +657,15 @@ public:
         std::cout << "Processing string: " << val_ << std::endl;
     }
 
-    void Dump(const int verbosity, std::ostream& os = std::cout) override {
+    void Dump(const int verbosity, std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override {
+        std::string ro = (readOnly_) ? " (ro)" : "";
         if(verbosity == 0){
-            os << getObjName() << std::endl;
+            os << getObjName() << ro << std::endl;
         }
         else if(verbosity == 1){
-            os << getObjName() << " = \"" << val_ << "\"" << std::endl;
+            os << getObjName() << ro << " = \"" << val_ << "\"" << std::endl;
         }else{
-            os << getObjName() << " = \"" << val_ << "\"" << " (" << getType() << ")" <<  std::endl;
+            os << getObjName() << ro << " = \"" << val_ << "\"" << " (" << getType() << ")" <<  std::endl;
         }
     }
 };
@@ -694,14 +709,15 @@ public:
         std::cout << "Processing bool: " << (val_ ? "true" : "false") << std::endl;
     }
 
-    void Dump(const int verbosity, std::ostream& os = std::cout) override { 
+    void Dump(const int verbosity, std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override { 
+        std::string ro = (readOnly_) ? " (ro)" : "";
         if(verbosity == 0){
-            os << getObjName() << std::endl;
+            os << getObjName() << ro << std::endl;
         }
         else if(verbosity == 1){ 
-            os << getObjName() << " = " << (val_ ? "true" : "false") << std::endl;
+            os << getObjName() << ro << " = " << (val_ ? "true" : "false") << std::endl;
         }else {
-            os << getObjName() << " = " << (val_ ? "true" : "false") << " (" << getType() << ")" <<  std::endl;
+            os << getObjName() << ro << " = " << (val_ ? "true" : "false") << " (" << getType() << ")" <<  std::endl;
         }
     }
 };
@@ -757,12 +773,13 @@ public:
         std::cout << "Processing generic: " << val_ << std::endl;
     }
 
-    void Dump(const int verbosity, std::ostream& os = std::cout) override {
-        if (verbosity == 0) { os << getObjName() << std::endl;
+    void Dump(const int verbosity, std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override {
+        std::string ro = (readOnly_) ? " (ro)" : "";
+        if (verbosity == 0) { os << getObjName() << ro << std::endl;
         }else if (verbosity == 1) {
-            os << getObjName() << " = " << val_ << std::endl;
+            os << getObjName() << ro << " = " << val_ << std::endl;
         } else {
-            os << getObjName() << " = " << val_
+            os << getObjName() << ro << " = " << val_
                << " (" << getType() << ")" << std::endl;
         }
     }

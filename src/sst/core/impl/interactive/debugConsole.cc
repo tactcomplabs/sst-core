@@ -1496,7 +1496,7 @@ DebugConsole::cmd_ls_remote(std::vector<std::string>& tokens)
     }
     // Dump all the components
     curObj_->applyRecursive([verbosity] (SST::Core::Serialization::ObjTreeCont* child) {
-        child->Dump(verbosity, result);
+        child->Dump(verbosity, std::ios_base::dec, result);
     });
 
     return true;
@@ -1834,16 +1834,17 @@ DebugConsole::cmd_print_remote(std::vector<std::string>& tokens)
     //check for format specifier 
     pos = containsArg(tokens, "-f");
     std::string fmt = "dec";
+    std::ios_base::fmtflags base = std::ios_base::dec;
     if(std::string::npos != pos){
         //found format specifier 
         fmt = tokens[pos+1];
 
         if("hex" == fmt){
-            SST::Core::string_flags.base = std::ios_base::hex;
+            base = std::ios_base::hex;
         }else if("oct" == fmt){
-            SST::Core::string_flags.base = std::ios_base::oct;
+            base = std::ios_base::oct;
         }else{
-            SST::Core::string_flags.base = std::ios_base::dec;
+            base = std::ios_base::dec;
         }
 
         var_index = (pos + 2 > var_index) ? pos+=2 : var_index;
@@ -1866,17 +1867,17 @@ DebugConsole::cmd_print_remote(std::vector<std::string>& tokens)
        if(!indices.empty()){
             SST::Core::Serialization::ContainerObj* tmp = dynamic_cast<SST::Core::Serialization::ContainerObj*>(target);
             if(tmp){ 
-                tmp->printElementAt(indices, print_verbose +1);
+                tmp->printElementAt(indices, print_verbose +1, base, std::cout);
             }
             else {
                 std::cout << "WARNING: Object not indexable" << std::endl;
-                target->Dump(print_verbose + 1 );
+                target->Dump(print_verbose + 1, base, std::cout );
             }
        }else {
-            target->Dump(print_verbose + 1 );
+            target->Dump(print_verbose + 1, base, std::cout );
             if(recurse > 0){
-                target->applyRecursive([print_verbose] (SST::Core::Serialization::ObjTreeCont* child) {
-                    child->Dump(print_verbose + 1);
+                target->applyRecursive([print_verbose, base] (SST::Core::Serialization::ObjTreeCont* child) {
+                    child->Dump(print_verbose + 1, base, std::cout);
                 });
             }
        }
