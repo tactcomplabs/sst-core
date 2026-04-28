@@ -261,13 +261,19 @@ public:
             return;
         }
         if ( state_ != CLEAR ) {
+            std::ostringstream tmpBuf;
+            std::string objNames;
             std::cout << "LastTriggerRecord:@cycle" << triggerCycle << ": SamplesLost=" << samplesLost_ << ": ";
             for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
                 ObjTreeCont* varBuffer_ = objBuffers_[obj];
-                //std::cout << SST::Core::to_string(varBuffer_->getName()) << "=" << varBuffer_->getTriggerVal() << " ";
-                varBuffer_->Dump(1);
+                //OK, so we have to use Dump() to get the value, but it adds a \n after each call, so strip it out
+                varBuffer_->Dump(1,std::ios_base::dec, tmpBuf);
+                objNames.append(tmpBuf.str());
+                if(!objNames.empty() && objNames.back() == '\n'){objNames.pop_back(); objNames.push_back(' ');}
+                tmpBuf.str("");
+                tmpBuf.clear();
             }
-            std::cout << std::endl;
+            std::cout << objNames << std::endl;
         }
     }
 

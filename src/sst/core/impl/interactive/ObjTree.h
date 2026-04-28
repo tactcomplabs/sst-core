@@ -338,7 +338,7 @@ namespace SST::Core::Serialization {
             }
         }
         bool setFromString(const std::string& value) override {
-        if(readOnly_){return false;}
+        if(readOnly_){std::cout << "WARNING Cannot set ReadOnly Obj " << name_ << std::endl; return false;}
         try {
             visit([&](auto& current) {
                 using T = std::decay_t<decltype(current)>;
@@ -450,7 +450,7 @@ namespace SST::Core::Serialization {
         }
         
         bool setFromString(const std::string& value) override {
-        if(readOnly_){return false;}
+        if(readOnly_){std::cout << "WARNING Cannot set ReadOnly Obj " << name_ << std::endl; return false;}
         try {
                 visit([&](auto& current) {
                     using T = std::decay_t<decltype(current)>;
@@ -670,7 +670,7 @@ public:
     void setVal(const std::string& v) { val_ = v; }
     void setSimVal(const std::string& v){ val_ = v; *static_cast<std::string*>(addr_) = val_;}
     bool setFromString(const std::string& value) override {
-        if(readOnly_){return false;}
+        if(readOnly_){std::cout << "WARNING Cannot set ReadOnly Obj " << name_ << std::endl; return false;}
         setSimVal(value);
         return true;
     }
@@ -722,7 +722,7 @@ public:
     void setVal(bool v) { val_ = v; }
     void setSimVal(bool v) { *(static_cast<bool*>(addr_)) = v; val_ = v;}
     bool setFromString(const std::string& value) override { 
-        if(readOnly_){return false;}
+        if(readOnly_){std::cout << "WARNING Cannot set ReadOnly Obj " << name_ << std::endl; return false;}
         setSimVal(value == "true" || value == "1");
         return true;
     }
@@ -780,7 +780,7 @@ public:
     // Write-back through ObjectMap's string-based set interface,
     // which knows the real type and handles conversion internally.
     bool setFromString(const std::string& value) override {
-        if(readOnly_){return false;}
+        if(readOnly_){std::cout << "WARNING Cannot set ReadOnly Obj " << name_ << std::endl; return false;}
         if (!sourceMap_) return false;
         if (sourceMap_->isReadOnly()) return false;
         sourceMap_->set(value);

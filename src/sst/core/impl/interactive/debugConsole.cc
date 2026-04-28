@@ -2373,7 +2373,7 @@ DebugConsole::cmd_addTraceVar_remote(std::vector<std::string>& tokens)
             result << "Watchpoint " << wpIndex << " does not have tracing enabled" << std::endl;
             return false;
         }
-        wp->addObjectBuffer(map);
+        wp->addObjectBuffer(map->clone());
     }
     return true;
 }
