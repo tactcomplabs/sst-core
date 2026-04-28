@@ -221,7 +221,7 @@ namespace SST::Core::Serialization {
 
         bool isEmpty(){return objects_.empty();}
 
-        void Dump([[maybe_unused]] const int verbosity, std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override { os << "Root/" << std::endl;}
+        void Dump([[maybe_unused]] const int verbosity, [[maybe_unused]] std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override { os << "Root/" << std::endl;}
         void clear() override {
             ObjTreeCont::clear();
             objects_.clear();
@@ -487,7 +487,7 @@ namespace SST::Core::Serialization {
         void apply() override {
             std::cout << "Processing component: " << val_->getName() << std::endl;
         }
-        void Dump([[maybe_unused]] const int verbosity, std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override{
+        void Dump([[maybe_unused]] const int verbosity, [[maybe_unused]] std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override{
             os << val_->getName() << "/" << std::endl;
         }
 
@@ -520,15 +520,16 @@ namespace SST::Core::Serialization {
 
 class ContainerObj : public ObjTree<ContainerObj> {
     size_t size_ = 0;
+    ObjectMap* sourceMap_ = nullptr;
 
 public:
-    ContainerObj(const std::string& name, const std::string& type, size_t size)
-        :ObjTree<ContainerObj>(NodeKind::Container), size_(size) {
+    ContainerObj(const std::string& name, const std::string& type, size_t size, ObjectMap* source)
+        :ObjTree<ContainerObj>(NodeKind::Container), size_(size), sourceMap_(source) {
             setName(name);
             setType(type);
         }
 
-    ContainerObj(const ContainerObj& rhs): ObjTree<ContainerObj>(rhs), size_(rhs.size_) {
+    ContainerObj(const ContainerObj& rhs): ObjTree<ContainerObj>(rhs), size_(rhs.size_), sourceMap_(rhs.sourceMap_) {
             setName(rhs.name_);
             setType(rhs.type_);
     }
@@ -539,6 +540,7 @@ public:
         name_ = rhs.name_;
         type_ = rhs.type_;
         size_ = rhs.size_;
+        sourceMap_ = rhs.sourceMap_;
         return *this;
     }
 
@@ -549,6 +551,16 @@ public:
 
     const std::string& getContainerType() const { return type_; }
     size_t getSize() const { return size_; }
+
+    void syncFromSim() override {
+        if (!sourceMap_) return;
+        size_ = sourceMap_->getVariables().size();  // or cheaper accessor if available
+    }
+
+    bool hasChanged() override {
+        if (!sourceMap_) return false;
+        return size_ != sourceMap_->getVariables().size();
+    }
 
     void apply() override {
         std::cout << "Container: " << name_ << " (" << type_ 
@@ -657,7 +669,7 @@ public:
         std::cout << "Processing string: " << val_ << std::endl;
     }
 
-    void Dump(const int verbosity, std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override {
+    void Dump(const int verbosity, [[maybe_unused]] std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override {
         std::string ro = (readOnly_) ? " (ro)" : "";
         if(verbosity == 0){
             os << getObjName() << ro << std::endl;
@@ -709,7 +721,7 @@ public:
         std::cout << "Processing bool: " << (val_ ? "true" : "false") << std::endl;
     }
 
-    void Dump(const int verbosity, std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override { 
+    void Dump(const int verbosity, [[maybe_unused]] std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override { 
         std::string ro = (readOnly_) ? " (ro)" : "";
         if(verbosity == 0){
             os << getObjName() << ro << std::endl;
@@ -773,7 +785,7 @@ public:
         std::cout << "Processing generic: " << val_ << std::endl;
     }
 
-    void Dump(const int verbosity, std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override {
+    void Dump(const int verbosity, [[maybe_unused]] std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override {
         std::string ro = (readOnly_) ? " (ro)" : "";
         if (verbosity == 0) { os << getObjName() << ro << std::endl;
         }else if (verbosity == 1) {

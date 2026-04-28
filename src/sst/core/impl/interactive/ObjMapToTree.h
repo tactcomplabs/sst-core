@@ -121,7 +121,7 @@ public:
 
     if (objMap->isContainer() || isContainerType(type)) {
         const auto& vars = objMap->getVariables();
-        auto* c = new ContainerObj(name, type, vars.size());
+        auto* c = new ContainerObj(name, type, vars.size(), nullptr);
         for (const auto& [n, m] : vars)
             if (auto* child = convert(n, m, recursive)) c->addChildObj(child);
         return c;

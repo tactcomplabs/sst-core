@@ -25,7 +25,7 @@ namespace SST::Core::Serialization {
 
 class NumericHandle {
 public:
-    enum class Kind { None, Integer, Float, Bool };
+    enum class Kind { None, Integer, Float, Bool, Cont};
 
 private:
     ObjTreeCont* node_ = nullptr;
@@ -41,6 +41,7 @@ public:
         if (dynamic_cast<IntegerObj*>(node)) return { node, Kind::Integer };
         if (dynamic_cast<FloatObj*>(node))   return { node, Kind::Float };
         if (dynamic_cast<BoolObj*>(node))    return { node, Kind::Bool };
+        if (dynamic_cast<ContainerObj*>(node)) return { node, Kind::Cont };
         return {};
     }
 
@@ -51,6 +52,7 @@ public:
     IntegerObj* asInteger() const { return dynamic_cast<IntegerObj*>(node_); }
     FloatObj*   asFloat()   const { return dynamic_cast<FloatObj*>(node_); }
     BoolObj*    asBool()    const { return dynamic_cast<BoolObj*>(node_); }
+    ContainerObj* asCont()  const { return dynamic_cast<ContainerObj*>(node_);}
 
     // ── Compare handle <=> handle ────────────────────────────────
     bool operator<(const NumericHandle& rhs) const {
@@ -105,12 +107,14 @@ private:
             if (rhs.kind_ == Kind::Integer) return rhs.asInteger()->visit(inner);
             if (rhs.kind_ == Kind::Float)   return rhs.asFloat()->visit(inner);
             if (rhs.kind_ == Kind::Bool)    return inner(static_cast<int64_t>(rhs.asBool()->getVal()));
+            if (rhs.kind_ == Kind::Cont)    return inner(static_cast<int64_t>(rhs.asCont()->getSize()));
             return false;
         };
 
         if (kind_ == Kind::Integer) return asInteger()->visit(visitRhs);
         if (kind_ == Kind::Float)   return asFloat()->visit(visitRhs);
         if (kind_ == Kind::Bool)    return visitRhs(static_cast<int64_t>(asBool()->getVal()));
+        if (kind_ == Kind::Cont)    return visitRhs(static_cast<int64_t>(asCont()->getSize()));
         return false;
     }
 
@@ -143,6 +147,16 @@ private:
                 using Common = std::common_type_t<int64_t, ConstT>;
                 return cmp(static_cast<Common>(lhs), static_cast<Common>(rhs));
             } else {
+                return cmp(static_cast<long double>(lhs),
+                           static_cast<long double>(rhs));
+            }
+        }
+        if (kind_ == Kind::Cont) {
+            auto lhs = asCont()->getSize();
+            if constexpr (std::is_integral_v<ConstT>) {
+                using Common = std::common_type_t<int64_t, ConstT>;
+                return cmp(static_cast<Common>(lhs), static_cast<Common>(rhs));
+            }else {
                 return cmp(static_cast<long double>(lhs),
                            static_cast<long double>(rhs));
             }

@@ -2984,7 +2984,7 @@ parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serializa
     SST::Core::Serialization::ObjTreeCont* parent = nullptr;
     std::deque<std::string> path;
     if ( nullptr != opObj ) {
-
+        if(!opObj->isLeaf() ){std::cout << "WARNING: Unsupported object " << opObj->getObjName() << " in watchpoint" << std::endl;}
         parent =  opObj->getParent();
         path.push_front(opObj->getObjName());
         while (parent && !parent->isRoot())
@@ -3028,6 +3028,7 @@ parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serializa
 
     // V2 is valid variable
     if ( nullptr != opObj2 ) {
+        if(!opObj2->isLeaf() ){std::cout << "WARNING: Unsupported object " << opObj2->getObjName() << " in watchpoint" << std::endl;}
         parent =  opObj2->getParent();
         path.clear();
         path.push_front(opObj2->getObjName());
