@@ -1491,10 +1491,11 @@ DebugConsole::cmd_ls_remote(std::vector<std::string>& tokens)
 {
 
     unsigned verbosity = 0;
-    if((tokens.size() > 1) &&  ("-l" == tokens[1])){
-        verbosity = 2;
-    }else if("-ll" == tokens[1]){
-        verbosity = 3;
+    if (tokens.size() > 1) {
+        if ("-l" == tokens[1])
+            verbosity = 2;
+        else if ("-ll" == tokens[1])
+            verbosity = 3;
     }
     // Dump all the components
     curObj_->applyRecursive([verbosity] (SST::Core::Serialization::ObjTreeCont* child) {
