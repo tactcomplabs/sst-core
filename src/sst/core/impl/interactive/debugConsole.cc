@@ -467,10 +467,12 @@ DebugConsole::consoleExecute(const std::string& msg)
    // printf("---- total map:\n ----");
    // totalMap->Dump(2);
 
-   // if(objTree_->isEmpty()){
+    //if(curObj_ == nullptr || objTree_->isEmpty()){
+    if(objTree_->isEmpty()){
         objTree_->BuildTree(getComponentInfoMap());
         curObj_ = objTree_;
-   // }
+    }
+            if(curObj_ == nullptr){curObj_ = objTree_;}
 
     
 
@@ -4448,11 +4450,13 @@ DebugConsole::handleCommand()
     else if ( !done ) {
         // If I am target thread, handle the incoming command
         if ( current_thread == rank_.thread ) {
-            if(curObj_== nullptr || objTree_->isEmpty()){
+            //if(curObj_== nullptr || objTree_->isEmpty()){
+            if(objTree_->isEmpty()){
                 objTree_->BuildTree(getComponentInfoMap());
                 curObj_ = objTree_;
                 cd_name_stack();
             }
+            if(curObj_ == nullptr){curObj_ = objTree_;}
             auto consoleCommand = cmdRegistry.seek(tokens[0], CommandRegistry::SEARCH_TYPE::BUILTIN);
             succeed             = consoleCommand.first.exec_remote(tokens);
         }
@@ -4612,11 +4616,13 @@ DebugConsole::receiveCommandRankSerial()
         auto consoleCommand = cmdRegistry.seek(tokens[0], CommandRegistry::SEARCH_TYPE::BUILTIN);
         if ( consoleCommand.second ) {
             // Execute in target thread
-            if(curObj_ == nullptr || objTree_->isEmpty()){
+            //if(curObj_ == nullptr || objTree_->isEmpty()){
+            if(objTree_->isEmpty()){
                 objTree_->BuildTree(getComponentInfoMap());
                 curObj_ = objTree_;
                 cd_name_stack();
             }
+            if(curObj_ == nullptr){curObj_ = objTree_;}
             succeed = consoleCommand.first.exec_remote(tokens);
             // Output::getDefaultObject().output("ReceiveCmdRankSerial: succeed %d\n", succeed);
         }
@@ -4869,11 +4875,13 @@ DebugConsole::executeThread(const std::string& msg)
     }
     else {
         // Init object tree
-       if( curObj_ == nullptr || objTree_->isEmpty() ){
+       //if( curObj_ == nullptr || objTree_->isEmpty() ){
+       if( objTree_->isEmpty() ){
             objTree_->BuildTree(getComponentInfoMap());
             curObj_ = objTree_;
             cd_name_stack();
        } 
+            if(curObj_ == nullptr){curObj_ = objTree_;}
 
         // Enter done loop
         while ( !done ) {

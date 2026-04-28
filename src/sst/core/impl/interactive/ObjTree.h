@@ -234,7 +234,7 @@ namespace SST::Core::Serialization {
             return typeid(Obj_T).name();
         }
 
-        bool isEmpty(){return objects_.empty();}
+        bool isEmpty(){return objects_.empty() && children_.empty();}
 
         void Dump([[maybe_unused]] const int verbosity, [[maybe_unused]] std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override { os << "Root/" << std::endl;}
         void clear() override {
