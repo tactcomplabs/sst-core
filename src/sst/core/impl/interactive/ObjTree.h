@@ -95,7 +95,7 @@ namespace SST::Core::Serialization {
         const std::string& getObjName() const { return name_; }
         const std::string& getType() const { return type_; }
         void setName(const std::string& name) { name_ = name; }
-        void setType(const std::string& type) { type_ = type; }
+        void setType(const std::string& type) { type_ = prettifyType(type); }
         bool isRoot(){ return parent_ == nullptr; }
         void makeReadOnly(){readOnly_ = true;}
         bool isReadOnly(){return readOnly_;}
@@ -167,6 +167,21 @@ namespace SST::Core::Serialization {
         NodeKind                                    kind_;
         bool                                        readOnly_;
 
+        static void replaceAll(std::string& s, std::string_view from, std::string_view to) {
+             if (from.empty()) return;
+            size_t pos = 0;
+            while ((pos = s.find(from, pos)) != std::string::npos) {
+                s.replace(pos, from.size(), to);
+                pos += to.size();
+            }
+        }
+
+        static std::string prettifyType(std::string t) {
+            replaceAll(t, "std::__1::",     "std::");
+            replaceAll(t, "std::__cxx11::", "std::");
+            replaceAll(t, "  ", " ");
+            return t;
+        }
 
     };
 
