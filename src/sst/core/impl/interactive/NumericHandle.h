@@ -9,7 +9,7 @@
 // information, see the LICENSE file in the top level directory of the
 // distribution.
 
-#include "sst/core/impl/interactive/ObjTree.h"
+#include "sst/core/serialization/ObjTree.h"
 
 namespace SST::Core::Serialization {
     // A lightweight non-owning handle returned by findByName that enables

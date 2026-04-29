@@ -9,45 +9,22 @@
 // information, see the LICENSE file in the top level directory of the
 // distribution.
 
-#ifndef SST_CORE_SERIALIZATION_OBJECTTREE_DEBUGGER_H
-#define SST_CORE_SERIALIZATION_OBJECTTREE_DEBUGGER_H
-
-#include "sst/core/from_string.h"
-#include "sst/core/warnmacros.h"
-#include "sst/core/componentInfo.h"
-#include "sst/core/baseComponent.h"
-#include "sst/core/serialization/objectMapDeferred.h"
-
-#include <cassert>
-#include <cctype>
-#include <cerrno>
-#include <cstddef>
-#include <cstdint>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <exception>
-#include <functional>
-#include <iostream>
-#include <map>
-#include <memory>
-#include <ostream>
-#include <stdexcept>
-#include <string>
-#include <type_traits>
-#include <typeinfo>
-#include <utility>
+#ifndef SST_CORE_SERIALIZATION_OBJECTTREELEAVES_DEBUGGER_H
+#define SST_CORE_SERIALIZATION_OBJECTTREELEAVES_DEBUGGER_H
 #include <vector>
-#include <any>
-#include <unordered_set>
-#include <algorithm>
+#include <string>
+#include <iostream>
+#include <ostream>
+
+namespace SST {
+    class ComponentInfoMap;
+}
 
 namespace SST::Core::Serialization {
-
-    class ObjTreeCont
+      class ObjTreeCont
     {
         public:
-        enum class NodeKind { Generic, Integer, Float, String, Bool, Component, Container, GenericVal };
+        enum class NodeKind { Generic, Integer, Float, String, Bool, Component, Container, FRef, GenericVal };
 
         ObjTreeCont() : parent_(nullptr), children_(), name_("uninit"), type_("uninit"), kind_(NodeKind::Generic), readOnly_(false)  {};
         ObjTreeCont(const std::string& name, const std::string& type, NodeKind kind = NodeKind::Generic)
@@ -469,71 +446,7 @@ namespace SST::Core::Serialization {
         }
     };
 
-    class ComponentObj : public ObjTree<ComponentObj> 
-    {
-        
-        private:
-        BaseComponent* val_ = nullptr;
-        ComponentInfo* compInfo_ = nullptr;
-
-        public:
-        ComponentObj() = default;
-        ComponentObj(BaseComponent* v, ComponentInfo* ci) : ObjTree<ComponentObj>(NodeKind::Component), val_(v), compInfo_(ci) {setName(v->getName());}
-        
-        ComponentObj(const ComponentObj& rhs): ObjTree<ComponentObj>(rhs), val_(rhs.val_), compInfo_(rhs.compInfo_) {}
-
-        ComponentObj& operator=(const ComponentObj& rhs) {
-            if (this == &rhs) return *this;
-            ObjTree<ComponentObj>::operator=(rhs);
-            val_ = rhs.val_;
-            compInfo_ = rhs.compInfo_;
-            return *this;
-        }
-
-        ObjTreeCont* clone() const override {
-            return new ComponentObj(*this);
-        }
-
-        BaseComponent* getVal() const{ return val_; }
-        ComponentInfo* getInfo() const{ return compInfo_;}
-
-        void setVal(BaseComponent* v){ val_ = v;}
-
-        void apply() override {
-            std::cout << "Processing component: " << val_->getName() << std::endl;
-        }
-        void Dump([[maybe_unused]] const int verbosity, [[maybe_unused]] std::ios_base::fmtflags base = std::ios_base::dec, std::ostream& os = std::cout) override{
-            os << val_->getName() << "/" << std::endl;
-        }
-
-        ComponentObj* find(const std::string name){
-            ComponentObj* result = nullptr;
-            applyRecursiveByType<ComponentObj>([&result, &name](ComponentObj* obj) {
-                if (obj->getVal()->getName() == name) {
-                result = obj;
-            }
-            });
-            return result;
-        }
-    };
-
-    template<typename Obj_T>
-    void ObjTree<Obj_T>::BuildTree(const ComponentInfoMap& compMap){
-        if(!children_.empty()){std::cout << "WARNING: Calling BuildTree on non-empty ObjTree" << std::endl;}
-        for ( auto comp = compMap.begin(); comp != compMap.end(); comp++ ) {
-        ComponentInfo* compinfo = *comp;
-        BaseComponent* bc = compinfo->getComponent();
-        ComponentObj* c = new ComponentObj(bc, compinfo);
-        addChildObj(c);
-        }
-         
-        std::sort(children_.begin(), children_.end(), 
-            [](const std::unique_ptr<ObjTreeCont>& a, const std::unique_ptr<ObjTreeCont>& b){
-                return a->getObjName() < b->getObjName();
-            });
-    }
-
-class ContainerObj : public ObjTree<ContainerObj> {
+    class ContainerObj : public ObjTree<ContainerObj> {
     size_t size_ = 0;
     ObjectMap* sourceMap_ = nullptr;
 
@@ -699,18 +612,36 @@ public:
 
 // Node for bool (separate from integer for clarity)
 class BoolObj : public ObjTree<BoolObj> {
+private:
     bool val_;
-    void* addr_; // This points back to the ObjectMap
+    void* addr_ = nullptr;                      // This points back to the ObjectMap
+    std::function<bool()>      getter_;        // accessor-callback mode. these are used to access bitset and vector<bool> types
+    std::function<void(bool)>  setter_;        //   These will be set by ObjectMapFundamentalReference if needed
+    bool useAccessor_ = false;                 // control if we use addr_ to update the value from the sim or do we use getter_/setter_
 
 public:
     BoolObj(bool v, void* addr) : ObjTree<BoolObj>(NodeKind::Bool), val_(v), addr_(addr) {}
-    BoolObj(const BoolObj& rhs): ObjTree<BoolObj>(rhs), val_(rhs.val_), addr_(rhs.addr_) {}
+    BoolObj(std::function<bool()> getter, std::function<void(bool)> setter)
+        : ObjTree<BoolObj>(NodeKind::Bool),
+          getter_(std::move(getter)),
+          setter_(std::move(setter)),
+          useAccessor_(true) {
+        if (getter_) val_ = getter_();
+        if (!setter_) readOnly_ = true;
+    }
+
+    BoolObj(const BoolObj& rhs): ObjTree<BoolObj>(rhs),
+                                 val_(rhs.val_), addr_(rhs.addr_),
+                                 getter_(rhs.getter_), setter_(rhs.setter_), useAccessor_(rhs.useAccessor_) {}
 
     BoolObj& operator=(const BoolObj& rhs) {
         if (this == &rhs) return *this;
         ObjTree<BoolObj>::operator=(rhs);
         val_ = rhs.val_;
         addr_ = rhs.addr_;
+        getter_ = rhs.getter_;
+        setter_ = rhs.setter_;
+        useAccessor_ = rhs.useAccessor_;
         return *this;
     }
 
@@ -720,16 +651,28 @@ public:
 
     bool getVal() const { return val_; }
     void setVal(bool v) { val_ = v; }
-    void setSimVal(bool v) { *(static_cast<bool*>(addr_)) = v; val_ = v;}
+    void setSimVal(bool v) { 
+        if(readOnly_){ return; }
+        if(useAccessor_){
+            if(setter_){ setter_(v); }
+        }else if(addr_){
+            *(static_cast<bool*>(addr_)) = v; 
+            val_ = v;
+        }
+    }
     bool setFromString(const std::string& value) override { 
         if(readOnly_){std::cout << "WARNING Cannot set ReadOnly Obj " << name_ << std::endl; return false;}
         setSimVal(value == "true" || value == "1");
         return true;
     }
-    virtual void syncFromSim() override { val_ = *(static_cast<bool*>(addr_)); }
+    virtual void syncFromSim() override { 
+        if(useAccessor_ && getter_){ val_ = getter_(); }
+        else if(addr_)             { val_ = *(static_cast<bool*>(addr_)); }  
+    }
     virtual bool hasChanged() override {
-        if (!addr_) return false;
-        return val_ != *static_cast<bool*>(addr_);
+        if( useAccessor_ && getter_){ return val_ != getter_(); }
+        if (addr_)                  {return val_  != *static_cast<bool*>(addr_); }
+        return false;
     }
 
     void apply() override {

@@ -12,7 +12,7 @@
 #ifndef SST_CORE_SERIALIZATION_OBJECTTREEHELPERS_DEBUGGER_H
 #define SST_CORE_SERIALIZATION_OBJECTTREEHELPERS_DEBUGGER_H
 
-#include "sst/core/impl/interactive/ObjTree.h"
+#include "sst/core/serialization/ObjTree.h"
 
 namespace SST::Core::Serialization {
 

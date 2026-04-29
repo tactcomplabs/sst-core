@@ -14,7 +14,6 @@
 
 #include "sst/core/from_string.h"
 #include "sst/core/warnmacros.h"
-//#include "sst/core/baseComponent.h"
 
 #include <cassert>
 #include <cctype>
@@ -42,6 +41,7 @@
 // #define _OBJMAP_DEBUG_
 
 namespace SST::Core::Serialization {
+class ObjTreeCont; 
 
 // Comparison of two keys: If both keys are integers, use numeric comparison, else lexicographic
 struct ObjectMultimapCmp
@@ -573,6 +573,16 @@ public:
        Refresh the ObjectMap, reconstructing children
     */
     virtual void refresh() {}
+
+    /**
+           Helper function to build an ObjTreeCont representation of this 
+           ObjectMap, if the subclass has type-specific knowledge of how 
+           to do so. This is useful for reference proxy types (std::bitset 
+           std::atomic<>, vector<bool>, etc). Returning nullptr means 
+           "use the generic ObjMapToTree::convert path." 
+    */
+    virtual SST::Core::Serialization::ObjTreeCont*
+    buildTreeNode(const std::string& UNUSED(name)) { return nullptr; }
 
 private:
     /**
@@ -1463,6 +1473,7 @@ public:
     ~ObjectMapContainer() override = default;
 };
 
+
 // ObjectMap for reference proxy types such as std::bitset<N>::reference, std::vector<bool>::reference,
 // atomic_reference, whose referenced types cannot be copied or pointed to with pointers, but whose
 // underlying values are ordinary fundamental types.
@@ -1492,8 +1503,13 @@ public:
     ObjectMapFundamentalReference(const ObjectMapFundamentalReference&)            = default;
     ObjectMapFundamentalReference& operator=(const ObjectMapFundamentalReference&) = delete;
     ~ObjectMapFundamentalReference() override                                      = default;
+
+    ObjTreeCont* buildTreeNode(const std::string& name) override;
 };
 
 } // namespace SST::Core::Serialization
+
+#include "sst/core/serialization/objectMapTreeBuilder.h"
+
 
 #endif // SST_CORE_SERIALIZATION_OBJECTMAP_H

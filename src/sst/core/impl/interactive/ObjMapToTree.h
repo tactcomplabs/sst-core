@@ -12,7 +12,8 @@
 #ifndef SST_CORE_SERIALIZATION_OBJECTMAPTOTREE_DEBUGGER_H
 #define SST_CORE_SERIALIZATION_OBJECTMAPTOTREE_DEBUGGER_H
 
-#include "sst/core/impl/interactive/ObjTree.h"
+#include "sst/core/serialization/ObjTree.h"
+#include "sst/core/serialization/objectMapTreeBuilder.h"
 
 namespace SST::Core::Serialization {
 
@@ -93,6 +94,10 @@ public:
 
     if (objMap->isFundamental()) {
         if (type == "bool" && addr) {
+            //handle bitset and vector<bool> case
+            auto* ref = objMap->buildTreeNode(name);
+            if(ref){return ref;}
+            //standard case
             auto* o = new BoolObj(*static_cast<bool*>(addr), addr);
             o->setName(name); o->setType(type); return o;
         }
