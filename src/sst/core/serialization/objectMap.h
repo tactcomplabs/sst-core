@@ -186,6 +186,13 @@ protected:
  */
 class ObjectMap
 {
+    public:
+    enum class ObjectCategory : uint8_t {
+        Generic = 0,
+        Component,
+        SubComponent,
+        Module
+    };
 protected:
     /**
        Metadata object for walking the object hierarchy.  When this
@@ -204,6 +211,8 @@ protected:
        that path to the current path will be erased.
      */
     ObjectMapMetaData* mdata_ = nullptr;
+    ObjectCategory category_ = ObjectCategory::Generic;
+
 
     /**
        Indicates whether or not the variable is read-only
@@ -228,6 +237,8 @@ protected:
        (i.e selectParent() is called)
      */
     virtual void deactivate_callback() {}
+
+    virtual void* getActualAddr() {return nullptr;}
 
 private:
     /**
@@ -348,6 +359,9 @@ public:
        @return current value of reference counter for the object
      */
     size_t getRefCount() const { return refCount_; }
+
+    ObjectCategory getCategory() const { return category_; }
+    void setCategory(ObjectCategory cat) { category_ = cat; }
 
     /**
        Get a watch point for this object.  If it is not a valid object
@@ -541,7 +555,7 @@ public:
        @return String representing this object and any children
        included based on the value of recurse
      */
-    virtual std::string list(int recurse = 0);
+    virtual std::string list(int recurse = 0 );
 
     /**
        Find a variable in this object map
@@ -1282,6 +1296,8 @@ public:
      */
     void* getAddr() const override { return addr_; }
 
+    void* getActualAddr() override { return addr_; }
+
     explicit ObjectMapFundamental(REF* addr) :
         addr_(addr)
     {}
@@ -1336,6 +1352,9 @@ public:
         // Create ObjectMapComparison_var which compares two variables
         // Only support arithmetic types for now
         if constexpr ( std::is_arithmetic_v<T> ) {
+                return new ObjectMapComparison_var<REF, T>(
+                    name, addr_, op, name2, static_cast<T*>(var2->getAddr()));
+        }/*
             if ( type == "int" ) {
                 return new ObjectMapComparison_var<REF, int>(
                     name, addr_, op, name2, static_cast<int*>(var2->getAddr()));
@@ -1396,7 +1415,7 @@ public:
                 return new ObjectMapComparison_var<REF, long double>(
                     name, addr_, op, name2, static_cast<long double*>(var2->getAddr()));
             }
-        } // end if first var is arithmetic
+        } // end if first var is arithmetic*/
 
         std::cout << "Invalid type for comparison: " << name2 << "(" << type << ")\n";
         return nullptr;

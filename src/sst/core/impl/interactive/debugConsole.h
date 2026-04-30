@@ -21,6 +21,7 @@
 #include "sst/core/sst_mpi.h"
 #include "sst/core/threadsafe.h"
 #include "sst/core/watchPoint.h"
+#include "sst/core/impl/interactive/ObjTree.h"
 
 #include <atomic>
 #include <cassert>
@@ -78,8 +79,9 @@ private:
     // directory as far as we can.
     std::deque<std::string> name_stack;
 
-    SST::Core::Serialization::ObjectMap* obj_         = nullptr;
     bool                                 done         = false;
+    SST::Core::Serialization::ComponentObj* objTree_  = nullptr;;
+    SST::Core::Serialization::ObjTreeCont* curObj_  = nullptr;;
     bool                                 exit_console = false;
     int                                  retState     = -1; // -1 DONE, -2 SUMMARY, positive number is threadID
 
@@ -105,9 +107,6 @@ private:
     // execution state management for nested user commands
     ExecState             eState = {};
     std::stack<ExecState> eStack = {};
-
-    // Keep a pointer to the ObjectMap for the top level Component
-    SST::Core::Serialization::ObjectMapDeferred<BaseComponent>* base_comp_ = nullptr;
 
     // Keep track of all the WatchPoints
     std::vector<std::pair<WatchPoint*, BaseComponent*>> watch_points_;
@@ -278,6 +277,10 @@ private:
     uint32_t verbosity = 0;
     void     msg(VERBOSITY_MASK mask, std::string message);
 
+    // Parse arguments in command
+    bool    containsArg(const std::string tok, const char arg);
+    size_t  containsArg(const std::vector<std::string> tokens, const std::string& arg );
+    std::vector<size_t> parseBracketIndices(std::string& token);
     // Pagination support
     DebuggerStream dout;
 

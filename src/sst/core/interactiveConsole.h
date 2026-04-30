@@ -21,6 +21,7 @@
 #include "sst/core/threadsafe.h"
 #include "sst/core/timeConverter.h"
 #include "sst/core/unitAlgebra.h"
+#include "sst/core/componentInfo.h"
 
 #include <cstdint>
 #include <set>
@@ -127,6 +128,8 @@ protected:
     void schedule_interactive(SimTime_t time_offset, const std::string& msg);
 
     SST::Core::Serialization::ObjectMap* getComponentObjectMap();
+
+    const SST::ComponentInfoMap& getComponentInfoMap();
 
     void simulationShutdown();
 

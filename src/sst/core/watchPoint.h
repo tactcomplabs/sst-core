@@ -16,6 +16,7 @@
 #include "sst/core/event.h"
 #include "sst/core/serialization/objectMap.h"
 #include "sst/core/stringize.h"
+#include "sst/core/impl/interactive/ObjTreeHelpers.h"
 
 namespace SST {
 
@@ -99,7 +100,7 @@ public:
     class SetVarWPAction : public WPAction
     {
     public:
-        SetVarWPAction(std::string vname, Core::Serialization::ObjectMap* obj, std::string tval) :
+        SetVarWPAction(std::string vname, Core::Serialization::ObjTreeCont* obj, std::string tval) :
             name_(vname),
             obj_(obj),
             valStr_(tval)
@@ -110,7 +111,7 @@ public:
 
     private:
         std::string                     name_   = "";
-        Core::Serialization::ObjectMap* obj_    = nullptr;
+        Core::Serialization::ObjTreeCont* obj_    = nullptr;
         std::string                     valStr_ = "";
     }; // class SetVarWPAction
 
@@ -124,7 +125,7 @@ public:
     }; // class ShutdownWPAction
 
     // Construction
-    WatchPoint(size_t index, const std::string& name, Core::Serialization::ObjectMapComparison* obj);
+    WatchPoint(size_t index, const std::string& name, Core::Serialization::ObjTreeComparison* obj);
     ~WatchPoint() = default;
 
     // Inherited from both Event and Clock handler AttachPoints.
@@ -173,9 +174,8 @@ public:
     void        resetTraceBuffer();
     inline bool checkReset() { return reset_; }
     void        printAction(std::stringstream& ss);
-    void        addTraceBuffer(Core::Serialization::TraceBuffer* tb);
-    void        addObjectBuffer(Core::Serialization::ObjectBuffer* ob);
-    void        addComparison(Core::Serialization::ObjectMapComparison* cmp);
+    void        addTraceBuffer(Core::Serialization::ObjTreeTraceBuffer* tb);
+    void        addObjectBuffer(Core::Serialization::ObjTreeCont* ob);
 
     enum LogicOp : unsigned { // Logical Op for trigger tests
         AND       = 0,
@@ -196,11 +196,11 @@ protected:
     void      simulationShutdown();
 
 private:
-    size_t                                                 numCmpObj_ = 0;
-    std::vector<Core::Serialization::ObjectMapComparison*> cmpObjects_;
+    //size_t                                                 numCmpObj_ = 0;
+    std::unique_ptr<Core::Serialization::ObjTreeComparison>  cmpObjects_;
     std::vector<LogicOp>                                   logicOps_;
     std::string                                            name_;
-    Core::Serialization::TraceBuffer*                      tb_ = nullptr;
+    Core::Serialization::ObjTreeTraceBuffer*               tb_ = nullptr;
     size_t                                                 wpIndex;
     HANDLER                                                handler        = ALL;
     bool                                                   trigger        = false;
