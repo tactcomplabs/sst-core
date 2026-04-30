@@ -103,10 +103,10 @@ component14/ (SST::CoreTest::MessageMesh::EnclosingComponent)
 component15/ (SST::CoreTest::MessageMesh::EnclosingComponent)
 
 ---- Rank0:Thread0: Entering interactive mode at time 3000
-  Last Trigger: WP0: AE : component0/message_count_ ...
+  Last Trigger: WP0: AE : /component0/message_count_ CHANGED  ...
 > wl
 R0,T0: Current watch points:
-0: TriggerCount 3 : ALL : component0/message_count_ CHANGED  : interactive
+0: TriggerCount 3 : ALL : /component0/message_count_ CHANGED  : interactive
 R0,T1: Current watch points:
 R1,T0: Current watch points:
 R1,T1: Current watch points:
@@ -117,7 +117,7 @@ R1,T1: Current watch points:
 > trace message_count_ changed : 16 0 : message_count_ : printStatus
 Added watchpoint #1
 > setHandler 1 ae
-WP 1 - component2/message_count_
+WP 1 - /component2/message_count_ CHANGED 
 > run 1ps
     Invoke Action
     Set Buffer Reset
@@ -168,7 +168,7 @@ component15/ (SST::CoreTest::MessageMesh::EnclosingComponent)
 Ran clock for 1 sim cycles
 > wl
 R0,T0: Current watch points:
-1: TriggerCount 1 : AE : component2/message_count_ CHANGED  : bufsize = 16 postDelay = 0 : component2/message_count_  : printStatus
+1: TriggerCount 1 : AE : /component2/message_count_ CHANGED  : bufsize = 16 postDelay = 0 : message_count_  : printStatus
 R0,T1: Current watch points:
 R1,T0: Current watch points:
 R1,T1: Current watch points:
@@ -182,17 +182,23 @@ Interactive start at 0
 > trace message_count_ changed : 16 4 : message_count_ : printTrace
 Added watchpoint #0
 > setHandler 0 ae
-WP 0 - component5/message_count_
+WP 0 - /component5/message_count_ CHANGED 
 > run 2000ps
     Invoke Action
     Set Buffer Reset
 TriggerCount=5
-LastTriggerRecord:@cycle5000: SamplesLost=0: component5/message_count_=16 
-buf[0] AE @4000 (!) component5/message_count_=12 
-buf[1] AE @4000 (+) component5/message_count_=13 
-buf[2] AE @4000 (+) component5/message_count_=14 
-buf[3] AE @5000 (+) component5/message_count_=15 
-buf[4] AE @5000 (+) component5/message_count_=16 
+LastTriggerRecord:@cycle5000: SamplesLost=0: message_count_ = 16
+
+buf[0] AE @4000 (!) message_count_ = 16 (int)
+
+buf[1] AE @4000 (+) message_count_ = 16 (int)
+
+buf[2] AE @4000 (+) message_count_ = 16 (int)
+
+buf[3] AE @5000 (+) message_count_ = 16 (int)
+
+buf[4] AE @5000 (+) message_count_ = 16 (int)
+
     Reset Trace Buffer
 
 INTERACTIVE CONSOLE
@@ -229,7 +235,7 @@ Ran clock for 2000 sim cycles
 > wl
 R0,T0: Current watch points:
 R0,T1: Current watch points:
-0: TriggerCount 5 : AE : component5/message_count_ CHANGED  : bufsize = 16 postDelay = 4 : component5/message_count_  : printTrace
+0: TriggerCount 5 : AE : /component5/message_count_ CHANGED  : bufsize = 16 postDelay = 4 : message_count_  : printTrace
 R1,T0: Current watch points:
 R1,T1: Current watch points:
 > unwatch 0
@@ -244,7 +250,7 @@ Interactive start at 0
 > trace message_count_ changed : 16 2 : message_count_ : set my_id_ 50
 Added watchpoint #0
 > setHandler 0 ae
-WP 0 - component8/message_count_
+WP 0 - /component8/message_count_ CHANGED 
 > run 1000ps
 
 INTERACTIVE CONSOLE
@@ -282,7 +288,7 @@ Ran clock for 1000 sim cycles
 R0,T0: Current watch points:
 R0,T1: Current watch points:
 R1,T0: Current watch points:
-0: TriggerCount 3 : AE : component8/message_count_ CHANGED  : bufsize = 16 postDelay = 2 : component8/message_count_  : set component8/my_id_ 50
+0: TriggerCount 3 : AE : /component8/message_count_ CHANGED  : bufsize = 16 postDelay = 2 : message_count_  : set component8/my_id_ 50
 R1,T1: Current watch points:
 > #print my_id_
 > unwatch 0
@@ -292,7 +298,7 @@ R1,T1: Current watch points:
 > trace message_count_ changed : 16 2 : message_count_ : interactive
 Added watchpoint #1
 > setHandler 1 ae
-WP 1 - component10/message_count_
+WP 1 - /component10/message_count_ CHANGED 
 > run
 
 INTERACTIVE CONSOLE
@@ -330,7 +336,7 @@ Ran clock for 1000 sim cycles
 R0,T0: Current watch points:
 R0,T1: Current watch points:
 R1,T0: Current watch points:
-1: TriggerCount 7 : AE : component10/message_count_ CHANGED  : bufsize = 16 postDelay = 2 : component10/message_count_  : interactive
+1: TriggerCount 7 : AE : /component10/message_count_ CHANGED  : bufsize = 16 postDelay = 2 : message_count_  : interactive
 R1,T1: Current watch points:
 > unwatch 1
 > # 5 trace shutdown
@@ -433,7 +439,8 @@ Simulation is complete, simulated time: 0 s
 ---- Components: ----
     Invoke Action
     Set Buffer Reset
-LastTriggerRecord:@cycle6000: SamplesLost=0: component8/message_count_=24 
+LastTriggerRecord:@cycle6000: SamplesLost=0: message_count_ = 24
+
 set component8/my_id_ 50
     Reset Trace Buffer
     Invoke Action
@@ -448,13 +455,15 @@ set component8/my_id_ 50
     Set Buffer Reset
     Invoke Action
     Set Buffer Reset
-LastTriggerRecord:@cycle8000: SamplesLost=0: component12/message_count_=29 
+LastTriggerRecord:@cycle8000: SamplesLost=0: message_count_ = 29
+
   Trigger action shutting down simulation
 wp simulation shutdown
     Reset Trace Buffer
     Invoke Action
     Set Buffer Reset
-LastTriggerRecord:@cycle8000: SamplesLost=0: component12/message_count_=31 
+LastTriggerRecord:@cycle8000: SamplesLost=0: message_count_ = 31
+
   Trigger action shutting down simulation
 wp simulation shutdown
     Reset Trace Buffer
