@@ -98,8 +98,7 @@ WatchPoint::WatchPoint(size_t index, const std::string& name, Core::Serializatio
     cmpObjects_(obj),
     name_(name),
     wpIndex(index)
-{
-}
+{}
 
 void
 WatchPoint::genericHandler(HANDLER h)
@@ -274,7 +273,7 @@ WatchPoint::printWatchpoint(std::stringstream& ss)
     ss << "TriggerCount " << triggerCount << " : ";
     printHandler(ss);
     // TODO: print the logic values
-    cmpObjects_->print(ss, 0, cmpObjects_->operators.size()*2);
+    cmpObjects_->print(ss, 0, cmpObjects_->operators.size() * 2);
     ss << " : ";
 
     if ( tb_ != nullptr ) { // print trace buffer config
@@ -389,7 +388,7 @@ WatchPoint::check()
 
         result = true;
     }
-    //printf("      comparison_0 = %d\n", result);
+    // printf("      comparison_0 = %d\n", result);
     std::stringstream s;
     s << std::boolalpha;
     s << "    WatchPoint " << name_.c_str() << " tests:\n";
@@ -402,9 +401,9 @@ WatchPoint::check()
         if ( cmpObjects_->evaluateComparison(i, nullptr) ) {
             result2 = true;
         }
-     //   printf("      comparison%ld = %d\n", i, result2);
+        //   printf("      comparison%ld = %d\n", i, result2);
         s << "      ";
-        cmpObjects_->print(s, i*2, i*2+1);
+        cmpObjects_->print(s, i * 2, i * 2 + 1);
         s << " -> " << result2 << std::endl;
 
         if ( logicOps_[i - 1] == LogicOp::AND ) {

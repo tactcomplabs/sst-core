@@ -12,8 +12,8 @@
 #ifndef SST_CORE_SERIALIZATION_OBJECTMAPDEFERRED_H
 #define SST_CORE_SERIALIZATION_OBJECTMAPDEFERRED_H
 
-#include "sst/core/serialization/serializer.h"
 #include "sst/core/baseComponent.h"
+#include "sst/core/serialization/serializer.h"
 
 #include <map>
 #include <string>
@@ -82,7 +82,7 @@ public:
         type_(demangle_name(type.c_str()))
     {
         // Set category based on type
-        if constexpr (std::is_base_of_v<BaseComponent, T> || std::is_base_of_v<SubComponent, T>) {
+        if constexpr ( std::is_base_of_v<BaseComponent, T> || std::is_base_of_v<SubComponent, T> ) {
             setCategory(ObjectCategory::Component);
         }
     }
@@ -128,18 +128,19 @@ private:
     std::string type_ = "";
 };
 
-class ComponentSerializer : public ObjectMapDeferred<BaseComponent> {
+class ComponentSerializer : public ObjectMapDeferred<BaseComponent>
+{
 public:
-    ComponentSerializer(BaseComponent* comp)
-        : ObjectMapDeferred<BaseComponent>(comp, typeid(*comp).name()) {}
+    ComponentSerializer(BaseComponent* comp) :
+        ObjectMapDeferred<BaseComponent>(comp, typeid(*comp).name())
+    {}
 
     // Expose the protected activate to trigger serialization
-    void serialize() {
-        activate_callback();
-    }
+    void serialize() { activate_callback(); }
 
     // Check if serialization produced results
-    bool hasSerialized() const {
+    bool hasSerialized() const
+    {
         // After activate_callback, obj_ is set via addVariable("!proxy!", ...)
         // getVariables() delegates to obj_->getVariables()
         return !getVariables().empty();

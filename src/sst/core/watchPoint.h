@@ -14,9 +14,9 @@
 
 #include "sst/core/clock.h"
 #include "sst/core/event.h"
+#include "sst/core/impl/interactive/ObjTreeHelpers.h"
 #include "sst/core/serialization/objectMap.h"
 #include "sst/core/stringize.h"
-#include "sst/core/impl/interactive/ObjTreeHelpers.h"
 
 namespace SST {
 
@@ -110,9 +110,9 @@ public:
         void               invokeAction(WatchPoint* wp) override;
 
     private:
-        std::string                     name_   = "";
+        std::string                       name_   = "";
         Core::Serialization::ObjTreeCont* obj_    = nullptr;
-        std::string                     valStr_ = "";
+        std::string                       valStr_ = "";
     }; // class SetVarWPAction
 
     class ShutdownWPAction : public WPAction
@@ -196,18 +196,18 @@ protected:
     void      simulationShutdown();
 
 private:
-    //size_t                                                 numCmpObj_ = 0;
-    std::unique_ptr<Core::Serialization::ObjTreeComparison>  cmpObjects_;
-    std::vector<LogicOp>                                   logicOps_;
-    std::string                                            name_;
-    Core::Serialization::ObjTreeTraceBuffer*               tb_ = nullptr;
-    size_t                                                 wpIndex;
-    HANDLER                                                handler        = ALL;
-    bool                                                   trigger        = false;
-    HANDLER                                                triggerHandler = HANDLER::NONE;
-    size_t                                                 triggerCount   = 0;
-    bool                                                   reset_         = false;
-    WPAction*                                              wpAction;
+    // size_t                                                 numCmpObj_ = 0;
+    std::unique_ptr<Core::Serialization::ObjTreeComparison> cmpObjects_;
+    std::vector<LogicOp>                                    logicOps_;
+    std::string                                             name_;
+    Core::Serialization::ObjTreeTraceBuffer*                tb_ = nullptr;
+    size_t                                                  wpIndex;
+    HANDLER                                                 handler        = ALL;
+    bool                                                    trigger        = false;
+    HANDLER                                                 triggerHandler = HANDLER::NONE;
+    size_t                                                  triggerCount   = 0;
+    bool                                                    reset_         = false;
+    WPAction*                                               wpAction;
 
     void     setBufferReset();
     void     check();

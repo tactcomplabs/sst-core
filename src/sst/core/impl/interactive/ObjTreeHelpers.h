@@ -20,7 +20,7 @@ class ObjTreeComparison
 {
 public:
     enum class Op : std::uint8_t { LT, LTE, GT, GTE, EQ, NEQ, CHANGED, INVALID };
-    enum class valType : std::uint8_t{ OBJ, CONST, UNKNOWN };
+    enum class valType : std::uint8_t { OBJ, CONST, UNKNOWN };
     static Op getOperationFromString(const std::string& op)
     {
         if ( op == "<" ) return Op::LT;
@@ -56,41 +56,48 @@ public:
             return "Invalid Op";
         }
     }
-    //TODO: add some limits on these
-    //The full path and name to the objects for compairson. Vector contains the full path to each object stored as individual
-    // elements within the dequeue. Ex: /comp0/subcomp/target --> [comp0][subcomp][target] within the dequeue 
+    // TODO: add some limits on these
+    // The full path and name to the objects for compairson. Vector contains the full path to each object stored as
+    // individual
+    //  elements within the dequeue. Ex: /comp0/subcomp/target --> [comp0][subcomp][target] within the dequeue
     std::vector<std::tuple<std::deque<std::string>, valType, std::unique_ptr<ObjTreeCont>>> objectsToCompare;
-    std::vector<Op> operators;
+    std::vector<Op>                                                                         operators;
 
-    void print(std::stringstream& s, unsigned startIdx, unsigned stopIdx) const {
-        if(objectsToCompare.empty() || operators.empty()){ return; }
-        if(objectsToCompare.size() < startIdx || objectsToCompare.size() < stopIdx){return;}
-        for(size_t i = startIdx; i < stopIdx; i++){
-            if(std::get<valType>(objectsToCompare[i]) == valType::UNKNOWN ) {continue;}
-            if(std::get<valType>(objectsToCompare[i]) == valType::CONST) {
+    void print(std::stringstream& s, unsigned startIdx, unsigned stopIdx) const
+    {
+        if ( objectsToCompare.empty() || operators.empty() ) {
+            return;
+        }
+        if ( objectsToCompare.size() < startIdx || objectsToCompare.size() < stopIdx ) {
+            return;
+        }
+        for ( size_t i = startIdx; i < stopIdx; i++ ) {
+            if ( std::get<valType>(objectsToCompare[i]) == valType::UNKNOWN ) {
+                continue;
+            }
+            if ( std::get<valType>(objectsToCompare[i]) == valType::CONST ) {
                 s << std::get<std::deque<std::string>>(objectsToCompare[i]).back();
                 s << " ";
                 continue;
-            }else{
-                for(size_t j = 0; j < std::get<std::deque<std::string>>(objectsToCompare[i]).size(); j++){
+            }
+            else {
+                for ( size_t j = 0; j < std::get<std::deque<std::string>>(objectsToCompare[i]).size(); j++ ) {
                     s << "/";
                     s << std::get<std::deque<std::string>>(objectsToCompare[i])[j];
                 }
             }
-            if((i % 2 == 0) &&  (i/2 < operators.size())){
-                s << " " << getStringFromOp(operators[i/2]);
+            if ( (i % 2 == 0) && (i / 2 < operators.size()) ) {
+                s << " " << getStringFromOp(operators[i / 2]);
             }
             s << " ";
-        } 
-        //s << std::endl;
+        }
+        // s << std::endl;
     }
 
     bool evaluateComparison(unsigned index, [[maybe_unused]] SST::Core::Serialization::ObjTreeCont* treeRoot);
 
-    ObjTreeComparison() = default;
-    ~ObjTreeComparison()= default;
-
-
+    ObjTreeComparison()  = default;
+    ~ObjTreeComparison() = default;
 };
 
 class ObjTreeTraceBuffer
@@ -125,10 +132,7 @@ public:
 
     size_t getBufferSize() { return bufSize_; }
 
-    void addObjectBuffer(ObjTreeCont* vb)
-    {
-        objBuffers_.push_back(vb);
-    }
+    void addObjectBuffer(ObjTreeCont* vb) { objBuffers_.push_back(vb); }
 
     enum BufferState : int {
         CLEAR,       // 0 Pre Trigger
@@ -175,8 +179,8 @@ public:
         ObjTreeCont* varBuffer_;
         for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
             varBuffer_ = objBuffers_[obj];
-            //varBuffer_->sample(cur_, trigger);
-            if(trigger){
+            // varBuffer_->sample(cur_, trigger);
+            if ( trigger ) {
                 varBuffer_->syncFromSim();
             }
         }
@@ -244,7 +248,7 @@ public:
             for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
                 ObjTreeCont* varBuffer_ = objBuffers_[obj];
                 varBuffer_->Dump(2);
-                //std::cout << varBuffer_->getObjName() << "=" << varBuffer_->get() << " ";
+                // std::cout << varBuffer_->getObjName() << "=" << varBuffer_->get() << " ";
             }
             std::cout << std::endl;
 
@@ -264,7 +268,8 @@ public:
             std::cout << "LastTriggerRecord:@cycle" << triggerCycle << ": SamplesLost=" << samplesLost_ << ": ";
             for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
                 ObjTreeCont* varBuffer_ = objBuffers_[obj];
-                //std::cout << SST::Core::to_string(varBuffer_->getName()) << "=" << varBuffer_->getTriggerVal() << " ";
+                // std::cout << SST::Core::to_string(varBuffer_->getName()) << "=" << varBuffer_->getTriggerVal() << "
+                // ";
                 varBuffer_->Dump(1);
             }
             std::cout << std::endl;
@@ -275,7 +280,7 @@ public:
     {
         for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
             ObjTreeCont* varBuffer_ = objBuffers_[obj];
-            //ss << SST::Core::to_string(varBuffer_->getName()) << " ";
+            // ss << SST::Core::to_string(varBuffer_->getName()) << " ";
             ss << varBuffer_->getObjName() << " ";
         }
     }
@@ -287,23 +292,23 @@ public:
     }
 
     // private:
-    size_t                          bufSize_     = 64;
-    size_t                          postDelay_   = 8;
-    size_t                          postCount_   = 0;
-    size_t                          cur_         = 0;
-    size_t                          first_       = 0;
-    size_t                          numRecs_     = 0;
-    bool                            isOverrun_   = false;
-    size_t                          samplesLost_ = 0;
-    bool                            reset_       = false;
-    BufferState                     state_       = CLEAR;
+    size_t      bufSize_     = 64;
+    size_t      postDelay_   = 8;
+    size_t      postCount_   = 0;
+    size_t      cur_         = 0;
+    size_t      first_       = 0;
+    size_t      numRecs_     = 0;
+    bool        isOverrun_   = false;
+    size_t      samplesLost_ = 0;
+    bool        reset_       = false;
+    BufferState state_       = CLEAR;
 
-    std::vector<BufferState>   tagBuffer_;
-    std::vector<std::string>   handlerBuffer_;
-    std::vector<ObjTreeCont*>  objBuffers_;
-    std::vector<uint64_t>      cycleBuffer_;
-    uint64_t                   triggerCycle;
+    std::vector<BufferState>  tagBuffer_;
+    std::vector<std::string>  handlerBuffer_;
+    std::vector<ObjTreeCont*> objBuffers_;
+    std::vector<uint64_t>     cycleBuffer_;
+    uint64_t                  triggerCycle;
 
 }; // class TraceBuffer
-}
+} // namespace SST::Core::Serialization
 #endif

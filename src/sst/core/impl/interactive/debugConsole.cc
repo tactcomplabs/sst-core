@@ -14,11 +14,11 @@
 #include "sst/core/impl/interactive/debugConsole.h"
 
 #include "sst/core/baseComponent.h"
+#include "sst/core/impl/interactive/ObjMapToTree.h"
+#include "sst/core/impl/interactive/ObjTreeHelpers.h"
 #include "sst/core/simulation_impl.h"
 #include "sst/core/stringize.h"
 #include "sst/core/timeConverter.h"
-#include "sst/core/impl/interactive/ObjTreeHelpers.h"
-#include "sst/core/impl/interactive/ObjMapToTree.h"
 
 #include <cstddef>
 #include <cstdio>
@@ -463,18 +463,19 @@ DebugConsole::consoleExecute(const std::string& msg)
     std::cout << msg << std::endl;
 
     // Try and serialize the entire map
-   // auto totalMap = SST::Core::Serialization::ObjectMapToTree::convertAndSerialize("root", obj_);
-   // printf("---- total map:\n ----");
-   // totalMap->Dump(2);
+    // auto totalMap = SST::Core::Serialization::ObjectMapToTree::convertAndSerialize("root", obj_);
+    // printf("---- total map:\n ----");
+    // totalMap->Dump(2);
 
-    //if(curObj_ == nullptr || objTree_->isEmpty()){
-    if(objTree_->isEmpty()){
+    // if(curObj_ == nullptr || objTree_->isEmpty()){
+    if ( objTree_->isEmpty() ) {
         objTree_->BuildTree(getComponentInfoMap());
         curObj_ = objTree_;
     }
-            if(curObj_ == nullptr){curObj_ = objTree_;}
+    if ( curObj_ == nullptr ) {
+        curObj_ = objTree_;
+    }
 
-    
 
     // Descend into the name_stack
     cd_name_stack();
@@ -551,7 +552,7 @@ DebugConsole::consoleExecute(const std::string& msg)
 
     // Save the position on the name_stack, and clear objTree_ and curObj_
     save_name_stack();
-     
+
     done = true;
     return retState;
 }
@@ -562,19 +563,17 @@ DebugConsole::save_name_stack()
 {
     name_stack.clear();
 
-    if(!curObj_->isRoot()){
-        SST::Core::Serialization::ObjTreeCont* parent =  curObj_->getParent();
-        name_stack.push_front(std::move(curObj_->getObjName())); 
-        while (parent && !parent->isRoot())
-        {
+    if ( !curObj_->isRoot() ) {
+        SST::Core::Serialization::ObjTreeCont* parent = curObj_->getParent();
+        name_stack.push_front(std::move(curObj_->getObjName()));
+        while ( parent && !parent->isRoot() ) {
             name_stack.push_front(std::move(parent->getObjName()));
-            parent =  parent->getParent();
+            parent = parent->getParent();
         }
     }
 
-    objTree_->clear();     // tear down the children so we refresh next time we break in
-    curObj_ = nullptr;    
-
+    objTree_->clear(); // tear down the children so we refresh next time we break in
+    curObj_ = nullptr;
 }
 
 // Descend into the name_stack
@@ -1398,17 +1397,16 @@ bool
 DebugConsole::cmd_pwd_remote(std::vector<std::string>& UNUSED(tokens))
 {
     std::string path = "/";
-    if(!curObj_->isRoot()){
-        SST::Core::Serialization::ObjTreeCont* parent =  curObj_->getParent();
-        path.append(curObj_->getObjName()); 
-        while (parent && !parent->isRoot())
-        {
-            path.insert(0,parent->getObjName());
-            path.insert(0,"/");
-            parent =  parent->getParent();
+    if ( !curObj_->isRoot() ) {
+        SST::Core::Serialization::ObjTreeCont* parent = curObj_->getParent();
+        path.append(curObj_->getObjName());
+        while ( parent && !parent->isRoot() ) {
+            path.insert(0, parent->getObjName());
+            path.insert(0, "/");
+            parent = parent->getParent();
         }
     }
-    result << path << std::endl; 
+    result << path << std::endl;
     return true;
 }
 
@@ -1491,14 +1489,14 @@ DebugConsole::cmd_ls_remote(std::vector<std::string>& tokens)
 {
 
     unsigned verbosity = 0;
-    if (tokens.size() > 1) {
-        if ("-l" == tokens[1])
+    if ( tokens.size() > 1 ) {
+        if ( "-l" == tokens[1] )
             verbosity = 2;
-        else if ("-ll" == tokens[1])
+        else if ( "-ll" == tokens[1] )
             verbosity = 3;
     }
     // Dump all the components
-    curObj_->applyRecursive([verbosity] (SST::Core::Serialization::ObjTreeCont* child) {
+    curObj_->applyRecursive([verbosity](SST::Core::Serialization::ObjTreeCont* child) {
         child->Dump(verbosity, std::ios_base::dec, result);
     });
 
@@ -1510,9 +1508,8 @@ void
 DebugConsole::get_listing_strings(std::list<std::string>& list)
 {
     list.clear();
-    curObj_->applyRecursive([&] (SST::Core::Serialization::ObjTreeCont* child){
-        list.emplace_back(child->getObjName());
-    });
+    curObj_->applyRecursive(
+        [&](SST::Core::Serialization::ObjTreeCont* child) { list.emplace_back(child->getObjName()); });
     list.sort();
 }
 
@@ -1617,31 +1614,32 @@ DebugConsole::cmd_cd_remote(std::vector<std::string>& tokens)
     // Check for ..
     if ( selection == ".." ) {
         auto* parent = curObj_->getParent();
-        if(parent){
+        if ( parent ) {
             curObj_ = parent;
-        }else{
+        }
+        else {
             printf("Already at top of object hierarchy\n");
             return false;
         }
         return true;
     }
 
-     // Search children by name
+    // Search children by name
     SST::Core::Serialization::ObjTreeCont* target = curObj_->findByName(selection);
-    if (!target) {
+    if ( !target ) {
         printf("Unknown object in cd command: %s\n", selection.c_str());
         return false;
     }
 
     // If it's a ComponentObj that hasn't been serialized yet, serialize it
-    if (auto* comp = dynamic_cast<Core::Serialization::ComponentObj*>(target)) {
-        if (comp->getChildren().empty()) {
+    if ( auto* comp = dynamic_cast<Core::Serialization::ComponentObj*>(target) ) {
+        if ( comp->getChildren().empty() ) {
             Core::Serialization::ObjectMapToTree::serializeComponent(comp, true);
         }
     }
 
     // Only descend if the target has children (or is a component that just got serialized)
-    if (target->getChildren().empty()) {
+    if ( target->getChildren().empty() ) {
         printf("Cannot cd into %s: no children\n", selection.c_str());
         return false;
     }
@@ -1651,14 +1649,15 @@ DebugConsole::cmd_cd_remote(std::vector<std::string>& tokens)
     return true;
 }
 
-std::vector<size_t> 
-DebugConsole::parseBracketIndices(std::string& token) {
+std::vector<size_t>
+DebugConsole::parseBracketIndices(std::string& token)
+{
     std::vector<size_t> indices;
 
     size_t pos = token.find('[');
-    while (pos != std::string::npos) {
+    while ( pos != std::string::npos ) {
         size_t pos2 = token.find(']', pos);
-        if (pos2 == std::string::npos) break;
+        if ( pos2 == std::string::npos ) break;
 
         std::string key = token.substr(pos + 1, (pos2 - pos) - 1);
         indices.push_back(std::atoi(key.c_str()));
@@ -1780,13 +1779,13 @@ DebugConsole::cmd_print_remote(std::vector<std::string>& tokens)
         return false;
     }
 
-    size_t pos = containsArg(tokens, "-r");
+    size_t      pos     = containsArg(tokens, "-r");
     // See if have a -r or not
     int         recurse = 0; // default -r depth
     std::string tok     = tokens[1];
     if ( (tok.size() >= 2) && (tok[0] == '-') && (tok[1] == 'r') ) {
         // Got a -r
-        std::string num = tokens[pos+1];
+        std::string num = tokens[pos + 1];
         if ( num.size() != 0 ) {
             try {
                 recurse = SST::Core::from_string<int>(num);
@@ -1809,18 +1808,18 @@ DebugConsole::cmd_print_remote(std::vector<std::string>& tokens)
             }
         }
 
-        var_index = (pos + 2 > var_index) ? pos+=2 : var_index;
+        var_index = (pos + 2 > var_index) ? pos += 2 : var_index;
     }
 
-     // See if have a -v or not
+    // See if have a -v or not
     int print_verbose = 0;
-    pos = containsArg(tokens, "-v");
-    if ( std::string::npos != pos ){
+    pos               = containsArg(tokens, "-v");
+    if ( std::string::npos != pos ) {
         // Got a -v
-        std::string num = tokens[pos+1];
+        std::string num = tokens[pos + 1];
         if ( num.size() != 0 ) {
             try {
-                print_verbose = std::stoi(num, nullptr, 10); 
+                print_verbose = std::stoi(num, nullptr, 10);
             }
             catch ( const std::invalid_argument& e ) {
                 printf("Invalid number format specified with -v: %s\n", num.c_str());
@@ -1831,26 +1830,28 @@ DebugConsole::cmd_print_remote(std::vector<std::string>& tokens)
             print_verbose = 0; // default -v depth
         }
 
-        var_index = (pos + 2 > var_index) ? pos+=2 : var_index;
+        var_index = (pos + 2 > var_index) ? pos += 2 : var_index;
     }
 
-    //check for format specifier 
-    pos = containsArg(tokens, "-f");
-    std::string fmt = "dec";
+    // check for format specifier
+    pos                          = containsArg(tokens, "-f");
+    std::string             fmt  = "dec";
     std::ios_base::fmtflags base = std::ios_base::dec;
-    if(std::string::npos != pos){
-        //found format specifier 
-        fmt = tokens[pos+1];
+    if ( std::string::npos != pos ) {
+        // found format specifier
+        fmt = tokens[pos + 1];
 
-        if("hex" == fmt){
+        if ( "hex" == fmt ) {
             base = std::ios_base::hex;
-        }else if("oct" == fmt){
+        }
+        else if ( "oct" == fmt ) {
             base = std::ios_base::oct;
-        }else{
+        }
+        else {
             base = std::ios_base::dec;
         }
 
-        var_index = (pos + 2 > var_index) ? pos+=2 : var_index;
+        var_index = (pos + 2 > var_index) ? pos += 2 : var_index;
     }
 
     if ( tokens.size() != (var_index + 1) ) {
@@ -1858,44 +1859,48 @@ DebugConsole::cmd_print_remote(std::vector<std::string>& tokens)
         return false;
     }
 
-    //Check for [ ] [ ]
+    // Check for [ ] [ ]
     std::vector<size_t> indices = parseBracketIndices(tokens[var_index]);
 
     auto* target = curObj_->findByName(tokens[var_index]);
-    if(target){
-       // auto tmp = SST::Core::Serialization::NumericHandle::from(target);
-       // bool gt = false;
-       // if(tmp < 100) gt = true;
-       // if(gt) printf("----- True ---- ");
-       if(!indices.empty()){
+    if ( target ) {
+        // auto tmp = SST::Core::Serialization::NumericHandle::from(target);
+        // bool gt = false;
+        // if(tmp < 100) gt = true;
+        // if(gt) printf("----- True ---- ");
+        if ( !indices.empty() ) {
             SST::Core::Serialization::ContainerObj* tmp = dynamic_cast<SST::Core::Serialization::ContainerObj*>(target);
-            if(tmp){ 
-                tmp->printElementAt(indices, print_verbose +1, base, std::cout);
+            if ( tmp ) {
+                tmp->printElementAt(indices, print_verbose + 1, base, std::cout);
             }
             else {
                 std::cout << "WARNING: Object not indexable" << std::endl;
-                target->Dump(print_verbose + 1, base, std::cout );
+                target->Dump(print_verbose + 1, base, std::cout);
             }
-       }else {
-            target->Dump(print_verbose + 1, base, std::cout );
-            if(recurse > 0){
-                target->applyRecursive([print_verbose, base] (SST::Core::Serialization::ObjTreeCont* child) {
+        }
+        else {
+            target->Dump(print_verbose + 1, base, std::cout);
+            if ( recurse > 0 ) {
+                target->applyRecursive([print_verbose, base](SST::Core::Serialization::ObjTreeCont* child) {
                     child->Dump(print_verbose + 1, base, std::cout);
                 });
             }
-       }
-    }else{
-        result << "Unknown object in print command: " << tokens[var_index] << std::endl;;
-        //result << "Invalid format for print command (print [-rN] [<obj>])" << std::endl;
+        }
+    }
+    else {
+        result << "Unknown object in print command: " << tokens[var_index] << std::endl;
+        ;
+        // result << "Invalid format for print command (print [-rN] [<obj>])" << std::endl;
         return false;
     }
     return true;
 }
 
 bool
-DebugConsole::containsArg(const std::string tok, const char arg ){
-     for (size_t i = 0; i + 1 < tok.size(); ++i) {
-        if ((tok[i] == '-' && tok[i + 1] == arg) ) {
+DebugConsole::containsArg(const std::string tok, const char arg)
+{
+    for ( size_t i = 0; i + 1 < tok.size(); ++i ) {
+        if ( (tok[i] == '-' && tok[i + 1] == arg) ) {
             return true;
         }
     }
@@ -1903,9 +1908,10 @@ DebugConsole::containsArg(const std::string tok, const char arg ){
 }
 
 size_t
-DebugConsole::containsArg(const std::vector<std::string> tokens, const std::string& arg ){
-    for (size_t i = 0; i < tokens.size(); ++i) {
-        if(tokens[i] == arg){
+DebugConsole::containsArg(const std::vector<std::string> tokens, const std::string& arg)
+{
+    for ( size_t i = 0; i < tokens.size(); ++i ) {
+        if ( tokens[i] == arg ) {
             return i;
         }
     }
@@ -2012,53 +2018,57 @@ DebugConsole::cmd_set_remote(std::vector<std::string>& tokens)
     //    If var->selectParent() is not used prior to returning we
     //    can get a segmentation fault on a subsequent command. Address
     //    Sanitizer indicated use of previously freed memory.
-    // 
+    //
 
-    //DDD: Do we need to check for ReadOnly in the ObjectMap?
+    // DDD: Do we need to check for ReadOnly in the ObjectMap?
 
-    //NOTE: We assume that if there are more than 3 tokens you are setting a string. 
-    if(tokens.size() > 3){
+    // NOTE: We assume that if there are more than 3 tokens you are setting a string.
+    if ( tokens.size() > 3 ) {
         int totalTokens = tokens.size();
-        for(int t = 3; t < totalTokens; t++){
+        for ( int t = 3; t < totalTokens; t++ ) {
             tokens[2].push_back(' ');
-            tokens[2].append(tokens[t]); //pack all the other tokens into the string value that will be set.
+            tokens[2].append(tokens[t]); // pack all the other tokens into the string value that will be set.
         }
     }
 
-    //Check for [ ] [ ]
+    // Check for [ ] [ ]
     std::vector<size_t> indices = parseBracketIndices(tokens[1]);
 
     auto* target = curObj_->findByName(tokens[1]);
-    if(target){
-        if(!indices.empty()){
+    if ( target ) {
+        if ( !indices.empty() ) {
             SST::Core::Serialization::ContainerObj* tmp = dynamic_cast<SST::Core::Serialization::ContainerObj*>(target);
-            if(tmp){ 
-                if(tmp->setElementFromString(indices, tokens[2])){ return true;}
-                else{
-                    result << "Failed to set " << tokens[1] << " to " << tokens[2]
-                        << " (type: " << target->getType() << ")" << std::endl;
+            if ( tmp ) {
+                if ( tmp->setElementFromString(indices, tokens[2]) ) {
+                    return true;
+                }
+                else {
+                    result << "Failed to set " << tokens[1] << " to " << tokens[2] << " (type: " << target->getType()
+                           << ")" << std::endl;
                     return false;
                 }
-            }else {
+            }
+            else {
                 result << "ERROR: Unable to set value - object not indexable" << std::endl;
                 return false;
             }
-        }else{
-            if (!target->setFromString(tokens[2])) {
-                result << "Failed to set " << tokens[1] << " to " << tokens[2]
-                    << " (type: " << target->getType() << ")" << std::endl;
+        }
+        else {
+            if ( !target->setFromString(tokens[2]) ) {
+                result << "Failed to set " << tokens[1] << " to " << tokens[2] << " (type: " << target->getType() << ")"
+                       << std::endl;
                 return false;
             }
         }
-    }else{
+    }
+    else {
         result << "Unknown object in set command: " << tokens[1] << std::endl;
         return false;
     }
 
     return true;
-        
 }
-    
+
 // run <time>: run simulation for time
 bool
 DebugConsole::cmd_run(std::string& UNUSED(cmd_str))
@@ -2949,119 +2959,137 @@ DebugConsole::cmd_document(std::string& UNUSED(cmd_str))
     return true;
 }
 
-//Create a helper object that contains the paths to the objects, the types being compared
-// as well as the operators used. Creates and returns a new ObjTreeComparison that the caller owns.
-// nullptr returned as an error condition.
-Core::Serialization::ObjTreeComparison* 
-parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serialization::ObjTreeCont* curObj, Core::Serialization::ObjTreeComparison* op = nullptr){
+// Create a helper object that contains the paths to the objects, the types being compared
+//  as well as the operators used. Creates and returns a new ObjTreeComparison that the caller owns.
+//  nullptr returned as an error condition.
+Core::Serialization::ObjTreeComparison*
+parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serialization::ObjTreeCont* curObj,
+    Core::Serialization::ObjTreeComparison* op = nullptr)
+{
 
     const std::string& var = tokens[index++];
     if ( index >= tokens.size() ) {
         std::cout << "Invalid format for trigger test" << std::endl;
         return nullptr;
     }
-    const std::string&                      opstr = tokens[index++];
-    if(nullptr == op){
+    const std::string& opstr = tokens[index++];
+    if ( nullptr == op ) {
         op = new Core::Serialization::ObjTreeComparison();
     }
     op->operators.push_back(Core::Serialization::ObjTreeComparison::getOperationFromString(opstr));
 
     std::string v2;
-    if( Core::Serialization::ObjTreeComparison::Op::CHANGED != op->operators.back()){
-        if( index >= tokens.size() ){
-            std::cout << "Invalid format for trigger test. Valid formats are <var> changed and <var> <op> <val>" 
-                << std::endl;
+    if ( Core::Serialization::ObjTreeComparison::Op::CHANGED != op->operators.back() ) {
+        if ( index >= tokens.size() ) {
+            std::cout << "Invalid format for trigger test. Valid formats are <var> changed and <var> <op> <val>"
+                      << std::endl;
             return nullptr;
         }
         v2 = tokens[index++];
     }
-     
+
     // Is operator valid
     if ( op->operators.back() == Core::Serialization::ObjTreeComparison::Op::INVALID ) {
         std::cout << "Unknown comparison operation specified in trigger test" << std::endl;
         return nullptr;
     }
 
-        //DDD: There is a lot of code duplicated ... this can clearly be a loop
-    SST::Core::Serialization::ObjTreeCont* opObj = curObj->findByName(var);
+    // DDD: There is a lot of code duplicated ... this can clearly be a loop
+    SST::Core::Serialization::ObjTreeCont* opObj  = curObj->findByName(var);
     SST::Core::Serialization::ObjTreeCont* parent = nullptr;
-    std::deque<std::string> path;
+    std::deque<std::string>                path;
     if ( nullptr != opObj ) {
-        if(!opObj->isLeaf() ){std::cout << "WARNING: Unsupported object " << opObj->getObjName() << " in watchpoint" << std::endl;}
-        parent =  opObj->getParent();
-        path.push_front(opObj->getObjName());
-        while (parent && !parent->isRoot())
-        {
-            path.push_front(parent->getObjName());
-            parent =  parent->getParent();
+        if ( !opObj->isLeaf() ) {
+            std::cout << "WARNING: Unsupported object " << opObj->getObjName() << " in watchpoint" << std::endl;
         }
-        op->objectsToCompare.emplace_back(std::move(path), Core::Serialization::ObjTreeComparison::valType::OBJ, opObj->clone());
+        parent = opObj->getParent();
+        path.push_front(opObj->getObjName());
+        while ( parent && !parent->isRoot() ) {
+            path.push_front(parent->getObjName());
+            parent = parent->getParent();
+        }
+        op->objectsToCompare.emplace_back(
+            std::move(path), Core::Serialization::ObjTreeComparison::valType::OBJ, opObj->clone());
 
         // In changed mode, we do not use v2, but add a "placeholder" object to the compairson list. This is a touch
-            // wasteful, but makes our life a lot easier later 
+        // wasteful, but makes our life a lot easier later
         if ( op->operators.back() == Core::Serialization::ObjTreeComparison::Op::CHANGED ) {
             std::deque<std::string> tmpPath;
             tmpPath.push_front("unnit");
-            op->objectsToCompare.emplace_back(std::move(tmpPath), Core::Serialization::ObjTreeComparison::valType::UNKNOWN, opObj->clone());
+            op->objectsToCompare.emplace_back(
+                std::move(tmpPath), Core::Serialization::ObjTreeComparison::valType::UNKNOWN, opObj->clone());
             return op;
         }
-    }else {
-          std::unique_ptr<Core::Serialization::ObjTreeCont> constNode = nullptr;
-        //Convert the string value to an Integer or FloatObj
+    }
+    else {
+        std::unique_ptr<Core::Serialization::ObjTreeCont> constNode = nullptr;
+        // Convert the string value to an Integer or FloatObj
         try {
             int64_t v = std::stoll(var);
             constNode = std::make_unique<Core::Serialization::IntegerObj>(v, nullptr);
-        } catch (...) {}
+        }
+        catch ( ... ) {
+        }
         try {
-            double v = std::stod(var);
+            double v  = std::stod(var);
             constNode = std::make_unique<Core::Serialization::FloatObj>(v, nullptr);
-        } catch (...) {}
-        if(constNode == nullptr){
+        }
+        catch ( ... ) {
+        }
+        if ( constNode == nullptr ) {
             std::cout << "Unknown Constant in expression" << std::endl;
             return nullptr;
         }
         std::deque<std::string> const_arg;
         const_arg.push_back(var);
-        op->objectsToCompare.emplace_back(std::move(const_arg), Core::Serialization::ObjTreeComparison::valType::CONST, constNode->clone());
+        op->objectsToCompare.emplace_back(
+            std::move(const_arg), Core::Serialization::ObjTreeComparison::valType::CONST, constNode->clone());
     }
-    
+
 
     // Check if v2 is a variable
     Core::Serialization::ObjTreeCont* opObj2 = curObj->findByName(v2);
 
     // V2 is valid variable
     if ( nullptr != opObj2 ) {
-        if(!opObj2->isLeaf() ){std::cout << "WARNING: Unsupported object " << opObj2->getObjName() << " in watchpoint" << std::endl;}
-        parent =  opObj2->getParent();
+        if ( !opObj2->isLeaf() ) {
+            std::cout << "WARNING: Unsupported object " << opObj2->getObjName() << " in watchpoint" << std::endl;
+        }
+        parent = opObj2->getParent();
         path.clear();
         path.push_front(opObj2->getObjName());
-        while (parent && !parent->isRoot())
-        {
+        while ( parent && !parent->isRoot() ) {
             path.push_front(parent->getObjName());
-            parent =  parent->getParent();
+            parent = parent->getParent();
         }
-        op->objectsToCompare.emplace_back(std::move(path), Core::Serialization::ObjTreeComparison::valType::OBJ, opObj2->clone());
+        op->objectsToCompare.emplace_back(
+            std::move(path), Core::Serialization::ObjTreeComparison::valType::OBJ, opObj2->clone());
     }
     else { // V2 is value string
         std::unique_ptr<Core::Serialization::ObjTreeCont> constNode = nullptr;
-        //Convert the string value to an Integer or FloatObj
+        // Convert the string value to an Integer or FloatObj
         try {
             int64_t v = std::stoll(v2);
             constNode = std::make_unique<Core::Serialization::IntegerObj>(v, nullptr);
-        } catch (...) {}
+        }
+        catch ( ... ) {
+        }
         try {
-            double v = std::stod(v2);
+            double v  = std::stod(v2);
             constNode = std::make_unique<Core::Serialization::FloatObj>(v, nullptr);
-        } catch (...) {}
-        if(constNode == nullptr){
+        }
+        catch ( ... ) {
+        }
+        if ( constNode == nullptr ) {
             std::cout << "Unknown Constant in expression" << std::endl;
             return nullptr;
         }
         std::deque<std::string> const_arg;
         const_arg.push_back(v2);
-        op->objectsToCompare.emplace_back(std::move(const_arg), Core::Serialization::ObjTreeComparison::valType::CONST, constNode->clone());
+        op->objectsToCompare.emplace_back(
+            std::move(const_arg), Core::Serialization::ObjTreeComparison::valType::CONST, constNode->clone());
     }
-    
+
     return op;
 }
 
@@ -3198,32 +3226,31 @@ parseAction(std::vector<std::string>& tokens, size_t& index, Core::Serialization
         }
 
         // Is variable fundamental
-      //  if ( !map->isFundamental() ) {
-       //     std::cout << "Can only set fundamental variable, " << tvar << " is not fundamental" << std::endl;
-       //     return nullptr;
-       // }
+        //  if ( !map->isFundamental() ) {
+        //     std::cout << "Can only set fundamental variable, " << tvar << " is not fundamental" << std::endl;
+        //     return nullptr;
+        // }
 
         // Is variable read-only
-      //  if ( map->isReadOnly() ) {
-       //     std::cout << "Object specified in set command is read-only: " << tvar << std::endl;
-      //      return nullptr;
-      //  }
+        //  if ( map->isReadOnly() ) {
+        //     std::cout << "Object specified in set command is read-only: " << tvar << std::endl;
+        //      return nullptr;
+        //  }
 
         // Check for valid value
-       // if ( !map->checkValue(tval) ) {
-      //      return nullptr;
-      //  }
+        // if ( !map->checkValue(tval) ) {
+        //      return nullptr;
+        //  }
 
-       
-        std::string name;
-        Core::Serialization::ObjTreeCont* parent =  obj->getParent();
+
+        std::string                       name;
+        Core::Serialization::ObjTreeCont* parent = obj->getParent();
         name.append("/" + tvar);
         name.insert(0, obj->getObjName());
-        while (parent && !parent->isRoot())
-        {
+        while ( parent && !parent->isRoot() ) {
             name.insert(0, "/");
             name.insert(0, parent->getObjName());
-            parent =  parent->getParent();
+            parent = parent->getParent();
         }
 
         return new WatchPoint::SetVarWPAction(name, map->clone(), tval);
@@ -3342,22 +3369,22 @@ DebugConsole::cmd_watch_rank_parallel(std::string& cmd_str)
 bool
 DebugConsole::cmd_watch_remote(std::vector<std::string>& tokens)
 {
-    size_t      index = 1;
-    std::string name  = "";
+    size_t            index = 1;
+    std::string       name  = "";
     std::stringstream ss;
 
     try {
         // Get first comparison
-        // allocate ObjTreeCompairson 
+        // allocate ObjTreeCompairson
         Core::Serialization::ObjTreeComparison* c = parseComparison(tokens, index, curObj_, nullptr);
         if ( c == nullptr ) {
             result << "Invalid comparison argument passed to watch command" << std::endl;
             return false;
         }
         size_t wpIndex = watch_points_.size();
-        c->print(ss, 0, c->operators.size()*2);
-        name = ss.str();
-        auto*  pt      = new WatchPoint(wpIndex, name, c);
+        c->print(ss, 0, c->operators.size() * 2);
+        name     = ss.str();
+        auto* pt = new WatchPoint(wpIndex, name, c);
 
 #if 0 // watch variables currently don't trace, but they could automatically
       // trace test vars
@@ -3407,10 +3434,9 @@ DebugConsole::cmd_watch_remote(std::vector<std::string>& tokens)
         }
 
         // Get the top level component to set the watch point
-        BaseComponent* comp = nullptr;
+        BaseComponent*                    comp   = nullptr;
         Core::Serialization::ObjTreeCont* parent = curObj_;
-        while (!parent->isComponent() && !parent->isRoot())
-        {
+        while ( !parent->isComponent() && !parent->isRoot() ) {
             parent = parent->getParent();
         }
         comp = static_cast<Core::Serialization::ComponentObj*>(parent)->getVal();
@@ -3886,8 +3912,8 @@ DebugConsole::cmd_trace_rank_parallel(std::string& cmd_str)
 bool
 DebugConsole::cmd_trace_remote(std::vector<std::string>& tokens)
 {
-    size_t      index = 1;
-    std::string name  = "";
+    size_t            index = 1;
+    std::string       name  = "";
     std::stringstream ss;
 
     // Get first comparison
@@ -3897,9 +3923,9 @@ DebugConsole::cmd_trace_remote(std::vector<std::string>& tokens)
         return false;
     }
     size_t wpIndex = watch_points_.size();
-    c->print(ss, 0, c->operators.size()*2);
-    name = ss.str();
-    auto*  pt      = new WatchPoint(wpIndex, name, c);
+    c->print(ss, 0, c->operators.size() * 2);
+    name     = ss.str();
+    auto* pt = new WatchPoint(wpIndex, name, c);
 
     // Add additional comparisons and logical ops
     while ( index < tokens.size() ) {
@@ -3974,14 +4000,13 @@ DebugConsole::cmd_trace_remote(std::vector<std::string>& tokens)
         }
 
         // Get the top level component to set the watch point
-        BaseComponent* comp = nullptr;
+        BaseComponent*                    comp   = nullptr;
         Core::Serialization::ObjTreeCont* parent = curObj_;
-        while (!parent->isComponent() && !parent->isRoot())
-        {
+        while ( !parent->isComponent() && !parent->isRoot() ) {
             parent = parent->getParent();
         }
-        
-        comp = static_cast<Core::Serialization::ComponentObj*>(parent)->getVal(); 
+
+        comp = static_cast<Core::Serialization::ComponentObj*>(parent)->getVal();
         if ( comp ) {
             comp->addWatchPoint(pt);
             watch_points_.emplace_back(pt, comp);
@@ -4451,13 +4476,15 @@ DebugConsole::handleCommand()
     else if ( !done ) {
         // If I am target thread, handle the incoming command
         if ( current_thread == rank_.thread ) {
-            //if(curObj_== nullptr || objTree_->isEmpty()){
-            if(objTree_->isEmpty()){
+            // if(curObj_== nullptr || objTree_->isEmpty()){
+            if ( objTree_->isEmpty() ) {
                 objTree_->BuildTree(getComponentInfoMap());
                 curObj_ = objTree_;
                 cd_name_stack();
             }
-            if(curObj_ == nullptr){curObj_ = objTree_;}
+            if ( curObj_ == nullptr ) {
+                curObj_ = objTree_;
+            }
             auto consoleCommand = cmdRegistry.seek(tokens[0], CommandRegistry::SEARCH_TYPE::BUILTIN);
             succeed             = consoleCommand.first.exec_remote(tokens);
         }
@@ -4617,13 +4644,15 @@ DebugConsole::receiveCommandRankSerial()
         auto consoleCommand = cmdRegistry.seek(tokens[0], CommandRegistry::SEARCH_TYPE::BUILTIN);
         if ( consoleCommand.second ) {
             // Execute in target thread
-            //if(curObj_ == nullptr || objTree_->isEmpty()){
-            if(objTree_->isEmpty()){
+            // if(curObj_ == nullptr || objTree_->isEmpty()){
+            if ( objTree_->isEmpty() ) {
                 objTree_->BuildTree(getComponentInfoMap());
                 curObj_ = objTree_;
                 cd_name_stack();
             }
-            if(curObj_ == nullptr){curObj_ = objTree_;}
+            if ( curObj_ == nullptr ) {
+                curObj_ = objTree_;
+            }
             succeed = consoleCommand.first.exec_remote(tokens);
             // Output::getDefaultObject().output("ReceiveCmdRankSerial: succeed %d\n", succeed);
         }
@@ -4876,13 +4905,15 @@ DebugConsole::executeThread(const std::string& msg)
     }
     else {
         // Init object tree
-       //if( curObj_ == nullptr || objTree_->isEmpty() ){
-       if( objTree_->isEmpty() ){
+        // if( curObj_ == nullptr || objTree_->isEmpty() ){
+        if ( objTree_->isEmpty() ) {
             objTree_->BuildTree(getComponentInfoMap());
             curObj_ = objTree_;
             cd_name_stack();
-       } 
-            if(curObj_ == nullptr){curObj_ = objTree_;}
+        }
+        if ( curObj_ == nullptr ) {
+            curObj_ = objTree_;
+        }
 
         // Enter done loop
         while ( !done ) {

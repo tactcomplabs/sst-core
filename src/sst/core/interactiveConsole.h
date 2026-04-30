@@ -13,6 +13,7 @@
 #define SST_CORE_INTERACTIVE_CONSOLE_H
 
 #include "sst/core/action.h"
+#include "sst/core/componentInfo.h"
 #include "sst/core/cputimer.h"
 #include "sst/core/eli/elementinfo.h"
 #include "sst/core/output.h"
@@ -21,7 +22,6 @@
 #include "sst/core/threadsafe.h"
 #include "sst/core/timeConverter.h"
 #include "sst/core/unitAlgebra.h"
-#include "sst/core/componentInfo.h"
 
 #include <cstdint>
 #include <set>
