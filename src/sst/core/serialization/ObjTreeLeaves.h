@@ -231,22 +231,40 @@ namespace SST::Core::Serialization {
         
         private:
         IntVariant val_;
-        void* addr_;
+        void* addr_ = nullptr;
+        std::function<int64_t()>      getter_;        // accessor-callback mode
+        std::function<void(int64_t)>  setter_;
+        bool useAccessor_ = false;
 
         public:
         template<typename T>
         IntegerObj(T v, void* addr) : ObjTree<IntegerObj>(NodeKind::Integer), val_(v), addr_(addr) {}
+        IntegerObj(std::function<int64_t()> getter, std::function<void(int64_t)> setter)
+            : ObjTree<IntegerObj>(NodeKind::Integer),
+              val_(int64_t{0}),
+              getter_(std::move(getter)), 
+              setter_(std::move(setter)),
+              useAccessor_(true) {
+                if (getter_) val_ = static_cast<int64_t>(getter_());
+                if (!setter_) readOnly_ = true;
+            }
 
         IntegerObj(const IntegerObj& rhs): 
             ObjTree<IntegerObj>(rhs),
             val_(rhs.val_),
-            addr_(rhs.addr_)
+            addr_(rhs.addr_),
+            getter_(rhs.getter_),
+            setter_(rhs.setter_),
+            useAccessor_(rhs.useAccessor_)
         {}
         IntegerObj& operator=(const IntegerObj& rhs) {
             if (this == &rhs) return *this;
             ObjTree<IntegerObj>::operator=(rhs);
             val_  = rhs.val_;
             addr_ = rhs.addr_;
+            getter_ = rhs.getter_;
+            setter_ = rhs.setter_;
+            useAccessor_ = rhs.useAccessor_;
             return *this;
         }
         ObjTreeCont* clone() const override {
@@ -266,17 +284,30 @@ namespace SST::Core::Serialization {
         }
 
          virtual void syncFromSim() override {
-            if (!addr_) return;
+             if (useAccessor_ && getter_) {
+                const int64_t live = getter_();
+                std::visit([live](auto& v) {
+                    v = static_cast<std::decay_t<decltype(v)>>(live);
+                }, val_);
+            }else if (addr_) {
             std::visit([this](auto& v) {
                 v = *static_cast<std::decay_t<decltype(v)>*>(addr_);
-            }, val_);
+                }, val_);
+            }
         }
 
         virtual bool hasChanged() override {
-            if (!addr_) return false;
-            return std::visit([this](const auto& v) -> bool {
-                return v != *static_cast<std::decay_t<decltype(v)>*>(addr_);
-            }, val_);
+            if (useAccessor_ && getter_) {
+                const int64_t live = getter_();
+                return std::visit([live](const auto& v) -> bool {
+                    return static_cast<int64_t>(v) != live;
+                }, val_);
+            } else if (addr_) {
+                return std::visit([this](const auto& v) -> bool {
+                    return v != *static_cast<std::decay_t<decltype(v)>*>(addr_);
+                }, val_);
+            }
+            return false;
         }
 
         template<typename Visitor>
@@ -341,15 +372,30 @@ namespace SST::Core::Serialization {
         private:
         FloatVariant val_;
         void* addr_;
+        std::function<long double()>      getter_;        // accessor-callback mode
+        std::function<void(long double)>  setter_;
+        bool useAccessor_ = false;
 
         public:
         template<typename T>
         FloatObj(T v, void* addr) : ObjTree<FloatObj>(NodeKind::Float), val_(v), addr_(addr) {}
+        FloatObj(std::function<long double()> getter, std::function<void(long double)> setter)
+            : ObjTree<FloatObj>(NodeKind::Integer),
+              val_(0.0),
+              getter_(std::move(getter)), 
+              setter_(std::move(setter)),
+              useAccessor_(true) {
+                if (getter_) val_ = static_cast<long double>(getter_());
+                if (!setter_) readOnly_ = true;
+            }
 
         FloatObj(const FloatObj& rhs):
             ObjTree<FloatObj>(rhs), 
             val_(rhs.val_),
-            addr_(rhs.addr_)
+            addr_(rhs.addr_),
+            getter_(rhs.getter_),
+            setter_(rhs.setter_),
+            useAccessor_(rhs.useAccessor_)
         {}
 
         FloatObj& operator=(const FloatObj& rhs) {
@@ -357,6 +403,9 @@ namespace SST::Core::Serialization {
             ObjTree<FloatObj>::operator=(rhs);
             val_ = rhs.val_;
             addr_ = rhs.addr_;
+            getter_ = rhs.getter_;
+            setter_ = rhs.setter_;
+            useAccessor_ = rhs.useAccessor_;
             return *this;
         }
 
@@ -374,17 +423,30 @@ namespace SST::Core::Serialization {
         void setSimVal(T v){ val_ = v; syncToSim(); }
 
         virtual void syncFromSim() override {
-            if (!addr_) return;
+            if (useAccessor_ && getter_) {
+                const long double live = getter_();
+                std::visit([live](auto& v) {
+                    v = static_cast<std::decay_t<decltype(v)>>(live);
+                }, val_);
+            }else if (addr_) {
             std::visit([this](auto& v) {
                 v = *static_cast<std::decay_t<decltype(v)>*>(addr_);
-            }, val_);
+                }, val_);
+            }
         }
 
         virtual bool hasChanged() override {
-            if (!addr_) return false;
-            return std::visit([this](const auto& v) -> bool {
-                return v != *static_cast<std::decay_t<decltype(v)>*>(addr_);
-            }, val_);
+            if (useAccessor_ && getter_) {
+                const long double live = getter_();
+                return std::visit([live](const auto& v) -> bool {
+                    return static_cast<int64_t>(v) != live;
+                }, val_);
+            } else if (addr_) {
+                return std::visit([this](const auto& v) -> bool {
+                    return v != *static_cast<std::decay_t<decltype(v)>*>(addr_);
+                }, val_);
+            }
+            return false;
         }
 
         template<typename Visitor>

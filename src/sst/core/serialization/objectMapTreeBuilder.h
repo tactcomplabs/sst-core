@@ -25,7 +25,7 @@ ObjectMapFundamentalReference<T, REF, PTYPE>::buildTreeNode(const std::string& n
             [proxy]() mutable        { return static_cast<bool>(proxy); },
             [proxy](bool v) mutable  { proxy = v; }
         );
-    } /*else if constexpr (std::is_integral_v<T>) {
+    } else if constexpr (std::is_integral_v<T>) {
         node = new IntegerObj(
             [proxy]() mutable           { return static_cast<int64_t>(static_cast<T>(proxy)); },
             [proxy](int64_t v) mutable  { proxy = static_cast<T>(v); }
@@ -35,7 +35,7 @@ ObjectMapFundamentalReference<T, REF, PTYPE>::buildTreeNode(const std::string& n
             [proxy]() mutable               { return static_cast<long double>(static_cast<T>(proxy)); },
             [proxy](long double v) mutable  { proxy = static_cast<T>(v); }
         );
-    } */else {
+    } else {
         return nullptr;
     }
 
