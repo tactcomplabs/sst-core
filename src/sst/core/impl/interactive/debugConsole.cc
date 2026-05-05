@@ -16,7 +16,7 @@
 #include "sst/core/baseComponent.h"
 #include "sst/core/impl/interactive/ObjMapToTree.h"
 #include "sst/core/impl/interactive/ObjTreeHelpers.h"
-#include "sst/core/simulation_impl.h"
+#include "sst/core/simulation.h"
 #include "sst/core/stringize.h"
 #include "sst/core/timeConverter.h"
 
@@ -45,8 +45,8 @@ DebugConsole::DebugConsole(Params& params) :
     dout(std::cout, 50, 160)
 {
     // registerAsPrimaryComponent();
-    num_ranks_ = Simulation_impl::getSimulation()->getNumRanks();
-    rank_      = Simulation_impl::getSimulation()->getRank();
+    num_ranks_ = Simulation::getSimulation()->getNumRanks();
+    rank_      = Simulation::getSimulation()->getRank();
 
     // Serial (single rank, single thread)
     if ( num_ranks_.rank == 1 && num_ranks_.thread == 1 ) {
@@ -422,7 +422,7 @@ DebugConsole::~DebugConsole()
 void
 DebugConsole::summary()
 {
-    Simulation_impl* sim_ = Simulation_impl::getSimulation();
+    Simulation* sim_ = Simulation::getSimulation();
     result << "-- Rank:" << rank_.rank << "/" << num_ranks_.rank << " Thread:" << rank_.thread << "/"
            << num_ranks_.thread;
     //<< " (Process " << getpid() << ")";
@@ -1179,7 +1179,7 @@ DebugConsole::cmd_thread_rank_parallel(std::string& cmd_str)
 bool
 DebugConsole::cmd_thread_remote(std::vector<std::string>& UNUSED(tokens))
 {
-    result << Simulation_impl::getSimulation()->interactive_msg_ << std::endl;
+    result << Simulation::getSimulation()->interactive_msg_ << std::endl;
     return true;
 }
 
@@ -1322,7 +1322,7 @@ DebugConsole::cmd_rank_rank_parallel(std::string& cmd_str)
 bool
 DebugConsole::cmd_rank_remote(std::vector<std::string>& UNUSED(tokens))
 {
-    result << Simulation_impl::getSimulation()->interactive_msg_ << std::endl;
+    result << Simulation::getSimulation()->interactive_msg_ << std::endl;
     return true;
 }
 
@@ -3197,7 +3197,7 @@ parseAction(std::vector<std::string>& tokens, size_t& index, Core::Serialization
         return new WatchPoint::PrintTraceWPAction();
     }
     else if ( action == "checkpoint" ) {
-        if ( Simulation_impl::getSimulation()->checkpoint_directory_ == "" ) {
+        if ( Simulation::getSimulation()->checkpoint_directory_ == "" ) {
             std::cout << "Invalid action: checkpointing not enabled (use --checkpoint-enable cmd line option)\n";
             return nullptr;
         }
@@ -4511,7 +4511,8 @@ DebugConsole::handleCommandAll()
 }
 
 bool
-DebugConsole::sendCommand(uint32_t rank_id, uint32_t thread_id, const std::string& cmd)
+DebugConsole::sendCommand(
+    uint32_t UNUSED_WO_MPI(rank_id), uint32_t UNUSED_WO_MPI(thread_id), const std::string& UNUSED_WO_MPI(cmd))
 {
 #ifdef SST_CONFIG_HAVE_MPI
     char*      cmd_buffer;
@@ -4558,8 +4559,9 @@ DebugConsole::sendCommand(uint32_t rank_id, uint32_t thread_id, const std::strin
 
     free(cmd_buffer);
     free(result_buffer);
-
     return succeed;
+#else
+    return false;
 #endif
 }
 
@@ -4842,6 +4844,8 @@ DebugConsole::sendDone()
 
     free(cmd_buffer);
     return succeed;
+#else
+    return false;
 #endif
 }
 
@@ -4926,7 +4930,7 @@ DebugConsole::executeThread(const std::string& msg)
 }
 
 int
-DebugConsole::executeRankSerial(const std::string& msg)
+DebugConsole::executeRankSerial(const std::string& UNUSED_WO_MPI(msg))
 {
 #ifdef SST_CONFIG_HAVE_MPI
     // -- Rank 0
@@ -4970,12 +4974,12 @@ DebugConsole::executeRankSerial(const std::string& msg)
     } // end Rank i!=0
 
     done = false; // Return codes currently unused
+#endif            // SST_CONFIG_HAVE_MPI
     return 0;
-#endif // SST_CONFIG_HAVE_MPI
 }
 
 int
-DebugConsole::executeRankParallel(const std::string& msg)
+DebugConsole::executeRankParallel(const std::string& UNUSED_WO_MPI(msg))
 {
 #ifdef SST_CONFIG_HAVE_MPI
 
@@ -5030,8 +5034,8 @@ DebugConsole::executeRankParallel(const std::string& msg)
 
     done = false;
     // Maybe check shutdown here as well?
-    return 0; // Return codes currently unused
 #endif
+    return 0; // Return codes currently unused
 } // end rankParallelExecute
 
 
