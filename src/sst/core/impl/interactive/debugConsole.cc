@@ -2374,7 +2374,8 @@ DebugConsole::cmd_addTraceVar_remote(std::vector<std::string>& tokens)
             result << "Watchpoint " << wpIndex << " does not have tracing enabled" << std::endl;
             return false;
         }
-        wp->addObjectBuffer(map->clone());
+        std::unique_ptr<Core::Serialization::ObjTreeCont> map_uniq(map->clone());
+        wp->addObjectBuffer(std::move(map_uniq));
     }
     return true;
 }
@@ -3952,7 +3953,8 @@ DebugConsole::cmd_trace_remote(std::vector<std::string>& tokens)
                 std::cout << "Invalid trace variable argument passed to trace command\n";
                 return false;
             }
-            pt->addObjectBuffer(objBuf->clone());
+            std::unique_ptr<Core::Serialization::ObjTreeCont> obj_uniq(objBuf->clone());
+            pt->addObjectBuffer(std::move(obj_uniq));
         } // end while get trace vars
 
         // Parse action

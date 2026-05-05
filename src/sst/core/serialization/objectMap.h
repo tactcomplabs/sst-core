@@ -1509,7 +1509,9 @@ public:
 
 } // namespace SST::Core::Serialization
 
+//clang-format off
 #include "sst/core/serialization/objectMapTreeBuilder.h"
+//clang-format on
 
 
 #endif // SST_CORE_SERIALIZATION_OBJECTMAP_H

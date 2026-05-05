@@ -102,11 +102,19 @@ public:
             o->setName(name); o->setType(type); return o;
         }
         if (isIntegerType(type)) {
+            //handle fundamental ref case
+            auto* ref = objMap->buildTreeNode(name);
+            if(ref){return ref;}
+            //standard case
             if (auto o = makeIntegerObj(type, addr)) {
                 o->setName(name); o->setType(type); if(objMap->isReadOnly()){o->makeReadOnly();} return o.release();
             }
         }
         if (isFloatType(type)) {
+             //handle fundamental ref case
+            auto* ref = objMap->buildTreeNode(name);
+            if(ref){return ref;}
+            //standard case
             if (auto o = makeFloatObj(type, addr)) {
                 o->setName(name); o->setType(type); if(objMap->isReadOnly()){o->makeReadOnly();} return o.release();
             }

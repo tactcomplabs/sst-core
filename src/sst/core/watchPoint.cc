@@ -365,9 +365,9 @@ WatchPoint::addTraceBuffer(Core::Serialization::ObjTreeTraceBuffer* tb)
 }
 
 void
-WatchPoint::addObjectBuffer(Core::Serialization::ObjTreeCont* ob)
+WatchPoint::addObjectBuffer(std::unique_ptr<Core::Serialization::ObjTreeCont> ob)
 {
-    tb_->addObjectBuffer(ob);
+    tb_->addObjectBuffer(std::move(ob));
 }
 
 void
