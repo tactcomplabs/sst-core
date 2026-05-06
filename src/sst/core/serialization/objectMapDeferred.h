@@ -14,6 +14,7 @@
 
 #include "sst/core/baseComponent.h"
 #include "sst/core/serialization/serializer.h"
+#include "sst/core/baseComponent.h"
 
 #include <map>
 #include <string>

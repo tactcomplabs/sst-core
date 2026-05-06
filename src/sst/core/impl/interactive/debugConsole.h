@@ -13,7 +13,6 @@
 #define SST_CORE_IMPL_INTERACTIVE_DEBUGCONSOLE_H
 
 #include "sst/core/eli/elementinfo.h"
-#include "sst/core/impl/interactive/ObjTree.h"
 #include "sst/core/impl/interactive/cmdLineEditor.h"
 #include "sst/core/impl/interactive/debugCommands.h"
 #include "sst/core/impl/interactive/debugStream.h"
@@ -22,6 +21,7 @@
 #include "sst/core/sst_mpi.h"
 #include "sst/core/threadsafe.h"
 #include "sst/core/watchPoint.h"
+#include "sst/core/serialization/ObjTree.h"
 
 #include <atomic>
 #include <cassert>
@@ -79,13 +79,11 @@ private:
     // directory as far as we can.
     std::deque<std::string> name_stack;
 
-    bool                                    done     = false;
-    SST::Core::Serialization::ComponentObj* objTree_ = nullptr;
-    ;
-    SST::Core::Serialization::ObjTreeCont* curObj_ = nullptr;
-    ;
-    bool exit_console = false;
-    int  retState     = -1; // -1 DONE, -2 SUMMARY, positive number is threadID
+    bool                                 done         = false;
+    SST::Core::Serialization::ComponentObj* objTree_  = nullptr;;
+    SST::Core::Serialization::ObjTreeCont* curObj_  = nullptr;;
+    bool                                 exit_console = false;
+    int                                  retState     = -1; // -1 DONE, -2 SUMMARY, positive number is threadID
 
     void save_name_stack();
     void cd_name_stack();

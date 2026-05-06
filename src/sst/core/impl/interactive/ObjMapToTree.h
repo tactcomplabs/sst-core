@@ -12,64 +12,65 @@
 #ifndef SST_CORE_SERIALIZATION_OBJECTMAPTOTREE_DEBUGGER_H
 #define SST_CORE_SERIALIZATION_OBJECTMAPTOTREE_DEBUGGER_H
 
-#include "sst/core/impl/interactive/ObjTree.h"
+#include "sst/core/serialization/ObjTree.h"
+#include "sst/core/serialization/objectMapTreeBuilder.h"
 
 namespace SST::Core::Serialization {
 
-class ObjectMapToTree
-{
-    using IntVariant   = IntegerObj::IntVariant;
+class ObjectMapToTree {
+    using IntVariant = IntegerObj::IntVariant;
     using FloatVariant = FloatObj::FloatVariant;
 
     // Known integer type strings
-    static bool isIntegerType(const std::string& type)
-    {
-        static const std::unordered_set<std::string> intTypes = { "signed char", "int8_t", "char", "short", "int16_t",
-            "int", "int32_t", "long", "long long", "int64_t", "unsigned char", "uint8_t", "unsigned short", "uint16_t",
-            "unsigned int", "unsigned", "uint32_t", "unsigned long", "unsigned long long", "uint64_t" };
+    static bool isIntegerType(const std::string& type) {
+        static const std::unordered_set<std::string> intTypes = {
+            "signed char", "int8_t", "char",
+            "short", "int16_t",
+            "int", "int32_t",
+            "long", "long long", "int64_t",
+            "unsigned char", "uint8_t",
+            "unsigned short", "uint16_t",
+            "unsigned int", "unsigned", "uint32_t",
+            "unsigned long", "unsigned long long", "uint64_t"
+        };
         return intTypes.count(type) > 0;
     }
 
-    static bool isFloatType(const std::string& type)
-    {
+    static bool isFloatType(const std::string& type) {
         return type == "float" || type == "double" || type == "long double";
     }
 
-    static bool isStringType(const std::string& type)
-    {
+    static bool isStringType(const std::string& type) {
         // Demangled std::string can appear in various forms
-        return type.find("std::string") != std::string::npos ||
-               type.find("std::__cxx11::basic_string") != std::string::npos ||
-               type.find("basic_string") != std::string::npos;
+        return type.find("std::string") != std::string::npos
+            || type.find("std::__cxx11::basic_string") != std::string::npos
+            || type.find("basic_string") != std::string::npos;
     }
 
-    static bool isContainerType(const std::string& type)
-    {
-        return type.find("std::vector") != std::string::npos || type.find("std::map") != std::string::npos ||
-               type.find("std::unordered_map") != std::string::npos || type.find("std::set") != std::string::npos ||
-               type.find("std::unordered_set") != std::string::npos || type.find("std::list") != std::string::npos ||
-               type.find("std::deque") != std::string::npos || type.find("std::multimap") != std::string::npos ||
-               type.find("std::array") != std::string::npos;
+    static bool isContainerType(const std::string& type) {
+        return type.find("std::vector") != std::string::npos
+            || type.find("std::map") != std::string::npos
+            || type.find("std::unordered_map") != std::string::npos
+            || type.find("std::set") != std::string::npos
+            || type.find("std::unordered_set") != std::string::npos
+            || type.find("std::list") != std::string::npos
+            || type.find("std::deque") != std::string::npos
+            || type.find("std::multimap") != std::string::npos
+            || type.find("std::array") != std::string::npos;
     }
 
-    static std::unique_ptr<IntegerObj> makeIntegerObj(const std::string& type, void* addr)
-    {
-        if ( !addr ) return nullptr;
-        if ( type == "signed char" || type == "int8_t" || type == "char" )
-            return std::make_unique<IntegerObj>(*static_cast<int8_t*>(addr), addr);
-        if ( type == "short" || type == "int16_t" )
-            return std::make_unique<IntegerObj>(*static_cast<int16_t*>(addr), addr);
-        if ( type == "int" || type == "int32_t" )
-            return std::make_unique<IntegerObj>(*static_cast<int32_t*>(addr), addr);
-        if ( type == "long" || type == "long long" || type == "int64_t" )
+    static std::unique_ptr<IntegerObj> makeIntegerObj(const std::string& type, void* addr)  {
+        if (!addr) return nullptr;
+        if (type == "signed char"    || type == "int8_t" || type == "char")   return std::make_unique<IntegerObj>(*static_cast<int8_t*>(addr), addr);
+        if (type == "short"          || type == "int16_t")  return std::make_unique<IntegerObj>(*static_cast<int16_t*>(addr), addr);
+        if (type == "int"            || type == "int32_t")  return std::make_unique<IntegerObj>(*static_cast<int32_t*>(addr), addr);
+        if (type == "long" || type == "long long" || type == "int64_t")
             return std::make_unique<IntegerObj>(*static_cast<int64_t*>(addr), addr);
-        if ( type == "unsigned char" || type == "uint8_t" )
-            return std::make_unique<IntegerObj>(*static_cast<uint8_t*>(addr), addr);
-        if ( type == "unsigned short" || type == "uint16_t" )
-            return std::make_unique<IntegerObj>(*static_cast<uint16_t*>(addr), addr);
-        if ( type == "unsigned int" || type == "unsigned" || type == "uint32_t" )
+        if (type == "unsigned char"  || type == "uint8_t")  return std::make_unique<IntegerObj>(*static_cast<uint8_t*>(addr), addr);
+        if (type == "unsigned short" || type == "uint16_t") return std::make_unique<IntegerObj>(*static_cast<uint16_t*>(addr), addr);
+        if (type == "unsigned int"   || type == "unsigned" || type == "uint32_t")
             return std::make_unique<IntegerObj>(*static_cast<uint32_t*>(addr), addr);
-        if ( type == "unsigned long" || type == "unsigned long long" || type == "uint64_t" )
+        if (type == "unsigned long"  || type == "unsigned long long" || type == "uint64_t")
             return std::make_unique<IntegerObj>(*static_cast<uint64_t*>(addr), addr);
         return nullptr;
     }
@@ -86,106 +87,88 @@ class ObjectMapToTree
 public:
     // Convert a single ObjectMap* into an ObjTreeCont*
     // Caller takes ownership of the returned pointer
-    static ObjTreeCont* convert(const std::string& name, ObjectMap* objMap, bool recursive = true)
-    {
-        if ( !objMap ) return nullptr;
+    static ObjTreeCont* convert(const std::string& name, ObjectMap* objMap, bool recursive = true) {
+    if (!objMap) return nullptr;
 
-        const std::string type = objMap->getType();
-        void*             addr = objMap->getAddr();
+    const std::string type = objMap->getType();
+    void* addr = objMap->getAddr();
 
-        if ( objMap->isFundamental() ) {
-            if ( type == "bool" && addr ) {
-                auto* o = new BoolObj(*static_cast<bool*>(addr), addr);
-                o->setName(name);
-                o->setType(type);
-                return o;
+    if (objMap->isFundamental()) {
+        if (type == "bool" && addr) {
+            //handle bitset and vector<bool> case
+            auto* ref = objMap->buildTreeNode(name);
+            if(ref){return ref;}
+            //standard case
+            auto* o = new BoolObj(*static_cast<bool*>(addr), addr);
+            o->setName(name); o->setType(type); return o;
+        }
+        if (isIntegerType(type)) {
+            //handle fundamental ref case
+            auto* ref = objMap->buildTreeNode(name);
+            if(ref){return ref;}
+            //standard case
+            if (auto o = makeIntegerObj(type, addr)) {
+                o->setName(name); o->setType(type); if(objMap->isReadOnly()){o->makeReadOnly();} return o.release();
             }
-            if ( isIntegerType(type) ) {
-                if ( auto o = makeIntegerObj(type, addr) ) {
-                    o->setName(name);
-                    o->setType(type);
-                    if ( objMap->isReadOnly() ) {
-                        o->makeReadOnly();
-                    }
-                    return o.release();
-                }
+        }
+        if (isFloatType(type)) {
+             //handle fundamental ref case
+            auto* ref = objMap->buildTreeNode(name);
+            if(ref){return ref;}
+            //standard case
+            if (auto o = makeFloatObj(type, addr)) {
+                o->setName(name); o->setType(type); if(objMap->isReadOnly()){o->makeReadOnly();} return o.release();
             }
-            if ( isFloatType(type) ) {
-                if ( auto o = makeFloatObj(type, addr) ) {
-                    o->setName(name);
-                    o->setType(type);
-                    if ( objMap->isReadOnly() ) {
-                        o->makeReadOnly();
-                    }
-                    return o.release();
-                }
-            }
-            if ( isStringType(type) && addr ) {
-                auto* o = new StringObj(*static_cast<std::string*>(addr), addr);
-                o->setName(name);
-                o->setType(type);
-                if ( objMap->isReadOnly() ) {
-                    o->makeReadOnly();
-                }
-                return o;
-            }
-            // Unknown fundamental — wrap in GenericObj with the value as string
-            // Note: we pass a nullptr in for objMap as the objMap used here is destroyed by the caller
+        }
+        if (isStringType(type) && addr) {
+            auto* o = new StringObj(*static_cast<std::string*>(addr), addr);
+            o->setName(name); o->setType(type); if(objMap->isReadOnly()){o->makeReadOnly();} return o;
+        }
+        // Unknown fundamental — wrap in GenericObj with the value as string
+            //Note: we pass a nullptr in for objMap as the objMap used here is destroyed by the caller
             //      If it is necessary to set one of these generic values we will need to preserve the
-            //      value of objMap. For now, we just pass in a nullptr rather than carry the (potentially)
-            //      heavy ObjMap around in this container
-            auto* g = new GenericValObj(objMap->get(), addr, nullptr);
-            g->setName(name);
-            g->setType(type);
-            if ( objMap->isReadOnly() ) {
-                g->makeReadOnly();
-            }
-            return g;
-        }
-
-        if ( objMap->isContainer() || isContainerType(type) ) {
-            const auto& vars = objMap->getVariables();
-            auto*       c    = new ContainerObj(name, type, vars.size(), nullptr);
-            for ( const auto& [n, m] : vars )
-                if ( auto* child = convert(n, m, recursive) ) c->addChildObj(child);
-            return c;
-        }
-
-        if ( objMap->getCategory() == ObjectMap::ObjectCategory::Component ) {
-            if ( auto* comp = static_cast<BaseComponent*>(addr) ) {
-                auto* co = new ComponentObj(comp, nullptr);
-                co->setName(name);
-                co->setType(type);
-                if ( objMap->isReadOnly() ) {
-                    co->makeReadOnly();
-                }
-                return co;
-            }
-        }
-
-        auto* node = new ObjTreeCont(name, type);
-        if ( recursive ) {
-            for ( const auto& [n, m] : objMap->getVariables() )
-                if ( auto* child = convert(n, m, false) ) node->addChildObj(child);
-        }
-        return node;
+            //      value of objMap. For now, we just pass in a nullptr rather than carry the (potentially) 
+            //      heavy ObjMap around in this container 
+        auto* g = new GenericValObj(objMap->get(), addr, nullptr);
+        g->setName(name); g->setType(type); if(objMap->isReadOnly()){g->makeReadOnly();} return g;
     }
 
-    static void addChildrenFromMap(ObjTreeCont* parent, const ObjectMultimap& variables)
-    {
-        if ( !parent ) return;
-        for ( const auto& [name, objMap] : variables ) {
+    if (objMap->isContainer() || isContainerType(type)) {
+        const auto& vars = objMap->getVariables();
+        auto* c = new ContainerObj(name, type, vars.size(), nullptr);
+        for (const auto& [n, m] : vars)
+            if (auto* child = convert(n, m, recursive)) c->addChildObj(child);
+        return c;
+    }
+
+    if (objMap->getCategory() == ObjectMap::ObjectCategory::Component) {
+        if (auto* comp = static_cast<BaseComponent*>(addr)) {
+            auto* co = new ComponentObj(comp, nullptr);
+            co->setName(name); co->setType(type); if(objMap->isReadOnly()){co->makeReadOnly();} return co;
+        }
+    }
+
+    auto* node = new ObjTreeCont(name, type);
+    if (recursive) {
+        for (const auto& [n, m] : objMap->getVariables())
+            if (auto* child = convert(n, m, false)) node->addChildObj(child);
+    }
+    return node;
+}
+
+    static void addChildrenFromMap(ObjTreeCont* parent, const ObjectMultimap& variables) {
+        if (!parent) return;
+        for (const auto& [name, objMap] : variables) {
             ObjTreeCont* child = convert(name, objMap, false);
-            if ( child ) parent->addChildObj(child);
+            if (child) parent->addChildObj(child);
         }
     }
 
-    static void addChildrenFromMapRecursive(ObjTreeCont* parent, const ObjectMultimap& variables)
-    {
-        if ( !parent ) return;
-        for ( const auto& [name, objMap] : variables ) {
+     static void addChildrenFromMapRecursive(ObjTreeCont* parent, const ObjectMultimap& variables) {
+        if (!parent) return;
+        for (const auto& [name, objMap] : variables) {
             ObjTreeCont* child = convert(name, objMap, true);
-            if ( child ) parent->addChildObj(child);
+            if (child) parent->addChildObj(child);
         }
     }
 

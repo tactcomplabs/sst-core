@@ -12,6 +12,7 @@
 #include "sst_config.h"
 
 #include "sst/core/serialization/objectMap.h"
+//#include "sst/core/impl/interactive/ObjTree.h"
 
 #include "sst/core/stringize.h"
 
@@ -191,12 +192,12 @@ ObjectMap::listVariable(std::string name, bool& found, int recurse)
 std::string
 ObjectMap::list(int recurse)
 {
-    return listRecursive(mdata_->name, 0, recurse);
+    return listRecursive(mdata_->name, 0, recurse );
 }
 
 // Private functions
 std::string
-ObjectMap::listRecursive(const std::string& name, int level, int recurse)
+ObjectMap::listRecursive(const std::string& name, int level, int recurse )
 {
     std::string ret;
     std::string indent = std::string(level, ' ');

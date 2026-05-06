@@ -22,6 +22,7 @@
 #include "sst/core/threadsafe.h"
 #include "sst/core/timeConverter.h"
 #include "sst/core/unitAlgebra.h"
+#include "sst/core/componentInfo.h"
 
 #include <cstdint>
 #include <set>

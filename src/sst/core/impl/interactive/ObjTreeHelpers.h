@@ -12,7 +12,8 @@
 #ifndef SST_CORE_SERIALIZATION_OBJECTTREEHELPERS_DEBUGGER_H
 #define SST_CORE_SERIALIZATION_OBJECTTREEHELPERS_DEBUGGER_H
 
-#include "sst/core/impl/interactive/ObjTree.h"
+#include "sst/core/serialization/ObjTree.h"
+#include <memory>
 
 namespace SST::Core::Serialization {
 
@@ -132,7 +133,12 @@ public:
 
     size_t getBufferSize() { return bufSize_; }
 
-    void addObjectBuffer(ObjTreeCont* vb) { objBuffers_.push_back(vb); }
+    void addObjectBuffer(std::unique_ptr<ObjTreeCont> vb)
+    {
+        std::vector<std::unique_ptr<ObjTreeCont>> newBuf;
+        newBuf.push_back(std::move(vb));
+        objBuffers_.emplace_back(std::move(newBuf), 0);
+    }
 
     enum BufferState : int {
         CLEAR,       // 0 Pre Trigger
@@ -178,11 +184,15 @@ public:
         // Sample all the trace object buffers
         ObjTreeCont* varBuffer_;
         for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
-            varBuffer_ = objBuffers_[obj];
-            // varBuffer_->sample(cur_, trigger);
-            if ( trigger ) {
-                varBuffer_->syncFromSim();
-            }
+            auto& [bufVec, storedTriggerIdx] = objBuffers_[obj];
+            varBuffer_ = bufVec.back().get();
+            //varBuffer_->sample(cur_, trigger);
+            std::unique_ptr<ObjTreeCont> updatedBuf(varBuffer_->clone());
+            updatedBuf->syncFromSim();
+            unsigned triggerIdx = trigger ? bufVec.size() : storedTriggerIdx;
+            bufVec.push_back(std::move(updatedBuf));
+            storedTriggerIdx = triggerIdx;
+            //DDD: Add a way to flag which of these values was the trigger value 
         }
 
         if ( numRecs_ < bufSize_ ) {
@@ -246,9 +256,9 @@ public:
                       << state2char.at(tagBuffer_.at(i)) << ") ";
 
             for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
-                ObjTreeCont* varBuffer_ = objBuffers_[obj];
+                ObjTreeCont* varBuffer_ = std::get<std::vector<std::unique_ptr<ObjTreeCont>>>(objBuffers_[obj])[i].get();  //DDD: Maybe?
                 varBuffer_->Dump(2);
-                // std::cout << varBuffer_->getObjName() << "=" << varBuffer_->get() << " ";
+                //std::cout << varBuffer_->getObjName() << "=" << varBuffer_->get() << " ";
             }
             std::cout << std::endl;
 
@@ -265,22 +275,34 @@ public:
             return;
         }
         if ( state_ != CLEAR ) {
+            std::ostringstream tmpBuf;
+            std::string objNames;
+            //print trigger value for the one variable (variables?) that actually triggered
             std::cout << "LastTriggerRecord:@cycle" << triggerCycle << ": SamplesLost=" << samplesLost_ << ": ";
             for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
-                ObjTreeCont* varBuffer_ = objBuffers_[obj];
-                // std::cout << SST::Core::to_string(varBuffer_->getName()) << "=" << varBuffer_->getTriggerVal() << "
-                // ";
-                varBuffer_->Dump(1);
+                unsigned triggerIdx = std::get<unsigned>(objBuffers_[obj]);
+                auto* record = &std::get<std::vector<std::unique_ptr<ObjTreeCont>>>(objBuffers_[obj]);
+                if(triggerIdx < record->size()){
+                    ObjTreeCont* varBuffer_ = (*record)[triggerIdx].get();
+                    //OK, so we have to use Dump() to get the value, but it adds a \n after each call, so strip it out
+                    varBuffer_->Dump(1,std::ios_base::dec, tmpBuf);
+                    objNames.append(tmpBuf.str());
+                    if(!objNames.empty() && objNames.back() == '\n'){objNames.pop_back(); objNames.push_back(' ');}
+                    tmpBuf.str("");
+                    tmpBuf.clear();
+                }else{
+                        continue;
+                }
             }
-            std::cout << std::endl;
+            std::cout << objNames << std::endl;
         }
     }
 
     void printVars(std::stringstream& ss)
     {
         for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
-            ObjTreeCont* varBuffer_ = objBuffers_[obj];
-            // ss << SST::Core::to_string(varBuffer_->getName()) << " ";
+            ObjTreeCont* varBuffer_ = std::get<std::vector<std::unique_ptr<ObjTreeCont>>>(objBuffers_[obj]).back().get();
+            //ss << SST::Core::to_string(varBuffer_->getName()) << " ";
             ss << varBuffer_->getObjName() << " ";
         }
     }
@@ -292,23 +314,25 @@ public:
     }
 
     // private:
-    size_t      bufSize_     = 64;
-    size_t      postDelay_   = 8;
-    size_t      postCount_   = 0;
-    size_t      cur_         = 0;
-    size_t      first_       = 0;
-    size_t      numRecs_     = 0;
-    bool        isOverrun_   = false;
-    size_t      samplesLost_ = 0;
-    bool        reset_       = false;
-    BufferState state_       = CLEAR;
+    size_t                          bufSize_     = 64;
+    size_t                          postDelay_   = 8;
+    size_t                          postCount_   = 0;
+    size_t                          cur_         = 0;
+    size_t                          first_       = 0;
+    size_t                          numRecs_     = 0;
+    bool                            isOverrun_   = false;
+    size_t                          samplesLost_ = 0;
+    bool                            reset_       = false;
+    BufferState                     state_       = CLEAR;
 
-    std::vector<BufferState>  tagBuffer_;
-    std::vector<std::string>  handlerBuffer_;
-    std::vector<ObjTreeCont*> objBuffers_;
-    std::vector<uint64_t>     cycleBuffer_;
-    uint64_t                  triggerCycle;
+    std::vector<BufferState>   tagBuffer_;
+    std::vector<std::string>   handlerBuffer_;
+    //Vector of ObjTreeCont - organized as all the sampled values with the index of the last
+    //  triggered value
+    std::vector<std::tuple<std::vector<std::unique_ptr<ObjTreeCont>>, unsigned> > objBuffers_;
+    std::vector<uint64_t>      cycleBuffer_;
+    uint64_t                   triggerCycle;
 
 }; // class TraceBuffer
-} // namespace SST::Core::Serialization
+}
 #endif

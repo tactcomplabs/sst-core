@@ -552,7 +552,7 @@ DebugConsole::consoleExecute(const std::string& msg)
 
     // Save the position on the name_stack, and clear objTree_ and curObj_
     save_name_stack();
-
+     
     done = true;
     return retState;
 }
@@ -1779,7 +1779,7 @@ DebugConsole::cmd_print_remote(std::vector<std::string>& tokens)
         return false;
     }
 
-    size_t      pos     = containsArg(tokens, "-r");
+    size_t pos = containsArg(tokens, "-r");
     // See if have a -r or not
     int         recurse = 0; // default -r depth
     std::string tok     = tokens[1];
@@ -1808,18 +1808,18 @@ DebugConsole::cmd_print_remote(std::vector<std::string>& tokens)
             }
         }
 
-        var_index = (pos + 2 > var_index) ? pos += 2 : var_index;
+        var_index = (pos + 2 > var_index) ? pos+=2 : var_index;
     }
 
-    // See if have a -v or not
+     // See if have a -v or not
     int print_verbose = 0;
-    pos               = containsArg(tokens, "-v");
-    if ( std::string::npos != pos ) {
+    pos = containsArg(tokens, "-v");
+    if ( std::string::npos != pos ){
         // Got a -v
-        std::string num = tokens[pos + 1];
+        std::string num = tokens[pos+1];
         if ( num.size() != 0 ) {
             try {
-                print_verbose = std::stoi(num, nullptr, 10);
+                print_verbose = std::stoi(num, nullptr, 10); 
             }
             catch ( const std::invalid_argument& e ) {
                 printf("Invalid number format specified with -v: %s\n", num.c_str());
@@ -2384,7 +2384,8 @@ DebugConsole::cmd_addTraceVar_remote(std::vector<std::string>& tokens)
             result << "Watchpoint " << wpIndex << " does not have tracing enabled" << std::endl;
             return false;
         }
-        wp->addObjectBuffer(map->clone());
+        std::unique_ptr<Core::Serialization::ObjTreeCont> map_uniq(map->clone());
+        wp->addObjectBuffer(std::move(map_uniq));
     }
     return true;
 }
@@ -2987,7 +2988,7 @@ parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serializa
         }
         v2 = tokens[index++];
     }
-
+     
     // Is operator valid
     if ( op->operators.back() == Core::Serialization::ObjTreeComparison::Op::INVALID ) {
         std::cout << "Unknown comparison operation specified in trigger test" << std::endl;
@@ -3978,7 +3979,8 @@ DebugConsole::cmd_trace_remote(std::vector<std::string>& tokens)
                 std::cout << "Invalid trace variable argument passed to trace command\n";
                 return false;
             }
-            pt->addObjectBuffer(objBuf->clone());
+            std::unique_ptr<Core::Serialization::ObjTreeCont> obj_uniq(objBuf->clone());
+            pt->addObjectBuffer(std::move(obj_uniq));
         } // end while get trace vars
 
         // Parse action

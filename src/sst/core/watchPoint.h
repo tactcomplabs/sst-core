@@ -17,6 +17,7 @@
 #include "sst/core/impl/interactive/ObjTreeHelpers.h"
 #include "sst/core/serialization/objectMap.h"
 #include "sst/core/stringize.h"
+#include "sst/core/impl/interactive/ObjTreeHelpers.h"
 
 namespace SST {
 
@@ -175,7 +176,7 @@ public:
     inline bool checkReset() { return reset_; }
     void        printAction(std::stringstream& ss);
     void        addTraceBuffer(Core::Serialization::ObjTreeTraceBuffer* tb);
-    void        addObjectBuffer(Core::Serialization::ObjTreeCont* ob);
+    void        addObjectBuffer(std::unique_ptr<Core::Serialization::ObjTreeCont> ob);
 
     enum LogicOp : unsigned { // Logical Op for trigger tests
         AND       = 0,
