@@ -32,6 +32,7 @@ class testcase_DebugConsole(SSTTestCase):
 
     parallelism = testing_check_get_num_ranks() * testing_check_get_num_threads()
 
+    # Test interactive start and watch/trace actions
     # Serial
     #@unittest.skipIf(parallelism > 16, "Test does not support greater than 16-way parallelism")
     @unittest.skipIf(testing_check_get_num_ranks() > 1, "Test only supports serial execution")
@@ -96,6 +97,13 @@ class testcase_DebugConsole(SSTTestCase):
     @unittest.skipIf(testing_check_get_num_threads() != 2, "Test requires 2 ranks, each with 2 threads")
     def test_rankparallel1(self):
         self.debugconsole_test_template("rankparallel1", "1ps")
+
+    # Test trace buffer output
+    #@unittest.skipIf(parallelism > 16, "Test does not support greater than 16-way parallelism")
+    @unittest.skipIf(testing_check_get_num_ranks() > 1, "Test only supports serial execution")
+    @unittest.skipIf(testing_check_get_num_threads() > 1, "Test only supports serial execution")
+    def test_tracebuf(self):
+        self.debugconsole_test_template("tracebuf", "0")
 
 #####
 
