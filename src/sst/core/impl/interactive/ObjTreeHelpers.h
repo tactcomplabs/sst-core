@@ -123,7 +123,15 @@ public:
         isOverrun_   = false;
         reset_       = false;
         state_       = CLEAR;
-        objBuffers_.clear();
+
+        // should we do a syncFromSim on the remaining objBuffers?
+        for(size_t obj = 0; obj < objBuffers_.size(); obj++){
+            auto& [bufVec, storedTriggerIdx] = objBuffers_[obj];
+            auto e = bufVec.end();
+            e--;
+            bufVec.erase(bufVec.begin(), e);
+            storedTriggerIdx = 0;
+        }
     }
 
     size_t getBufferSize() { return bufSize_; }
