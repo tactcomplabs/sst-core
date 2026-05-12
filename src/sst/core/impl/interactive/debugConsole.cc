@@ -90,7 +90,7 @@ DebugConsole::DebugConsole(Params& params) :
         {
             "info",
             "info",
-            "\"current\"|\"all\" print summary for current thread or all threads",
+            "\"current\"|\"all\": print summary for current thread or all threads",
             ConsoleCommandGroup::GENERAL,
             exec_type,
             [this](std::string& cmd_str) { return cmd_info_serial(cmd_str); },
@@ -99,13 +99,13 @@ DebugConsole::DebugConsole(Params& params) :
             [this](std::string& cmd_str) { return cmd_info_rank_parallel(cmd_str); },
             [this](std::vector<std::string>& tokens) { return cmd_info_remote(tokens); },
         },
-        { "thread", "thd", "[threadID]: switch to specified thread ID", ConsoleCommandGroup::GENERAL, exec_type,
+        { "thread", "thd", "<threadID>: switch to specified thread ID", ConsoleCommandGroup::GENERAL, exec_type,
             [this](std::string& cmd_str) { return cmd_thread_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_thread_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_thread_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_thread_rank_parallel(cmd_str); },
             [this](std::vector<std::string>& tokens) { return cmd_thread_remote(tokens); } },
-        { "rank", "rank", "[rankID]: switch to specified rank ID, same thread", ConsoleCommandGroup::GENERAL, exec_type,
+        { "rank", "rank", "<rankID>: switch to specified rank ID, same thread", ConsoleCommandGroup::GENERAL, exec_type,
             [this](std::string& cmd_str) { return cmd_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_rank_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_rank_rank_serial(cmd_str); },
@@ -113,19 +113,19 @@ DebugConsole::DebugConsole(Params& params) :
             [this](std::vector<std::string>& tokens) { return cmd_rank_remote(tokens); } },
         { "confirm", "cfm", "<true/false>: set confirmation requests on (default) or off", ConsoleCommandGroup::GENERAL,
             [this](std::string& cmd_str) { return cmd_setConfirm(cmd_str); } },
-        { "pwd", "pwd", "print the current working directory in the object map", ConsoleCommandGroup::NAVIGATION,
+        { "pwd", "pwd", ": print the current working directory in the object tree", ConsoleCommandGroup::NAVIGATION,
             exec_type, [this](std::string& cmd_str) { return cmd_pwd_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_pwd_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_pwd_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_pwd_rank_parallel(cmd_str); },
             [this](std::vector<std::string>& tokens) { return cmd_pwd_remote(tokens); } },
-        { "chdir", "cd", "change 1 directory level in the object map", ConsoleCommandGroup::NAVIGATION, exec_type,
+        { "chdir", "cd", ": change 1 directory level in the object tree", ConsoleCommandGroup::NAVIGATION, exec_type,
             [this](std::string& cmd_str) { return cmd_cd_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_cd_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_cd_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_cd_rank_parallel(cmd_str); },
             [this](std::vector<std::string>& tokens) { return cmd_cd_remote(tokens); } },
-        { "list", "ls", "list the objects in the current level of the object map", ConsoleCommandGroup::NAVIGATION,
+        { "list", "ls", "[-l][-ll]: list the objects in the current level of the object tree", ConsoleCommandGroup::NAVIGATION,
             exec_type, [this](std::string& cmd_str) { return cmd_ls_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_ls_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_ls_rank_serial(cmd_str); },
@@ -133,12 +133,12 @@ DebugConsole::DebugConsole(Params& params) :
             [this](std::vector<std::string>& tokens) { return cmd_ls_remote(tokens); } },
 
         // State
-        { "time", "tm", "print current simulation time in cycles", ConsoleCommandGroup::STATE,
+        { "time", "tm", ": print current simulation time in cycles", ConsoleCommandGroup::STATE,
             [this](std::string& cmd_str) { return cmd_time(cmd_str); } },
         {
             "print",
             "p",
-            "[-rN] [<obj>]: print objects at the current level",
+            "[-r N] <obj>: print objects at the current level",
             ConsoleCommandGroup::STATE,
             exec_type,
             [this](std::string& cmd_str) { return cmd_print_serial(cmd_str); },
@@ -150,7 +150,7 @@ DebugConsole::DebugConsole(Params& params) :
         {
             "set",
             "s",
-            "var value: set value for a variable at the current level",
+            "<var> <value>: set value for a variable at the current level",
             ConsoleCommandGroup::STATE,
             exec_type,
             [this](std::string& cmd_str) { return cmd_set_serial(cmd_str); },
@@ -174,7 +174,7 @@ DebugConsole::DebugConsole(Params& params) :
         {
             "trace",
             "t",
-            "<trig> : <bufSize> <postDelay> : <v1> ... <vN> : <action>",
+            "<trig> : <bufSize> <postDelay> : <v1> ... <vN> : <action> (see 'help trace')",
             ConsoleCommandGroup::WATCH,
             exec_type,
             [this](std::string& cmd_str) { return cmd_trace_serial(cmd_str); },
@@ -186,7 +186,7 @@ DebugConsole::DebugConsole(Params& params) :
         {
             "watchlist",
             "wl",
-            "prints the current list of watchpoints",
+            ": prints the current list of watchpoints",
             ConsoleCommandGroup::WATCH,
             exec_type,
             [this](std::string& cmd_str) { return cmd_watchlist_serial(cmd_str); },
@@ -198,7 +198,7 @@ DebugConsole::DebugConsole(Params& params) :
         {
             "addTraceVar",
             "add",
-            "<watchpointIndex> <var1> ... <varN>",
+            "<watchpointIndex> <var1> ... <varN>: adds additional trace variables to existing watchpoint",
             ConsoleCommandGroup::WATCH,
             exec_type,
             [this](std::string& cmd_str) { return cmd_addTraceVar_serial(cmd_str); },
@@ -246,7 +246,7 @@ DebugConsole::DebugConsole(Params& params) :
         {
             "setHandler",
             "shn",
-            "<idx> <t1> ... <t2>: trigger check/sampling handler",
+            "<idx> <t1> ... <t2>: set a watchpoint's handler location(s) for trigger check and sampling",
             ConsoleCommandGroup::WATCH,
             exec_type,
             [this](std::string& cmd_str) { return cmd_setHandler_serial(cmd_str); },
@@ -278,40 +278,40 @@ DebugConsole::DebugConsole(Params& params) :
         {
             "continue",
             "c",
-            "alias for run",
+            ": alias for run",
             ConsoleCommandGroup::SIMULATION,
             [this](std::string& cmd_str) { return cmd_run(cmd_str); },
         },
 
-        { "exit", "e", "exit debugger and continue simulation", ConsoleCommandGroup::SIMULATION, exec_type,
+        { "exit", "e", ": exit debugger and continue simulation", ConsoleCommandGroup::SIMULATION, exec_type,
             [this](std::string& cmd_str) { return cmd_exit_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_exit_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_exit_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_exit_rank_parallel(cmd_str); },
             [this](std::vector<std::string>& tokens) { return clear_watchlist(tokens); } },
-        { "quit", "q", "alias for exit", ConsoleCommandGroup::SIMULATION, exec_type,
+        { "quit", "q", ": alias for exit", ConsoleCommandGroup::SIMULATION, exec_type,
             [this](std::string& cmd_str) { return cmd_exit_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_exit_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_exit_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_exit_rank_parallel(cmd_str); },
             [this](std::vector<std::string>& tokens) { return clear_watchlist(tokens); } },
-        { "shutdown", "shutd", "exit the debugger and cleanly shutdown simulator", ConsoleCommandGroup::SIMULATION,
+        { "shutdown", "shutd", ": exit the debugger and cleanly shutdown simulator", ConsoleCommandGroup::SIMULATION,
             [this](std::string& cmd_str) { return cmd_shutdown(cmd_str); } },
         // Logging/Replay
-        { "logging", "log", "<filepath>: log command line entires to file", ConsoleCommandGroup::LOGGING,
+        { "logging", "log", "<filepath>: log command line entries to file", ConsoleCommandGroup::LOGGING,
             [this](std::string& cmd_str) { return cmd_logging(cmd_str); } },
-        { "replay", "rep", "<filepath>: run commands from a file. See also: sst --replay", ConsoleCommandGroup::LOGGING,
+        { "replay", "rep", "<filepath>: run commands from a file. See also: 'sst --replay'", ConsoleCommandGroup::LOGGING,
             [this](std::string& cmd_str) { return cmd_replay(cmd_str); } },
         { "history", "h", "[N]: display all or last N unique commands", ConsoleCommandGroup::LOGGING,
             [this](std::string& cmd_str) { return cmd_history(cmd_str); } },
         // Misc
-        { "autoComplete", "ac", "toggle command line auto-completion enable", ConsoleCommandGroup::MISC,
+        { "autoComplete", "ac", ": toggle command line auto-completion enable", ConsoleCommandGroup::MISC,
             [this](std::string& cmd_str) { return cmd_autoComplete(cmd_str); } },
-        { "clear", "clr", "reset terminal", ConsoleCommandGroup::MISC,
+        { "clear", "clr", ": reset terminal", ConsoleCommandGroup::MISC,
             [this](std::string& cmd_str) { return cmd_clear(cmd_str); } },
-        { "define", "def", "define a user command sequence", ConsoleCommandGroup::MISC,
+        { "define", "def", ": define a user command sequence", ConsoleCommandGroup::MISC,
             [this](std::string& cmd_str) { return cmd_define(cmd_str); } },
-        { "document", "doc", "document help for a user defined command", ConsoleCommandGroup::MISC,
+        { "document", "doc", ": document help for a user defined command", ConsoleCommandGroup::MISC,
             [this](std::string& cmd_str) { return cmd_document(cmd_str); } },
     });
 
@@ -321,50 +321,59 @@ DebugConsole::DebugConsole(Params& params) :
                      "\tA mask is used to select which features to enable verbosity.\n"
                      "\tTo turn on all features set the mask to 0xffffffff\n"
                      "\t\t0x10: Show trigger details" },
-        { "print", "[-rN][<obj>]: print objects in the current level of the object map\n"
-                   "\tif -rN is provided print recursive N levels (default N=4)" },
+        { "print", "[-rN][<obj>]: print objects in the current level of the object tree\n"
+                   "\tif -rN is provided print recursive N levels" },
         { "set", "<obj> <value>: sets an object in the current scope to the provided value\n"
-                 "\tobject must be a 'fundamental type' (arithmetic or string)\n"
-                 "\t e.g. set mystring hello world" },
-        { "examine", "[e][<obj>]: prints object in the current scope\n" },
+                 "\t Example: set mystring hello world" },
+        //{ "examine", "[e][<obj>]: prints object in the current scope\n" },
         { "watchpoints",
             "Manage watchpoints (with or without tracing)\n"
             "\tA <trigger> can be a <comparison> or a sequence of comparisons combined with a <logicOp>\n"
-            "\tE.g. <trigger> = <comparison> or <comparison1> <logicOp> <comparison2> ...\n"
+            "\tE.g. <trigger> = '<comparison>' or '<comparison1> <logicOp> <comparison2> ...'\n"
             "\tA <comparision> can be '<var> changed' which checks whether the value has changed\n"
             "\tor '<var> <op> <val>' which compares the variable to a given value\n"
             "\tAn <op> can be <, <=, >, >=, ==, or !=\n"
             "\tA <logicOp> can be && or ||\n"
             "\t'watch' creates a default watchpoint that breaks into an interactive console when triggered\n"
             "\t'trace' creates a watchpoint with a trace buffer to trace a set of variables and trigger an <action>\n"
+            "\t Note that only data members with persistent references should be used in watchpoints\n"
             "\tAvailable actions include: \n"
-            "\t  interactive, printTrace, checkpoint, set <var> <val>, printStatus, or shutdown"
-            "\t  Note: checkpoint action must be enabled at startup via the '--checkpoint-enable' command line "
+            "\t  interactive, printTrace, checkpoint, set <var> <val>, printStatus, or shutdown\n"
+            "\tNote that checkpoint action must be enabled at startup via the '--checkpoint-enable' command line "
             "option\n" },
-        { "watch", "<trigger>: adds watchpoint to the watchlist; breaks into interactive console when triggered\n"
+        { "watch", "<trigger>: Adds the watchpoint to the watchlist. Breaks into interactive console when the trigger "
+                   "condition evaluates to true"
                    "\tExample: watch var1 > 90 && var2 < 100 || var3 changed" },
         { "trace",
             "<trigger> : <bufferSize> <postDelay> : <var1> ... <varN> : <action>\n"
-            "\tAdds watchpoint to the watchlist with a trace buffer of <bufferSize> and a post trigger delay of "
-            "<postDelay>\n"
-            "\tTraces all of the variables specified in the var list and invokes the <action> after postDelay "
-            "when triggered\n"
+            "\tAdds a watchpoint to the watchlist with a trace buffer of <bufferSize> and a post trigger delay of \n"
+            "\t<postDelay>. Each of the variable values is sampled (recorded in the trace buffer) at each handler \n"
+            "\tlocation (before/after clock/event handlers). Once the trigger condition is true, \n"
+            "\tit will sample postDelay additional times and then trigger the associated action. \n"
             "\tAvailable actions include: \n"
             "\t  interactive, printTrace, checkpoint, set <var> <val>, printStatus, or shutdown\n"
             "\t  Note: checkpoint action must be enabled at startup via the '--checkpoint-enable' command line option\n"
-            "\tExample: trace var1 > 90 || var2 == 100 : 32 4 : size count state : printTrace" },
+            "\tExample: trace var1 > 90 || var2 == 100 : 32 4 : size count state : printTrace\n" 
+            " will sample size, count, and state variables in a circular buffer of size 32 until the trigger "
+            "condition is true. It will then sample 4 additional times before printing the trace buffer and resetting it.\n"},
         { "watchlist", "prints the current list of watchpoints and their associated indices" },
         { "addtracevar", "<watchpointIndex> <var1> ... <varN> : adds the specified variables to the specified "
                          "watchpoint's trace buffer" },
-        { "printwatchpoint", "<watchpointIndex>: prints the watchpoint based on the index specified by watchlist" },
+        { "printwatchpoint", "<watchpointIndex>: prints the watchpoint for the specified watchpoint" },
         { "printtrace", "<watchpointIndex>: prints the trace buffer for the specified watchpoint" },
         { "resettrace", "<watchpointIndex>: resets the trace buffer for the specified watchpoint" },
         { "sethandler", "<wpIndex> <handlerType1> ... <handlerTypeN>\n"
-                        "\tset where to do trigger checks and sampling (before/after clock/event handler)" },
-        { "unwatch", "<watchpointIndex>: removes the specified watchpoint from the watch list.\n"
+                        "\tset location(s) to execute trigger checks and sampling (default is all)\n"
+                        "\t  bc: before clock handler\n"
+                        "\t  ac: after clock handler\n"
+                        "\t  be: before event handler\n"
+                        "\t  ae: after event handler\n" 
+                        "\t  all: all 4 locations\n"
+                        "\tExample setHandler 1 ac ae"},
+        { "unwatch", "<watchpointIndex>: removes the specified watchpoint from the current watch list.\n"
                      "\tIf no index is provided, all watchpoints are removed." },
-        { "run", "[TIME]: runs the simulation from the current point for TIME and then returns to\n"
-                 "\tinteractive mode; if no time is given, the simulation runs to completion;\n"
+        { "run", "[TIME]: runs the simulation from the current point for TIME and then returns to interactive mode;\n"
+                 "\t if no time is given, the simulation runs to the next watchpoint trigger or completion;\n"
                  "\tTIME is of the format <Number><unit> e.g. 4us" },
         { "history", "[N]: list previous N instructions. If N is not set list all\n"
                      "\tSupports bash-style commands:\n"
@@ -383,7 +392,8 @@ DebugConsole::DebugConsole(Params& params) :
                      "\tctrl-b: move cursor to the left\n"
                      "\tctrl-d: delete character at cursor or quit debugger\n"
                      "\tctrl-e: move cursor to end of line\n"
-                     "\tctrl-f: move cursor to the right\n" },
+                     "\tctrl-f: move cursor to the right\n" 
+                     "\tNote: this functionality is not available when using mpi"},
         { "define", "<cmd-name>: enter a command sequence for a user defined command.\n"
                     "Terminate the sequence by typing \"end\"\n" },
         { "document", "<cmd-name>: provide help documentation for a user defined command.\n"
@@ -1871,25 +1881,24 @@ DebugConsole::cmd_print_remote(std::vector<std::string>& tokens)
         if ( !indices.empty() ) {
             SST::Core::Serialization::ContainerObj* tmp = dynamic_cast<SST::Core::Serialization::ContainerObj*>(target);
             if ( tmp ) {
-                tmp->printElementAt(indices, print_verbose + 1, base, std::cout);
+                tmp->printElementAt(indices, print_verbose + 1, base, result);
             }
             else {
                 std::cout << "WARNING: Object not indexable" << std::endl;
-                target->Dump(print_verbose + 1, base, std::cout);
+                target->Dump(print_verbose + 1, base, result);
             }
         }
         else {
-            target->Dump(print_verbose + 1, base, std::cout);
+            target->Dump(print_verbose + 1, base, result);
             if ( recurse > 0 ) {
                 target->applyRecursive([print_verbose, base](SST::Core::Serialization::ObjTreeCont* child) {
-                    child->Dump(print_verbose + 1, base, std::cout);
+                    child->Dump(print_verbose + 1, base, result);
                 });
             }
         }
     }
     else {
         result << "Unknown object in print command: " << tokens[var_index] << std::endl;
-        ;
         // result << "Invalid format for print command (print [-rN] [<obj>])" << std::endl;
         return false;
     }
