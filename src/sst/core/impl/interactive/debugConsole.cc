@@ -577,7 +577,7 @@ DebugConsole::save_name_stack()
 {
     name_stack.clear();
 
-    if ( !curObj_->isRoot() ) {
+    if(curObj_ && !curObj_->isRoot()){
         SST::Core::Serialization::ObjTreeCont* parent = curObj_->getParent();
         name_stack.push_front(std::move(curObj_->getObjName()));
         while ( parent && !parent->isRoot() ) {
@@ -586,8 +586,11 @@ DebugConsole::save_name_stack()
         }
     }
 
-    objTree_->clear(); // tear down the children so we refresh next time we break in
-    curObj_ = nullptr;
+     if(!objTree_->isEmpty()){
+        objTree_->clear();     // tear down the children so we refresh next time we break in
+        curObj_ = nullptr;  
+    }  
+
 }
 
 // Descend into the name_stack
@@ -4641,6 +4644,7 @@ DebugConsole::receiveCommandRankSerial()
 
     // Set done for all threads
     if ( tokens[0] == "done" ) {
+        save_name_stack();
         done = true;
     }
     else if ( tokens[0] == "summary" ) {
@@ -4744,6 +4748,7 @@ DebugConsole::receiveCommandRankParallel()
     // Set done for all threads
     if ( tokens[0] == "done" ) {
         handleCommand();
+        save_name_stack();
     }
     else if ( tokens[0] == "summary" ) {
         handleCommandAll();

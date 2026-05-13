@@ -602,7 +602,10 @@ public:
     void Dump([[maybe_unused]] const int verbosity, [[maybe_unused]] std::ios_base::fmtflags base = std::ios_base::dec,
         std::ostream& os = std::cout) override
     {
-        os << val_->getName() << "/" << std::endl;
+         if(verbosity < 3)
+                os << val_->getName() << "/" << std::endl;
+            else
+                os << val_->getName() << "/ (" << compInfo_->getType() << ")" << std::endl;
     }
 
     ComponentObj* find(const std::string name)
