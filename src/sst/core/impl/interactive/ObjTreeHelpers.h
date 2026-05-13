@@ -130,6 +130,7 @@ public:
             auto e = bufVec.end();
             e--;
             bufVec.erase(bufVec.begin(), e);
+            bufVec.front()->syncFromSim();
             storedTriggerIdx = 0;
         }
     }
