@@ -125,7 +125,7 @@ DebugConsole::DebugConsole(Params& params) :
             [this](std::string& cmd_str) { return cmd_cd_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_cd_rank_parallel(cmd_str); },
             [this](std::vector<std::string>& tokens) { return cmd_cd_remote(tokens); } },
-        { "list", "ls", "[-l][-ll]: list the objects in the current level of the object tree", ConsoleCommandGroup::NAVIGATION,
+        { "list", "ls", "[-l] [-ll]: list the objects in the current level of the object tree", ConsoleCommandGroup::NAVIGATION,
             exec_type, [this](std::string& cmd_str) { return cmd_ls_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_ls_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_ls_rank_serial(cmd_str); },
@@ -321,11 +321,10 @@ DebugConsole::DebugConsole(Params& params) :
                      "\tA mask is used to select which features to enable verbosity.\n"
                      "\tTo turn on all features set the mask to 0xffffffff\n"
                      "\t\t0x10: Show trigger details" },
-        { "print", "[-rN][<obj>]: print objects in the current level of the object tree\n"
-                   "\tif -rN is provided print recursive N levels" },
+        { "print", "[-r N] <obj>: print objects in the current level of the object tree\n"
+                   "\tif -r N is provided print recursive N levels" },
         { "set", "<obj> <value>: sets an object in the current scope to the provided value\n"
                  "\t Example: set mystring hello world" },
-        //{ "examine", "[e][<obj>]: prints object in the current scope\n" },
         { "watchpoints",
             "Manage watchpoints (with or without tracing)\n"
             "\tA <trigger> can be a <comparison> or a sequence of comparisons combined with a <logicOp>\n"
@@ -341,9 +340,10 @@ DebugConsole::DebugConsole(Params& params) :
             "\t  interactive, printTrace, checkpoint, set <var> <val>, printStatus, or shutdown\n"
             "\tNote that checkpoint action must be enabled at startup via the '--checkpoint-enable' command line "
             "option\n" },
-        { "watch", "<trigger>: Adds the watchpoint to the watchlist. Breaks into interactive console when the trigger "
-                   "condition evaluates to true"
-                   "\tExample: watch var1 > 90 && var2 < 100 || var3 changed" },
+        { "watch", "<trigger>: Adds the watchpoint to the watchlist. Breaks into interactive console \n"
+                   "\twhen the trigger condition evaluates to true\n"
+                   "\tExample: watch var1 > 90 && var2 < 100 || var3 changed\n"
+                   "\tWill break into the interactive console when 'var 1 > 90 && var2 < 100 || var3 changed'\n" },
         { "trace",
             "<trigger> : <bufferSize> <postDelay> : <var1> ... <varN> : <action>\n"
             "\tAdds a watchpoint to the watchlist with a trace buffer of <bufferSize> and a post trigger delay of \n"
@@ -354,14 +354,15 @@ DebugConsole::DebugConsole(Params& params) :
             "\t  interactive, printTrace, checkpoint, set <var> <val>, printStatus, or shutdown\n"
             "\t  Note: checkpoint action must be enabled at startup via the '--checkpoint-enable' command line option\n"
             "\tExample: trace var1 > 90 || var2 == 100 : 32 4 : size count state : printTrace\n" 
-            " will sample size, count, and state variables in a circular buffer of size 32 until the trigger "
-            "condition is true. It will then sample 4 additional times before printing the trace buffer and resetting it.\n"},
+            "\tThis example will sample the size, count, and state variables in a circular buffer of size 32 until  \n"
+            "\tuntil the trigger condition is true, i.e. 'var1 > 90 || var2 == 100'.  It will then sample 4 additional \n"
+            "\ttimes before printing the trace buffer and resetting it.\n"},
         { "watchlist", "prints the current list of watchpoints and their associated indices" },
-        { "addtracevar", "<watchpointIndex> <var1> ... <varN> : adds the specified variables to the specified "
+        { "addtracevar", "<watchpointIndex> <var1> ... <varN> : adds the variables to the specified "
                          "watchpoint's trace buffer" },
-        { "printwatchpoint", "<watchpointIndex>: prints the watchpoint for the specified watchpoint" },
-        { "printtrace", "<watchpointIndex>: prints the trace buffer for the specified watchpoint" },
-        { "resettrace", "<watchpointIndex>: resets the trace buffer for the specified watchpoint" },
+        { "printwatchpoint", "<watchpointIndex>: prints the watchpoint at that index in the local watchlist" },
+        { "printtrace", "<watchpointIndex>: prints the trace buffer for the specified watchpoint in the local watchlist" },
+        { "resettrace", "<watchpointIndex>: resets the trace buffer for the specified watchpoint in the local watchlist" },
         { "sethandler", "<wpIndex> <handlerType1> ... <handlerTypeN>\n"
                         "\tset location(s) to execute trigger checks and sampling (default is all)\n"
                         "\t  bc: before clock handler\n"
@@ -395,11 +396,14 @@ DebugConsole::DebugConsole(Params& params) :
                      "\tctrl-f: move cursor to the right\n" 
                      "\tNote: this functionality is not available when using mpi"},
         { "define", "<cmd-name>: enter a command sequence for a user defined command.\n"
-                    "Terminate the sequence by typing \"end\"\n" },
+                    "\tTerminate the sequence by typing \"end\"\n" },
         { "document", "<cmd-name>: provide help documentation for a user defined command.\n"
-                      "The first line will be summarized in the short help text.\n"
-                      "Remaining lines will be provided in detailed help\n"
-                      "Terminate the sequence by typing \"end\"\n" },
+                      "\tThe first line will be summarized in the short help text.\n"
+                      "\tRemaining lines will be provided in detailed help\n"
+                      "\tTerminate the sequence by typing \"end\"\n" },
+        { "list", "[-l] [-ll]: list the objects in the current level of the object tree with varying detail (default 1).\n"
+                    "\tl: verbosity level 2\n"
+                    "\tll: verbosity level 3\n"}
     };
 
     // Command autofill strings
@@ -4947,6 +4951,9 @@ DebugConsole::executeRankSerial(const std::string& UNUSED_WO_MPI(msg))
     // -- Rank 0
     // Executes the console and sends commands to other threads/ranks as needed
     if ( rank_.rank == 0 ) {
+        // Set autoCompleteEnable = false for MPI runs
+        autoCompleteEnable = false;
+
         // Clear R0 result string
         result.str("");
         result.clear();
@@ -4997,9 +5004,13 @@ DebugConsole::executeRankParallel(const std::string& UNUSED_WO_MPI(msg))
     // -- Rank 0, Thread 0
     // Executes the console and sends commands to other threads/ranks as needed
     if ( rank_.rank == 0 && rank_.thread == 0 ) {
+        // Set autoCompleteEnable = false for MPI runs
+        autoCompleteEnable = false;
+
         // Clear R0 result string
         result.str("");
         result.clear();
+
         // Print Summary
         std::cout << "\nINTERACTIVE CONSOLE" << std::endl;
         const std::string& str = "summary";
