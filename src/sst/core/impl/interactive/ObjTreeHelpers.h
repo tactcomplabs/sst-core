@@ -121,7 +121,6 @@ public:
 
     void resetTraceBuffer()
     {
-        printf("    Reset Trace Buffer\n");
         postCount_   = 0;
         cur_         = 0;
         first_       = 0;
@@ -180,59 +179,61 @@ public:
             // printf("    Sample: post trigger\n");
         }
 
-// Circular buffer
+        // Circular buffer
+        if ( !(state_ == POSTTRIGGER && postCount_ >= postDelay_) ) {
 #ifdef _OBJMAP_DEBUG_
-        std::cout << "    Sample:" << handler << ": numRecs:" << numRecs_ << " first:" << first_ << " cur:" << cur_
-                  << " state:" << state2char.at(state_) << " isOverrun:" << isOverrun_
-                  << " samplesLost:" << samplesLost_ << std::endl;
+            std::cout << "    Sample:" << handler << ": numRecs:" << numRecs_ << " first:" << first_ << " cur:" << cur_
+                      << " state:" << state2char.at(state_) << " isOverrun:" << isOverrun_
+                      << " samplesLost:" << samplesLost_ << std::endl;
 #endif
-        cycleBuffer_[cur_]   = cycle;
-        handlerBuffer_[cur_] = handler;
-        if ( trigger ) {
-            triggerCycle = cycle;
-        }
-
-        // Sample all the trace object buffers
-        ObjTreeCont* varBuffer_;
-
-        for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
-            auto& [bufVec, storedTriggerIdx] = objBuffers_[obj];
-            varBuffer_ = bufVec.back().get();
-            //varBuffer_->sample(cur_, trigger);
-            if(storedTriggerIdx != INT_MAX){
-                std::unique_ptr<ObjTreeCont> updatedBuf(varBuffer_->clone());
-                updatedBuf->syncFromSim();
-                bufVec.push_back(std::move(updatedBuf));
-                unsigned triggerIdx = trigger ? bufVec.size()-1 : storedTriggerIdx;
-                storedTriggerIdx = triggerIdx;
-            }else{
-                bufVec.back()->syncFromSim();
-                storedTriggerIdx = 0;
+            cycleBuffer_[cur_]   = cycle;
+            handlerBuffer_[cur_] = handler;
+            if ( trigger ) {
+                triggerCycle = cycle;
             }
-            //DDD: Add a way to flag which of these values was the trigger value 
-        }
 
-        if ( numRecs_ < bufSize_ ) {
-            tagBuffer_[cur_] = state_;
-            numRecs_++;
-            cur_ = (cur_ + 1) % bufSize_;
-            if ( cur_ == 0 ) first_ = 0; // 1;
-        }
-        else { // Buffer full
-            // Check to see if we are overwriting trigger
-            if ( tagBuffer_[cur_] == TRIGGER ) {
-                // printf("    Sample Overrun\n");
-                isOverrun_ = true;
-            }
-            tagBuffer_[cur_] = state_;
-            numRecs_++;
-            cur_   = (cur_ + 1) % bufSize_;
-            first_ = cur_;
-            for( size_t obj=0; obj <objBuffers_.size(); obj++){
+            // Sample all the trace object buffers
+            ObjTreeCont* varBuffer_;
+
+            for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
                 auto& [bufVec, storedTriggerIdx] = objBuffers_[obj];
-                bufVec.erase(bufVec.begin());
-                if(storedTriggerIdx == bufVec.size()){
-                    storedTriggerIdx--;
+                varBuffer_ = bufVec.back().get();
+                //varBuffer_->sample(cur_, trigger);
+                if(storedTriggerIdx != INT_MAX){
+                    std::unique_ptr<ObjTreeCont> updatedBuf(varBuffer_->clone());
+                    updatedBuf->syncFromSim();
+                    bufVec.push_back(std::move(updatedBuf));
+                    unsigned triggerIdx = trigger ? bufVec.size()-1 : storedTriggerIdx;
+                    storedTriggerIdx = triggerIdx;
+                }else{
+                    bufVec.back()->syncFromSim();
+                    storedTriggerIdx = 0;
+                }
+                //DDD: Add a way to flag which of these values was the trigger value 
+            }
+
+            if ( numRecs_ < bufSize_ ) {
+                tagBuffer_[cur_] = state_;
+                numRecs_++;
+                cur_ = (cur_ + 1) % bufSize_;
+                if ( cur_ == 0 ) first_ = 0; // 1;
+            }
+            else { // Buffer full
+                // Check to see if we are overwriting trigger
+                if ( tagBuffer_[cur_] == TRIGGER ) {
+                    // printf("    Sample Overrun\n");
+                    isOverrun_ = true;
+                }
+                tagBuffer_[cur_] = state_;
+                numRecs_++;
+                cur_   = (cur_ + 1) % bufSize_;
+                first_ = cur_;
+                for( size_t obj=0; obj <objBuffers_.size(); obj++){
+                    auto& [bufVec, storedTriggerIdx] = objBuffers_[obj];
+                    bufVec.erase(bufVec.begin());
+                    if(storedTriggerIdx == bufVec.size()){
+                        storedTriggerIdx--;
+                    }
                 }
             }
         }
@@ -243,14 +244,12 @@ public:
 
         if ( (state_ == TRIGGER) && (postDelay_ == 0) ) {
             invokeAction = true;
-            std::cout << "    Invoke Action\n";
         }
 
         if ( state_ == POSTTRIGGER ) {
             postCount_++;
             if ( postCount_ >= postDelay_ ) {
                 invokeAction = true;
-                std::cout << "    Invoke Action\n";
             }
         }
 

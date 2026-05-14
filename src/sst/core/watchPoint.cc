@@ -373,7 +373,6 @@ void
 WatchPoint::setBufferReset()
 {
     if ( tb_ != nullptr ) {
-        printf("    Set Buffer Reset\n");
         tb_->setBufferReset();
         reset_ = true;
     }
@@ -388,7 +387,6 @@ WatchPoint::check()
 
         result = true;
     }
-    // printf("      comparison_0 = %d\n", result);
     std::stringstream s;
     s << std::boolalpha;
     s << "    WatchPoint " << name_.c_str() << " tests:\n";
