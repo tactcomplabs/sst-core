@@ -30,7 +30,7 @@ component15/ (SST::CoreTest::MessageMesh::EnclosingComponent)
 
 ---- Rank0:Thread0: Entering interactive mode at time 1000
 Interactive start at 1
-> replay /home/skuntz/sanity/sst-core/tests/cmd_DebugConsole_rankparallel1.cmd
+> replay cmd_DebugConsole_rankparallel1.cmd
 
 > # Requires 2 ranks, each with 2 threads
 > confirm false
@@ -87,29 +87,6 @@ Added watchpoint #1
 > setHandler 1 ae
 WP 1 - /component2/message_count_ CHANGED 
 > run 1ps
-    Invoke Action
-    Set Buffer Reset
-    Reset Trace Buffer
-    Reset Trace Buffer
-    Invoke Action
-    Set Buffer Reset
-    Reset Trace Buffer
-    Reset Trace Buffer
-    Invoke Action
-    Set Buffer Reset
-    Reset Trace Buffer
-    Reset Trace Buffer
-    Invoke Action
-    Set Buffer Reset
-    Reset Trace Buffer
-    Reset Trace Buffer
-    Invoke Action
-    Set Buffer Reset
-    Reset Trace Buffer
-    Reset Trace Buffer
-    Invoke Action
-    Set Buffer Reset
-    Reset Trace Buffer
 
 INTERACTIVE CONSOLE
 -- Rank:0/2 Thread:0/2 (Triggered)
@@ -160,23 +137,13 @@ Added watchpoint #0
 > setHandler 0 ae
 WP 0 - /component5/message_count_ CHANGED 
 > run 2000ps
-    Invoke Action
-    Set Buffer Reset
 TriggerCount=5
-LastTriggerRecord:@cycle4000: SamplesLost=0: message_count_ = 13
-
-buf[0] AE @3000 (!) message_count_ = 13 (int)
-
-buf[1] AE @3000 (+) message_count_ = 13 (int)
-
-buf[2] AE @3000 (+) message_count_ = 13 (int)
-
-buf[3] AE @4000 (+) message_count_ = 13 (int)
-
-buf[4] AE @4000 (+) message_count_ = 13 (int)
-
-    Reset Trace Buffer
-    Reset Trace Buffer
+LastTriggerRecord:@cycle4000: SamplesLost=0: message_count_ = 13 
+buf[0] AE @3000 (!) message_count_ = 9 
+buf[1] AE @3000 (+) message_count_ = 10 
+buf[2] AE @3000 (+) message_count_ = 11 
+buf[3] AE @4000 (+) message_count_ = 12 
+buf[4] AE @4000 (+) message_count_ = 13 
 
 INTERACTIVE CONSOLE
 -- Rank:0/2 Thread:0/2 (Triggered)
@@ -434,40 +401,14 @@ Simulation is complete, simulated time: 0 s
    StopAction to be delivered at 10000000
    StopAction to be delivered at 18446744073709551615
 ---- Components: ----
-    Invoke Action
-    Set Buffer Reset
-LastTriggerRecord:@cycle5000: SamplesLost=0: message_count_ = 21
-
+LastTriggerRecord:@cycle5000: SamplesLost=0: message_count_ = 21 
 set component8/my_id_ 50
-    Reset Trace Buffer
-    Invoke Action
-    Set Buffer Reset
-    Invoke Action
-    Set Buffer Reset
-    Invoke Action
-    Set Buffer Reset
-    Invoke Action
-    Set Buffer Reset
-    Invoke Action
-    Set Buffer Reset
-    Invoke Action
-    Set Buffer Reset
-    Invoke Action
-    Set Buffer Reset
-    Invoke Action
-    Set Buffer Reset
-LastTriggerRecord:@cycle8000: SamplesLost=0: message_count_ = 29
-
+LastTriggerRecord:@cycle8000: SamplesLost=0: message_count_ = 29 
   Trigger action shutting down simulation
 wp simulation shutdown
-    Reset Trace Buffer
-    Invoke Action
-    Set Buffer Reset
-LastTriggerRecord:@cycle8000: SamplesLost=0: message_count_ = 31
-
+LastTriggerRecord:@cycle8000: SamplesLost=0: message_count_ = 31 
   Trigger action shutting down simulation
 wp simulation shutdown
-    Reset Trace Buffer
 15 received 28 messages
 14 received 35 messages
 13 received 34 messages

@@ -1,33 +1,11 @@
-    Invoke Action
-    Set Buffer Reset
-LastTriggerRecord:@cycle6000: SamplesLost=0: message_count_ = 24
-
+LastTriggerRecord:@cycle6000: SamplesLost=0: message_count_ = 24 
 set component8/my_id_ 50
-    Reset Trace Buffer
-    Invoke Action
-    Set Buffer Reset
-    Invoke Action
-    Set Buffer Reset
-    Invoke Action
-    Set Buffer Reset
-    Invoke Action
-    Set Buffer Reset
-    Invoke Action
-    Set Buffer Reset
-    Invoke Action
-    Set Buffer Reset
-LastTriggerRecord:@cycle8000: SamplesLost=0: message_count_ = 29
-
+LastTriggerRecord:@cycle8000: SamplesLost=0: message_count_ = 29 
   Trigger action shutting down simulation
 wp simulation shutdown
-    Reset Trace Buffer
-    Invoke Action
-    Set Buffer Reset
-LastTriggerRecord:@cycle8000: SamplesLost=0: message_count_ = 31
-
+LastTriggerRecord:@cycle8000: SamplesLost=0: message_count_ = 31 
   Trigger action shutting down simulation
 wp simulation shutdown
-    Reset Trace Buffer
 15 received 28 messages
 14 received 35 messages
 13 received 34 messages
@@ -62,7 +40,7 @@ component9/ (SST::CoreTest::MessageMesh::EnclosingComponent)
 
 ---- Rank0:Thread0: Entering interactive mode at time 1000
 Interactive start at 0
-> replay /home/skuntz/sanity/sst-core/tests/cmd_DebugConsole_r2_rankserial0.cmd
+> replay cmd_DebugConsole_r2_rankserial0.cmd
 
 > # Requires 2 ranks
 > confirm false
@@ -137,21 +115,6 @@ Added watchpoint #1
 > setHandler 1 ae
 WP 1 - /component2/message_count_ CHANGED 
 > run 1ps
-    Invoke Action
-    Set Buffer Reset
-    Reset Trace Buffer
-    Reset Trace Buffer
-    Invoke Action
-    Set Buffer Reset
-    Reset Trace Buffer
-    Reset Trace Buffer
-    Invoke Action
-    Set Buffer Reset
-    Reset Trace Buffer
-    Reset Trace Buffer
-    Invoke Action
-    Set Buffer Reset
-    Reset Trace Buffer
 
 INTERACTIVE CONSOLE
 -- Rank:0/2 Thread:0/1 (Triggered)
@@ -191,22 +154,13 @@ Added watchpoint #2
 > setHandler 2 ae
 WP 2 - /component5/message_count_ CHANGED 
 > run 2000ps
-    Invoke Action
-    Set Buffer Reset
 TriggerCount=5
-LastTriggerRecord:@cycle5000: SamplesLost=0: message_count_ = 16
-
-buf[0] AE @4000 (!) message_count_ = 16 (int)
-
-buf[1] AE @4000 (+) message_count_ = 16 (int)
-
-buf[2] AE @4000 (+) message_count_ = 16 (int)
-
-buf[3] AE @5000 (+) message_count_ = 16 (int)
-
-buf[4] AE @5000 (+) message_count_ = 16 (int)
-
-    Reset Trace Buffer
+LastTriggerRecord:@cycle5000: SamplesLost=0: message_count_ = 16 
+buf[0] AE @4000 (!) message_count_ = 12 
+buf[1] AE @4000 (+) message_count_ = 13 
+buf[2] AE @4000 (+) message_count_ = 14 
+buf[3] AE @5000 (+) message_count_ = 15 
+buf[4] AE @5000 (+) message_count_ = 16 
 
 INTERACTIVE CONSOLE
 -- Rank:0/2 Thread:0/1 (Triggered)

@@ -1,43 +1,30 @@
-    Invoke Action
-    Set Buffer Reset
-TriggerCount=5
-LastTriggerRecord:@cycle5000: SamplesLost=0: message_count_ = 16
-
-buf[0] AE @4000 (!) message_count_ = 16 (int)
-
-buf[1] AE @4000 (+) message_count_ = 16 (int)
-
-buf[2] AE @4000 (+) message_count_ = 16 (int)
-
-buf[3] AE @5000 (+) message_count_ = 16 (int)
-
-buf[4] AE @5000 (+) message_count_ = 16 (int)
-
-    Reset Trace Buffer
-7 received 25 messages
-6 received 31 messages
-4 received 28 messages
-5 received 28 messages
-    Invoke Action
-    Set Buffer Reset
-LastTriggerRecord:@cycle6000: SamplesLost=0: message_count_ = 24
-
+LastTriggerRecord:@cycle6000: SamplesLost=0: message_count_ = 24 
 set component8/my_id_ 50
-    Reset Trace Buffer
-    Invoke Action
-    Set Buffer Reset
-    Invoke Action
-    Set Buffer Reset
-    Invoke Action
-    Set Buffer Reset
-    Invoke Action
-    Set Buffer Reset
-    Invoke Action
-    Set Buffer Reset
 11 received 34 messages
 10 received 40 messages
-50 received 31 messages
 9 received 39 messages
+50 received 31 messages
+TriggerCount=5
+LastTriggerRecord:@cycle5000: SamplesLost=0: message_count_ = 16 
+buf[0] AE @4000 (!) message_count_ = 12 
+buf[1] AE @4000 (+) message_count_ = 13 
+buf[2] AE @4000 (+) message_count_ = 14 
+buf[3] AE @5000 (+) message_count_ = 15 
+buf[4] AE @5000 (+) message_count_ = 16 
+7 received 25 messages
+6 received 31 messages
+5 received 28 messages
+4 received 28 messages
+LastTriggerRecord:@cycle8000: SamplesLost=0: message_count_ = 29 
+  Trigger action shutting down simulation
+wp simulation shutdown
+LastTriggerRecord:@cycle8000: SamplesLost=0: message_count_ = 31 
+  Trigger action shutting down simulation
+wp simulation shutdown
+15 received 28 messages
+14 received 35 messages
+13 received 34 messages
+12 received 32 messages
 
 INTERACTIVE CONSOLE
 -- Rank:0/4 Thread:0/1 (Triggered)
@@ -159,21 +146,6 @@ Added watchpoint #1
 > setHandler 1 ae
 WP 1 - /component2/message_count_ CHANGED 
 > run 1ps
-    Invoke Action
-    Set Buffer Reset
-    Reset Trace Buffer
-    Reset Trace Buffer
-    Invoke Action
-    Set Buffer Reset
-    Reset Trace Buffer
-    Reset Trace Buffer
-    Invoke Action
-    Set Buffer Reset
-    Reset Trace Buffer
-    Reset Trace Buffer
-    Invoke Action
-    Set Buffer Reset
-    Reset Trace Buffer
 
 INTERACTIVE CONSOLE
 -- Rank:0/4 Thread:0/1 (Triggered)
@@ -371,8 +343,8 @@ Added watchpoint #0
 > run
 3 received 28 messages
 2 received 38 messages
-0 received 32 messages
 1 received 29 messages
+0 received 32 messages
 Simulation is complete, simulated time: 0 s
 	CurrentSimCycle:  3000
   N3SST8CoreTest11MessageMesh12MessageEventE to be delivered at time: 3000, priority: 50, order tag: 10, queue order: 40
@@ -454,21 +426,3 @@ Simulation is complete, simulated time: 0 s
    StopAction to be delivered at 10000000
    StopAction to be delivered at 18446744073709551615
 ---- Components: ----
-    Invoke Action
-    Set Buffer Reset
-LastTriggerRecord:@cycle8000: SamplesLost=0: message_count_ = 29
-
-  Trigger action shutting down simulation
-wp simulation shutdown
-    Reset Trace Buffer
-    Invoke Action
-    Set Buffer Reset
-LastTriggerRecord:@cycle8000: SamplesLost=0: message_count_ = 31
-
-  Trigger action shutting down simulation
-wp simulation shutdown
-    Reset Trace Buffer
-15 received 28 messages
-14 received 35 messages
-12 received 32 messages
-13 received 34 messages
