@@ -805,6 +805,11 @@ DebugConsole::cmd_verbose_query()
 bool
 DebugConsole::cmd_verbose_remote(std::vector<std::string>& tokens)
 {
+    if(tokens.size() <= 1){ 
+        std::cout << "Invalid format for verbose command (verbose N)" << std::endl;
+        return false;
+    }
+
     verbosity = SST::Core::from_string<uint32_t>(tokens[1]);
 
     // update watchpoint verbosity in all ranks/threads
@@ -4068,7 +4073,7 @@ DebugConsole::cmd_exit_thread(std::string& UNUSED(cmd_str))
         std::cout << "Removing all watchpoints and exiting ObjectExplorer\n";
     }
     else {
-        std::cout << "Exiting ObjectExplorer without clearning watchpoints\n";
+        std::cout << "Exiting ObjectExplorer without clearing watchpoints\n";
     }
     exit_console = true;
     return true;
@@ -4088,7 +4093,7 @@ DebugConsole::cmd_exit_rank_serial(std::string& cmd_str)
         std::cout << "Removing all watchpoints and exiting ObjectExplorer\n";
     }
     else {
-        std::cout << "Exiting ObjectExplorer without clearning watchpoints\n";
+        std::cout << "Exiting ObjectExplorer without clearing watchpoints\n";
     }
     exit_console = true;
     return true;
@@ -4108,7 +4113,7 @@ DebugConsole::cmd_exit_rank_parallel(std::string& cmd_str)
         std::cout << "Removing all watchpoints and exiting ObjectExplorer\n";
     }
     else {
-        std::cout << "Exiting ObjectExplorer without clearning watchpoints\n";
+        std::cout << "Exiting ObjectExplorer without clearing watchpoints\n";
     }
     exit_console = true;
     return true;
