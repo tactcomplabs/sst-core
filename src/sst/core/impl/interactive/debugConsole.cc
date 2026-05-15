@@ -950,7 +950,8 @@ DebugConsole::cmd_info_thread(std::string& UNUSED(cmd_str))
     else if ( tokens[1] == "all" ) {
         // Print info for all threads
         succeed = handleCommandAll();
-        std::cout << result.str();
+        dout << result.str();
+        dout << dreset;
     }
     else {
         std::cout << "Invalid argument for info command: " << tokens[1] << " (info \"current\"|\"all\")" << std::endl;
@@ -990,14 +991,15 @@ DebugConsole::cmd_info_rank_serial(std::string& cmd_str)
         result.clear();
         // Print info for rank 0
         succeed = cmd_info_remote(tokens);
-        std::cout << result.str();
+        dout << result.str();
 
         // Clear R0 result string
         result.str("");
         result.clear();
         // Send to remote ranks, all threads
         succeed2 = sendCommandAll(cmd_str);
-        std::cout << result.str();
+        dout << result.str();
+        dout << dreset;
         return succeed || succeed2;
     }
     else {
@@ -1036,14 +1038,16 @@ DebugConsole::cmd_info_rank_parallel(std::string& cmd_str)
         result.clear();
         // Print info for rank 0
         succeed = handleCommandAll();
-        std::cout << result.str();
+        dout << result.str();
 
         // Clear result string
         result.str("");
         result.clear();
         // Print info for other ranks, all threads
         succeed2 = sendCommandAll(cmd_str);
-        std::cout << result.str();
+        dout << result.str();
+        dout << dreset;
+        
         return succeed || succeed2;
     }
     else {
@@ -1715,7 +1719,8 @@ DebugConsole::cmd_print_serial(std::string& UNUSED(cmd_str))
     result.clear();
 
     succeed = cmd_print_remote(tokens);
-    std::cout << result.str();
+    dout << result.str();
+    dout << dreset;
     return succeed;
 }
 
@@ -1733,7 +1738,8 @@ DebugConsole::cmd_print_thread(std::string& UNUSED(cmd_str))
     result.clear();
 
     succeed = handleCommand();
-    std::cout << result.str();
+    dout << result.str();
+    dout << dreset;
 
     return succeed;
 }
@@ -1753,13 +1759,14 @@ DebugConsole::cmd_print_rank_serial(std::string& cmd_str)
 
     if ( current_rank == 0 ) {
         succeed = cmd_print_remote(tokens);
-        std::cout << result.str();
+        dout << result.str();
     }
     else {
         // Send to remote rank
         succeed = sendCommand(current_rank, current_thread, cmd_str);
-        std::cout << result.str();
+        dout << result.str();
     }
+    dout << dreset;
     return succeed;
 }
 
@@ -1779,14 +1786,14 @@ DebugConsole::cmd_print_rank_parallel(std::string& cmd_str)
     if ( current_rank == 0 ) {
         // Execute in correct local thread
         succeed = handleCommand();
-        std::cout << result.str();
+        dout << result.str();
     }
     else {
         // Send to remote rank
         succeed = sendCommand(current_rank, current_thread, cmd_str);
-        std::cout << result.str();
+        dout << result.str();
     }
-
+    dout << dreset;
     return succeed;
 }
 
@@ -2546,7 +2553,8 @@ DebugConsole::cmd_printTrace_serial(std::string& UNUSED(cmd_str))
     result.clear();
 
     succeed = cmd_printTrace_remote(tokens);
-    std::cout << result.str();
+    dout << result.str();
+    dout << dreset;
 
     return succeed;
 }
@@ -2565,7 +2573,8 @@ DebugConsole::cmd_printTrace_thread(std::string& UNUSED(cmd_str))
     result.clear();
 
     succeed = handleCommand();
-    std::cout << result.str();
+    dout << result.str();
+    dout << dreset;
 
     return succeed;
 }
@@ -2585,13 +2594,14 @@ DebugConsole::cmd_printTrace_rank_serial(std::string& cmd_str)
 
     if ( current_rank == 0 ) {
         succeed = cmd_printTrace_remote(tokens);
-        std::cout << result.str();
+        dout << result.str();
     }
     else {
         // Send to remote rank
         succeed = sendCommand(current_rank, current_thread, cmd_str);
-        std::cout << result.str();
+        dout << result.str();
     }
+    dout << dreset;
     return succeed;
 }
 
@@ -2611,13 +2621,14 @@ DebugConsole::cmd_printTrace_rank_parallel(std::string& cmd_str)
     if ( current_rank == 0 ) {
         // Execute in correct local thread
         succeed = handleCommand();
-        std::cout << result.str();
+        dout << result.str();
     }
     else {
         // Send to remote rank
         succeed = sendCommand(current_rank, current_thread, cmd_str);
-        std::cout << result.str();
+        dout << result.str();
     }
+    dout << dreset;
 
     return succeed;
 }
@@ -2648,7 +2659,7 @@ DebugConsole::cmd_printTrace_remote(std::vector<std::string>& tokens)
         return false;
     }
 
-    wp->printTrace();
+    wp->printTrace(result);
 
     return true;
 }
@@ -2860,7 +2871,8 @@ DebugConsole::cmd_watchlist_serial(std::string& UNUSED(cmd_str))
     result.clear();
 
     succeed = cmd_watchlist_remote(tokens);
-    std::cout << result.str();
+    dout << result.str();
+    dout << dreset;
 
     return succeed;
 }
@@ -2874,7 +2886,8 @@ DebugConsole::cmd_watchlist_thread(std::string& UNUSED(cmd_str))
     result.clear();
 
     succeed = handleCommandAll();
-    std::cout << result.str();
+    dout << result.str();
+    dout << dreset;
 
     return succeed;
 }
@@ -2886,13 +2899,14 @@ DebugConsole::cmd_watchlist_rank_serial(std::string& cmd_str)
     result.str("");
     result.clear();
     bool succeed = cmd_watchlist_remote(tokens);
-    std::cout << result.str();
+    dout << result.str();
 
     // Send to remote rank
     result.str("");
     result.clear();
     bool succeed2 = sendCommandAll(cmd_str);
-    std::cout << result.str();
+    dout << result.str();
+    dout << dreset;
 
     return succeed || succeed2;
 }
@@ -2905,14 +2919,15 @@ DebugConsole::cmd_watchlist_rank_parallel(std::string& cmd_str)
     result.clear();
     // Handle local threads
     bool succeed = handleCommandAll();
-    std::cout << result.str();
+    dout << result.str();
 
     // Clear R0 result string
     result.str("");
     result.clear();
     // Send to remote ranks
     bool succeed2 = sendCommandAll(cmd_str);
-    std::cout << result.str();
+    dout << result.str();
+    dout << dreset;
 
     return succeed || succeed2;
 }

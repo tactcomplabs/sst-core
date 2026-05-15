@@ -256,7 +256,7 @@ public:
         return invokeAction;
     }
 
-    void dumpTraceBufferT()
+    void dumpTraceBufferT(std::ostream& os = std::cout)
     {
         if ( numRecs_ == 0 ) return;
 
@@ -270,12 +270,11 @@ public:
         else {
             end = cur_ - 1;
         }
-        // std::cout << "start=" << start << " end=" << end << std::endl;
         size_t buf = 0;
         for ( int j = start;; j++ ) {
             size_t i = j % bufSize_;
 
-            std::cout << "buf[" << i << "] " << handlerBuffer_.at(i) << " @" << cycleBuffer_.at(i) << " ("
+            os << "buf[" << i << "] " << handlerBuffer_.at(i) << " @" << cycleBuffer_.at(i) << " ("
                       << state2char.at(tagBuffer_.at(i)) << ") ";
 
             std::ostringstream tmpBuf;
@@ -289,7 +288,7 @@ public:
                 tmpBuf.str("");
                 tmpBuf.clear();
             }
-            std::cout << objNames << std::endl;
+            os << objNames << std::endl;
             buf++;
 
             if ( i == end ) {
@@ -298,7 +297,7 @@ public:
         }
     }
 
-    void dumpTriggerRecord()
+    void dumpTriggerRecord(std::ostream& os = std::cout)
     {
         if ( numRecs_ == 0 ) {
             std::cout << "No trace samples in current buffer" << std::endl;
@@ -309,7 +308,7 @@ public:
             std::string objNames;
             unsigned idxToPrint = 0;
             //print trigger value for the one variable (variables?) that actually triggered
-            std::cout << "LastTriggerRecord:@cycle" << triggerCycle << ": SamplesLost=" << samplesLost_ << ": ";
+            os << "LastTriggerRecord:@cycle" << triggerCycle << ": SamplesLost=" << samplesLost_ << ": ";
             for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
                 unsigned triggerIdx = std::get<unsigned>(objBuffers_[obj]);
                 auto* record = &std::get<std::vector<std::unique_ptr<ObjTreeCont>>>(objBuffers_[obj]);
@@ -326,7 +325,7 @@ public:
                 tmpBuf.str("");
                 tmpBuf.clear();
             }
-            std::cout << objNames << std::endl;
+            os << objNames << std::endl;
         }
     }
 
