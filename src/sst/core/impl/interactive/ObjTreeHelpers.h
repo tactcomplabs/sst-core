@@ -138,7 +138,7 @@ public:
             e--;
             bufVec.erase(bufVec.begin(), e);
             bufVec.front()->syncFromSim();
-            storedTriggerIdx = 0;
+            storedTriggerIdx = INT_MAX;
         }
     }
 
