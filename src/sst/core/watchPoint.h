@@ -145,7 +145,7 @@ public:
     inline std::string getName() { return name_; }
     size_t             getBufferSize();
     void               printTriggerRecord();
-    void               printTrace();
+    void               printTrace(std::ostream& os = std::cout);
 
     enum HANDLER : unsigned {
         // Select which handlers do check and sample
