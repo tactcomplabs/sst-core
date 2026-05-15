@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -15,9 +15,10 @@
 
 #include "sst/core/interactiveAction.h"
 #include "sst/core/mempoolAccessor.h"
-#include "sst/core/simulation_impl.h"
+#include "sst/core/simulation.h"
 #include "sst/core/timeLord.h"
 
+#include <iostream>
 namespace SST {
 
 /************ InteractiveConsole ***********/
@@ -28,55 +29,55 @@ SST_ELI_DEFINE_CTOR_EXTERN(SST::InteractiveConsole)
 UnitAlgebra
 InteractiveConsole::getCoreTimeBase() const
 {
-    return Simulation_impl::getSimulation()->getTimeLord()->getTimeBase();
+    return Simulation::getSimulation()->getTimeLord()->getTimeBase();
 }
 
 SimTime_t
 InteractiveConsole::getCurrentSimCycle() const
 {
-    return Simulation_impl::getSimulation()->getCurrentSimCycle();
+    return Simulation::getSimulation()->getCurrentSimCycle();
 }
 
 UnitAlgebra
 InteractiveConsole::getElapsedSimTime() const
 {
-    return Simulation_impl::getSimulation()->getElapsedSimTime();
+    return Simulation::getSimulation()->getElapsedSimTime();
 }
 
 SimTime_t
 InteractiveConsole::getEndSimCycle() const
 {
-    return Simulation_impl::getSimulation()->getEndSimCycle();
+    return Simulation::getSimulation()->getEndSimCycle();
 }
 
 UnitAlgebra
 InteractiveConsole::getEndSimTime() const
 {
-    return Simulation_impl::getSimulation()->getEndSimTime();
+    return Simulation::getSimulation()->getEndSimTime();
 }
 
 RankInfo
 InteractiveConsole::getRank() const
 {
-    return Simulation_impl::getSimulation()->getRank();
+    return Simulation::getSimulation()->getRank();
 }
 
 RankInfo
 InteractiveConsole::getNumRanks() const
 {
-    return Simulation_impl::getSimulation()->getNumRanks();
+    return Simulation::getSimulation()->getNumRanks();
 }
 
 Output&
 InteractiveConsole::getSimulationOutput() const
 {
-    return Simulation_impl::getSimulation()->getSimulationOutput();
+    return Simulation::getSimulation()->getSimulationOutput();
 }
 
 uint64_t
 InteractiveConsole::getTimeVortexMaxDepth() const
 {
-    return Simulation_impl::getSimulation()->getTimeVortexMaxDepth();
+    return Simulation::getSimulation()->getTimeVortexMaxDepth();
 }
 
 void
@@ -88,19 +89,19 @@ InteractiveConsole::getMemPoolUsage(int64_t& bytes, int64_t& active_entries)
 uint64_t
 InteractiveConsole::getSyncQueueDataSize() const
 {
-    return Simulation_impl::getSimulation()->getSyncQueueDataSize();
+    return Simulation::getSimulation()->getSyncQueueDataSize();
 }
 
 TimeConverter
 InteractiveConsole::getTimeConverter(const std::string& time)
 {
-    return Simulation_impl::getSimulation()->getTimeLord()->getTimeConverter(time);
+    return Simulation::getSimulation()->getTimeLord()->getTimeConverter(time);
 }
 
 void
 InteractiveConsole::schedule_interactive(SimTime_t time_offset, const std::string& msg)
 {
-    Simulation_impl*   sim = Simulation_impl::getSimulation();
+    Simulation*        sim = Simulation::getSimulation();
     InteractiveAction* act = new InteractiveAction(sim, msg);
     sim->insertActivity(getCurrentSimCycle() + time_offset, act);
 }
@@ -108,13 +109,21 @@ InteractiveConsole::schedule_interactive(SimTime_t time_offset, const std::strin
 SST::Core::Serialization::ObjectMap*
 InteractiveConsole::getComponentObjectMap()
 {
-    return Simulation_impl::getSimulation()->getComponentObjectMap();
+    return Simulation::getSimulation()->getComponentObjectMap();
+}
+
+const ComponentInfoMap&
+InteractiveConsole::getComponentInfoMap()
+{
+    return Simulation::getSimulation()->getComponentInfoMap();
 }
 
 void
 InteractiveConsole::simulationShutdown()
 {
-    Simulation_impl::getSimulation()->endSimulation();
+    // Simulation::getSimulation()->endSimulation();  // Only works for single thread
+    std::cout << "Simulation shutdown\n";
+    Simulation::getSimulation()->consoleShutdown(false);
 }
 
 

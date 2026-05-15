@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -55,7 +55,7 @@ public:
     // Main creates the config object
     friend int ::main(int argc, char** argv);
     friend class SSTModelDescription;
-    friend class Simulation_impl;
+    friend class Simulation;
 
     /**
        Default constructor.
@@ -619,6 +619,9 @@ public:
 
     /** Get whether or not any of the checkpoint options were turned on */
     bool canInitiateCheckpoint();
+
+    /** Get whether or not any of the interactive options were turned on */
+    bool canInitiateInteractive();
 
     /** Print to stdout the current configuration */
     void print();

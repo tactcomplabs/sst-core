@@ -1,10 +1,10 @@
 // -*- c++ -*-
 
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -117,7 +117,7 @@ struct TimeVortexSort
  * Main control class for a SST Simulation.
  * Provides base features for managing the simulation
  */
-class Simulation_impl
+class Simulation
 {
 
 public:
@@ -174,12 +174,12 @@ public:
     using clockMap_t = std::map<std::pair<SimTime_t, int>, Clock*>; /*!< Map of times to clocks */
     // using oneShotMap_t = std::map<int, OneShot*>; /*!< Map of priorities to OneShots */
 
-    ~Simulation_impl();
+    ~Simulation();
 
     /*********  Static Core-only Functions *********/
 
     /** Return a pointer to the singleton instance of the Simulation */
-    static Simulation_impl* getSimulation() { return instanceMap.at(std::this_thread::get_id()); }
+    static Simulation* getSimulation() { return instanceMap.at(std::this_thread::get_id()); }
 
     /** Return the TimeLord associated with this Simulation */
     static TimeLord* getTimeLord() { return &timeLord; }
@@ -192,7 +192,7 @@ public:
      * @param num_ranks - How many Ranks are in the simulation
      * @param restart - Whether this simulation is being restarted from a checkpoint (true) or not
      */
-    static Simulation_impl* createSimulation(
+    static Simulation* createSimulation(
         RankInfo my_rank, RankInfo num_ranks, bool restart, SimTime_t currentSimCycle, int currentPriority);
 
     /**
@@ -244,6 +244,8 @@ public:
     void setup();
 
     void prepare_for_run();
+
+    void setup_interactive_mode();
 
     void run();
 
@@ -384,9 +386,9 @@ public:
     // To enable main to set up globals
     friend int ::main(int argc, char** argv);
 
-    Simulation_impl(RankInfo my_rank, RankInfo num_ranks, bool restart, SimTime_t currentSimCycle, int currentPriority);
-    Simulation_impl(const Simulation_impl&)            = delete; // Don't Implement
-    Simulation_impl& operator=(const Simulation_impl&) = delete; // Don't implement
+    Simulation(RankInfo my_rank, RankInfo num_ranks, bool restart, SimTime_t currentSimCycle, int currentPriority);
+    Simulation(const Simulation&)            = delete; // Don't Implement
+    Simulation& operator=(const Simulation&) = delete; // Don't implement
 
     /** Get a handle to a TimeConverter
      * @param cycles Frequency which is the base of the TimeConverter
@@ -395,6 +397,7 @@ public:
 
     static void writeCheckpointConfigGraph(ConfigGraph* graph);
     void        scheduleCheckpoint();
+    void        scheduleInteractiveConsole(const std::string& msg);
 
     /**
        Write the partition specific checkpoint data
@@ -481,6 +484,17 @@ public:
      */
     void signalShutdown(bool abnormal);
 
+    /** Console Shutdown
+     * Called when a shutdown command or watchpoint shutdown action trigger needs to terminate SST
+     */
+    void consoleShutdown(bool abnormal);
+
+
+    /** Set EndSim
+     * Called by SyncMgr when interactive console ready to shutdown
+     */
+    void setEndSim();
+
     /** Normal Shutdown
      */
     void endSimulation();
@@ -530,6 +544,7 @@ public:
     unsigned int            untimed_phase;
     volatile sig_atomic_t   signal_arrived_; // true if a signal has arrived
     ShutdownMode_t          shutdown_mode_;
+    bool                    enter_shutdown_ = false;
     bool                    wireUpFinished_;
     RealTimeManager*        real_time_;
     std::string             interactive_type_  = "";
@@ -672,8 +687,8 @@ public:
     double complete_phase_start_time_;
     double complete_phase_total_time_;
 
-    static std::unordered_map<std::thread::id, Simulation_impl*> instanceMap;
-    static std::vector<Simulation_impl*>                         instanceVec_;
+    static std::unordered_map<std::thread::id, Simulation*> instanceMap;
+    static std::vector<Simulation*>                         instanceVec_;
 
     /******** Checkpoint/restart tracking data structures ***********/
     std::map<LinkId_t, Link*>      link_restart_tracking;

@@ -1,10 +1,10 @@
 // -*- c++ -*-
 
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -15,7 +15,7 @@
 
 #include "sst/core/model/restart/sstcptmodel.h"
 
-#include "sst/core/simulation_impl.h"
+#include "sst/core/simulation.h"
 
 #include <cstdint>
 #include <fstream>
@@ -36,7 +36,7 @@ SSTCPTModelDefinition::SSTCPTModelDefinition(
 ConfigGraph*
 SSTCPTModelDefinition::createConfigGraph()
 {
-    Config& cfg = Simulation_impl::config;
+    Config& cfg = Simulation::config;
 
     SST::Core::Serialization::serializer ser;
     ser.enable_pointer_tracking();
@@ -285,11 +285,11 @@ SSTCPTModelDefinition::createConfigGraph()
 
 
     // // Initialize SharedObjectManager
-    // Simulation_impl::serializeSharedObjectManager(ser);
+    // Simulation::serializeSharedObjectManager(ser);
     // // SST_SER(SST::Shared::SharedObject::manager);
 
     // // Get the stats config
-    // SST_SER(Simulation_impl::stats_config_);
+    // SST_SER(Simulation::stats_config_);
 
     // Done with restart_data_buffer
     restart_data_buffer.clear();

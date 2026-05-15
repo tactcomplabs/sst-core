@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -16,13 +16,18 @@
 
 #include "sst/core/cputimer.h"
 #include "sst/core/memuse.h"
-#include "sst/core/simulation_impl.h"
+#include "sst/core/simulation.h"
 #include "sst/core/sst_mpi.h"
 
 #include "nlohmann/json.hpp"
 
 #include <clocale>
 #include <cstdio>
+#include <iomanip>
+#include <ios>
+#include <ostream>
+#include <sstream>
+#include <tuple>
 
 namespace json = ::nlohmann;
 
@@ -107,6 +112,11 @@ DataRecord::addData(std::string key, int64_t value)
 }
 
 void
+DataRecord::addData(std::string key, std::string value)
+{
+    current_record_->data_[key] = value;
+}
+void
 DataRecord::addData(std::string key, UnitAlgebra value)
 {
     current_record_->data_[key] = value;
@@ -168,7 +178,7 @@ PerfReporter::configureOutput(std::string output_str)
         size_t      pos = filename_.find_last_of('.');
         std::string ext = filename_.substr(pos + 1);
         if ( ext == "json" || ext == "txt" ) {
-            if ( !Simulation_impl::filesystem.ensureDirectoryExists(filename_, true) ) {
+            if ( !Simulation::filesystem.ensureDirectoryExists(filename_, true) ) {
                 output_.fatal(CALL_INFO, -1,
                     "Error: Unable to write a file to the directory for profiling output (filename='%s'). Check that "
                     "this location is writeable.",
@@ -225,7 +235,7 @@ PerfReporter::output(int rank, int num_ranks)
         const std::string ext = (pos == std::string::npos) ? "" : filename_.substr(pos + 1);
         output_txt            = (ext == "txt");
         output_json           = (ext == "json");
-        filestream            = Simulation_impl::filesystem.ofstream(filename_);
+        filestream            = Simulation::filesystem.ofstream(filename_);
     }
 
     std::cout << std::flush;
@@ -244,7 +254,6 @@ PerfReporter::output(int rank, int num_ranks)
             int length = static_cast<int>(record.first.size());
             SST_MPI_Bcast(&length, 1, MPI_INT, 0, MPI_COMM_WORLD);
             SST_MPI_Bcast((void*)&record.first[0], length, MPI_CHAR, 0, MPI_COMM_WORLD);
-
             auto json_o = nlohmann::ordered_json::object();
 
             // Output any text formatted data, first for rank 0 and then append from other ranks
@@ -294,10 +303,10 @@ PerfReporter::output(int rank, int num_ranks)
                 }
 
                 if ( idx != records_.size() ) {
-                    filestream << "},\n";
+                    filestream << "\n},\n";
                 }
                 else {
-                    filestream << "}\n";
+                    filestream << "\n}\n";
                 }
             }
         }
@@ -641,6 +650,12 @@ PerfReporter::outputRecordToJSON(const PerfData* node, json::ordered_json* json_
         outputRecordToJSON(child, &record);
         (*json_obj)[child->name_] = record;
     }
+}
+
+size_t
+PerfReporter::recordCount()
+{
+    return records_.size();
 }
 
 } // namespace SST::Util

@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -24,6 +24,7 @@
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <sstream>
 #include <stack>
 #include <string>
 #include <utility>
@@ -83,6 +84,7 @@ public:
     void addData(std::string key, uint64_t value);
     void addData(std::string key, int64_t value);
     void addData(std::string key, UnitAlgebra value);
+    void addData(std::string key, std::string value);
     void addData(std::map<std::string, std::variant<uint64_t, int64_t, double, UnitAlgebra, std::string>> data);
 
 private:
@@ -114,9 +116,10 @@ public:
     void outputValueToText(
         const std::variant<uint64_t, int64_t, double, UnitAlgebra, std::string>& v, std::stringstream* sstr);
     std::string convertValueToString(const std::variant<uint64_t, int64_t, double, UnitAlgebra, std::string>& v);
-    void outputRecordToText(const PerfData* node, std::stringstream* sstr, int indent = 0, bool print_name = true);
-    void outputRecordToTextList(const PerfData* node, std::stringstream* sstr, bool header);
-    void outputRecordToJSON(const PerfData* node, nlohmann::ordered_json* obj);
+    void   outputRecordToText(const PerfData* node, std::stringstream* sstr, int indent = 0, bool print_name = true);
+    void   outputRecordToTextList(const PerfData* node, std::stringstream* sstr, bool header);
+    void   outputRecordToJSON(const PerfData* node, nlohmann::ordered_json* obj);
+    size_t recordCount();
 
 private:
     // Can output to console and/or a file (json or text)

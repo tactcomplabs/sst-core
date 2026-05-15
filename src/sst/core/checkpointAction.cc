@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -16,7 +16,7 @@
 #include "sst/core/component.h"
 #include "sst/core/mempoolAccessor.h"
 #include "sst/core/objectComms.h"
-#include "sst/core/simulation_impl.h"
+#include "sst/core/simulation.h"
 #include "sst/core/sst_mpi.h"
 #include "sst/core/stringize.h"
 #include "sst/core/timeConverter.h"
@@ -66,7 +66,7 @@ createNameFromFormat(const std::string& format, const std::string& prefix, uint6
 
 } // namespace pvt
 
-CheckpointAction::CheckpointAction(Config* cfg, RankInfo this_rank, Simulation_impl* sim, TimeConverter period) :
+CheckpointAction::CheckpointAction(Config* cfg, RankInfo this_rank, Simulation* sim, TimeConverter period) :
     Action(),
     rank_(this_rank),
     period_(period),
@@ -125,7 +125,7 @@ CheckpointAction::CheckpointAction(Config* cfg, RankInfo this_rank, Simulation_i
 }
 
 void
-CheckpointAction::insertIntoTimeVortex(Simulation_impl* sim)
+CheckpointAction::insertIntoTimeVortex(Simulation* sim)
 {
     // Only need to insert if a period was set
     if ( MAX_SIMTIME_T == next_sim_time_ ) return;
@@ -144,7 +144,7 @@ CheckpointAction::insertIntoTimeVortex(Simulation_impl* sim)
 void
 CheckpointAction::execute()
 {
-    Simulation_impl* sim = Simulation_impl::getSimulation();
+    Simulation* sim = Simulation::getSimulation();
     createCheckpoint(sim);
 
     next_sim_time_ += period_.getFactor();
@@ -152,7 +152,7 @@ CheckpointAction::execute()
 }
 
 void
-CheckpointAction::createCheckpoint(Simulation_impl* sim)
+CheckpointAction::createCheckpoint(Simulation* sim)
 {
     if ( 0 == rank_.rank && 0 == rank_.thread ) {
         const double now = sst_get_cpu_time();
@@ -259,7 +259,7 @@ CheckpointAction::check(SimTime_t current_time)
     // initiated.  This will also handle the case where both a sim and
     // real-time trigger happened at the same time
     if ( (current_time == next_sim_time_) || generate_ ) {
-        Simulation_impl* sim = Simulation_impl::getSimulation();
+        Simulation* sim = Simulation::getSimulation();
         createCheckpoint(sim);
         generate_ = false;
         // Only add to the simulation-interval checkpoint time if it
@@ -271,6 +271,11 @@ CheckpointAction::check(SimTime_t current_time)
     return next_sim_time_;
 }
 
+bool
+CheckpointAction::getCheckpoint()
+{
+    return generate_;
+}
 void
 CheckpointAction::setCheckpoint()
 {
@@ -331,7 +336,15 @@ initializeCheckpointInfrastructure(Config* cfg, bool can_ckpt, int myRank)
     std::string checkpoint_dir_name = "";
 
     if ( myRank == 0 ) {
-        SST::Util::Filesystem& fs = Simulation_impl::filesystem;
+        // Verify prefix format (no '/')
+        const std::string prefix   = cfg->checkpoint_prefix();
+        size_t            foundPos = prefix.find('/');
+        if ( foundPos != std::string::npos ) {
+            throw std::invalid_argument("Invalid checkpoint prefix: " + prefix);
+        }
+
+        // Create checkpoint directory path
+        SST::Util::Filesystem& fs = Simulation::filesystem;
         checkpoint_dir_name       = fs.createUniqueDirectory(cfg->checkpoint_prefix());
     }
 

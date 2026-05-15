@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -30,7 +30,7 @@ class ActivityQueue;
 class BaseComponent;
 class TimeConverter;
 class LinkPair;
-class Simulation_impl;
+class Simulation;
 
 class UnitAlgebra;
 
@@ -124,7 +124,7 @@ public:
     friend class LinkPair;
     friend class RankSync;
     friend class ThreadSync;
-    friend class Simulation_impl;
+    friend class Simulation;
     friend class SyncManager;
     friend class ComponentInfo;
     friend class BaseComponent;

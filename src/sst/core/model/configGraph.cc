@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -20,7 +20,7 @@
 #include "sst/core/model/configLink.h"
 #include "sst/core/model/configStatistic.h"
 #include "sst/core/namecheck.h"
-#include "sst/core/simulation_impl.h"
+#include "sst/core/simulation.h"
 #include "sst/core/sst_mpi.h"
 #include "sst/core/timeLord.h"
 #include "sst/core/warnmacros.h"
@@ -923,12 +923,12 @@ ConfigGraph::restoreRestartData()
     // Initialize SharedObjectManager
     auto* vec_som = cpt_shared_objects.get();
     ser.start_unpacking(vec_som->data(), vec_som->size());
-    Simulation_impl::serializeSharedObjectManager(ser);
+    Simulation::serializeSharedObjectManager(ser);
 
     // Get the stats config
     auto* vec_sc = cpt_stats_config.get();
     ser.start_unpacking(vec_sc->data(), vec_sc->size());
-    SST_SER(Simulation_impl::stats_config_);
+    SST_SER(Simulation::stats_config_);
 
     cpt_libnames.reset();
     cpt_shared_objects.reset();

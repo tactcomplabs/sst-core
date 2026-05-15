@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -16,7 +16,7 @@
 #include "sst/core/baseComponent.h"
 #include "sst/core/model/configGraph.h"
 #include "sst/core/output.h"
-#include "sst/core/simulation_impl.h"
+#include "sst/core/simulation.h"
 #include "sst/core/statapi/statbase.h"
 #include "sst/core/statapi/statengine.h"
 #include "sst/core/statapi/statgroup.h"
@@ -35,8 +35,7 @@ StatisticGroup::StatisticGroup(const ConfigStatGroup& csg, StatisticProcessingEn
     output_id(csg.outputID)
 {
     if ( csg.outputFrequency.getValue() != 0 ) { // outputfreq = 0 by default
-        output_freq =
-            Simulation_impl::getSimulation()->getTimeLord()->getTimeConverter(csg.outputFrequency).getFactor();
+        output_freq = Simulation::getSimulation()->getTimeLord()->getTimeConverter(csg.outputFrequency).getFactor();
     }
 
     if ( !output->acceptsGroups() ) {

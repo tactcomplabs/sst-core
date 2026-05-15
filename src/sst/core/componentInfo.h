@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -35,7 +35,7 @@ class ConfigPortModule;
 class ConfigComponent;
 class ConfigStatistic;
 
-class Simulation_impl;
+class Simulation;
 
 namespace Core::Serialization::pvt {
 class SerializeBaseComponentHelper;
@@ -59,7 +59,7 @@ private:
     static const uint64_t USER_FLAGS = 0x7;
 
     // Friend classes
-    friend class Simulation_impl;
+    friend class Simulation;
     friend class BaseComponent;
     friend class ComponentInfoMap;
     friend class Core::Serialization::pvt::SerializeBaseComponentHelper;

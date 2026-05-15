@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -14,7 +14,7 @@
 #include "sst/core/timeVortex.h"
 
 #include "sst/core/event.h"
-#include "sst/core/simulation_impl.h"
+#include "sst/core/simulation.h"
 
 #include <string>
 
@@ -24,7 +24,7 @@ namespace TV::pvt {
 void
 pack_timevortex(TimeVortex*& s, SST::Core::Serialization::serializer& ser)
 {
-    std::string& type = Simulation_impl::getSimulation()->timeVortexType;
+    std::string& type = Simulation::getSimulation()->timeVortexType;
     SST_SER(type);
     s->serialize_order(ser);
 }
@@ -45,7 +45,7 @@ unpack_timevortex(TimeVortex*& s, SST::Core::Serialization::serializer& ser)
 TimeVortex::TimeVortex()
 {
     max_depth = MAX_SIMTIME_T;
-    // sim_ = Simulation_impl::getSimulation();
+    // sim_ = Simulation::getSimulation();
 }
 
 void

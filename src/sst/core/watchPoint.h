@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -14,8 +14,10 @@
 
 #include "sst/core/clock.h"
 #include "sst/core/event.h"
+#include "sst/core/impl/interactive/ObjTreeHelpers.h"
 #include "sst/core/serialization/objectMap.h"
 #include "sst/core/stringize.h"
+#include "sst/core/impl/interactive/ObjTreeHelpers.h"
 
 namespace SST {
 
@@ -27,7 +29,7 @@ namespace SST {
 class WatchPoint : public Clock::HandlerBase::AttachPoint, public Event::HandlerBase::AttachPoint
 {
 public:
-    static const uint32_t VMASK = 0x10; // see simpleDebug.h::VERBOSITY_MASK
+    static const uint32_t VMASK = 0x10; // see debugConsole.h::VERBOSITY_MASK
 
     /**
        Base class for performing comparisons and logic operations for
@@ -99,7 +101,7 @@ public:
     class SetVarWPAction : public WPAction
     {
     public:
-        SetVarWPAction(std::string vname, Core::Serialization::ObjectMap* obj, std::string tval) :
+        SetVarWPAction(std::string vname, Core::Serialization::ObjTreeCont* obj, std::string tval) :
             name_(vname),
             obj_(obj),
             valStr_(tval)
@@ -109,9 +111,9 @@ public:
         void               invokeAction(WatchPoint* wp) override;
 
     private:
-        std::string                     name_   = "";
-        Core::Serialization::ObjectMap* obj_    = nullptr;
-        std::string                     valStr_ = "";
+        std::string                       name_   = "";
+        Core::Serialization::ObjTreeCont* obj_    = nullptr;
+        std::string                       valStr_ = "";
     }; // class SetVarWPAction
 
     class ShutdownWPAction : public WPAction
@@ -124,7 +126,7 @@ public:
     }; // class ShutdownWPAction
 
     // Construction
-    WatchPoint(size_t index, const std::string& name, Core::Serialization::ObjectMapComparison* obj);
+    WatchPoint(size_t index, const std::string& name, Core::Serialization::ObjTreeComparison* obj);
     ~WatchPoint() = default;
 
     // Inherited from both Event and Clock handler AttachPoints.
@@ -167,14 +169,14 @@ public:
     }
     void        setHandler(unsigned handlerType);
     std::string handlerToString(HANDLER h);
-    void        printHandler();
-    void        printWatchpoint();
+    void        printHandler(std::stringstream& ss);
+    void        genericHandler(HANDLER h);
+    void        printWatchpoint(std::stringstream& ss);
     void        resetTraceBuffer();
     inline bool checkReset() { return reset_; }
-    void        printAction();
-    void        addTraceBuffer(Core::Serialization::TraceBuffer* tb);
-    void        addObjectBuffer(Core::Serialization::ObjectBuffer* ob);
-    void        addComparison(Core::Serialization::ObjectMapComparison* cmp);
+    void        printAction(std::stringstream& ss);
+    void        addTraceBuffer(Core::Serialization::ObjTreeTraceBuffer* tb);
+    void        addObjectBuffer(std::unique_ptr<Core::Serialization::ObjTreeCont> ob);
 
     enum LogicOp : unsigned { // Logical Op for trigger tests
         AND       = 0,
@@ -195,17 +197,18 @@ protected:
     void      simulationShutdown();
 
 private:
-    size_t                                                 numCmpObj_ = 0;
-    std::vector<Core::Serialization::ObjectMapComparison*> cmpObjects_;
-    std::vector<LogicOp>                                   logicOps_;
-    std::string                                            name_;
-    Core::Serialization::TraceBuffer*                      tb_ = nullptr;
-    size_t                                                 wpIndex;
-    HANDLER                                                handler        = ALL;
-    bool                                                   trigger        = false;
-    HANDLER                                                triggerHandler = HANDLER::NONE;
-    bool                                                   reset_         = false;
-    WPAction*                                              wpAction;
+    // size_t                                                 numCmpObj_ = 0;
+    std::unique_ptr<Core::Serialization::ObjTreeComparison> cmpObjects_;
+    std::vector<LogicOp>                                    logicOps_;
+    std::string                                             name_;
+    Core::Serialization::ObjTreeTraceBuffer*                tb_ = nullptr;
+    size_t                                                  wpIndex;
+    HANDLER                                                 handler        = ALL;
+    bool                                                    trigger        = false;
+    HANDLER                                                 triggerHandler = HANDLER::NONE;
+    size_t                                                  triggerCount   = 0;
+    bool                                                    reset_         = false;
+    WPAction*                                               wpAction;
 
     void     setBufferReset();
     void     check();

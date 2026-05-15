@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -15,7 +15,8 @@
 #include "sst/core/watchPoint.h"
 
 #include "sst/core/output.h"
-#include "sst/core/simulation_impl.h"
+#include "sst/core/realtime.h"
+#include "sst/core/simulation.h"
 #include "sst/core/sst_types.h"
 
 #include <cstddef>
@@ -36,7 +37,8 @@ WatchPoint::InteractiveWPAction::invokeAction(WatchPoint* wp)
     msg("    SetInteractive");
     wp->setEnterInteractive(); // Trigger action
     std::string handlerStr = wp->handlerToString(wp->triggerHandler);
-    wp->setInteractiveMsg(format_string("  WP%ld: %s : %s ...", wp->wpIndex, handlerStr.c_str(), wp->name_.c_str()));
+    wp->setInteractiveMsg(
+        format_string("  Last Trigger: WP%ld: %s : %s ...", wp->wpIndex, handlerStr.c_str(), wp->name_.c_str()));
     // Note that the interactive action is delayed and
     // we want to be able to print the Trace Buffer there.
     // So, resetTraceBuffer for this case is in handlers
@@ -67,7 +69,7 @@ void
 WatchPoint::SetVarWPAction::invokeAction(WatchPoint* wp)
 {
     try {
-        obj_->set(valStr_);
+        obj_->setFromString(valStr_);
     }
     catch ( const std::exception& e ) {
         printf("Invalid set var: %s\n", valStr_.c_str());
@@ -90,13 +92,52 @@ WatchPoint::ShutdownWPAction::invokeAction(WatchPoint* wp)
     return;
 }
 
-WatchPoint::WatchPoint(size_t index, const std::string& name, Core::Serialization::ObjectMapComparison* obj) :
+WatchPoint::WatchPoint(size_t index, const std::string& name, Core::Serialization::ObjTreeComparison* obj) :
     Clock::HandlerBase::AttachPoint(),
     Event::HandlerBase::AttachPoint(),
+    cmpObjects_(obj),
     name_(name),
     wpIndex(index)
+{}
+
+void
+WatchPoint::genericHandler(HANDLER h)
 {
-    addComparison(obj);
+    if ( tb_ ) {
+
+        if ( reset_ && !getInteractive() ) {
+            tb_->resetTraceBuffer();
+            triggerCount = 0;
+            reset_       = false;
+        }
+
+        SimTime_t cycle = getCurrentSimCycle();
+
+        bool invoke = tb_->sampleT(trigger, cycle, handlerToString(h));
+        if ( trigger == true ) triggerCount++;
+        trigger = false;
+        if ( invoke ) {
+            triggerHandler = h;
+            setBufferReset();
+            wpAction->invokeAction(this);
+            triggerHandler = HANDLER::NONE;
+        }
+    }
+    else {
+        msg("    No trace buffer");
+        if ( reset_ && !getInteractive() ) {
+            triggerCount = 0;
+            reset_       = false;
+        }
+        if ( trigger ) {
+            triggerHandler = h;
+            triggerCount++;
+            reset_ = true;
+            wpAction->invokeAction(this);
+            trigger        = false;
+            triggerHandler = HANDLER::NONE;
+        }
+    }
 }
 
 void
@@ -105,32 +146,7 @@ WatchPoint::beforeHandler(uintptr_t UNUSED(key), const Event* UNUSED(ev))
     if ( handler & BEFORE_EVENT ) {
         msg("  Before Event Handler");
         check();
-        if ( tb_ ) {
-
-            if ( reset_ && !getInteractive() ) {
-                tb_->resetTraceBuffer();
-                reset_ = false;
-            }
-
-            SimTime_t cycle  = getCurrentSimCycle();
-            bool      invoke = tb_->sampleT(trigger, cycle, "BE");
-            trigger          = false;
-            if ( invoke ) {
-                triggerHandler = HANDLER::BEFORE_EVENT;
-                setBufferReset();
-                wpAction->invokeAction(this);
-                triggerHandler = HANDLER::NONE;
-            }
-        }
-        else {
-            msg("    No trace buffer");
-            if ( trigger ) {
-                triggerHandler = HANDLER::BEFORE_EVENT;
-                wpAction->invokeAction(this);
-                trigger        = false;
-                triggerHandler = HANDLER::NONE;
-            }
-        }
+        genericHandler(HANDLER::BEFORE_EVENT);
     } // if BEFORE_EVENT
 }
 
@@ -140,32 +156,7 @@ WatchPoint::afterHandler(uintptr_t UNUSED(key))
     if ( handler & AFTER_EVENT ) {
         msg("  After Event Handler");
         check();
-        if ( tb_ ) {
-
-            if ( reset_ && !getInteractive() ) {
-                tb_->resetTraceBuffer();
-                reset_ = false;
-            }
-
-            SimTime_t cycle  = getCurrentSimCycle();
-            bool      invoke = tb_->sampleT(trigger, cycle, "AE");
-            trigger          = false;
-            if ( invoke ) {
-                triggerHandler = HANDLER::AFTER_EVENT;
-                setBufferReset();
-                wpAction->invokeAction(this);
-                triggerHandler = HANDLER::NONE;
-            }
-        }
-        else {
-            msg("    No trace buffer");
-            if ( trigger ) {
-                triggerHandler = HANDLER::AFTER_EVENT;
-                wpAction->invokeAction(this);
-                trigger        = false;
-                triggerHandler = HANDLER::NONE;
-            }
-        }
+        genericHandler(HANDLER::AFTER_EVENT);
     } // if AFTER_EVENT
 }
 
@@ -175,31 +166,7 @@ WatchPoint::beforeHandler(uintptr_t UNUSED(key), const Cycle_t& UNUSED(cycle))
     if ( handler & BEFORE_CLOCK ) {
         msg("  Before Clock Handler");
         check();
-        if ( tb_ ) {
-            if ( reset_ && !getInteractive() ) {
-                tb_->resetTraceBuffer();
-                reset_ = false;
-            }
-
-            SimTime_t cycle  = getCurrentSimCycle();
-            bool      invoke = tb_->sampleT(trigger, cycle, "BC");
-            trigger          = false;
-            if ( invoke ) {
-                triggerHandler = HANDLER::BEFORE_CLOCK;
-                setBufferReset();
-                wpAction->invokeAction(this);
-                triggerHandler = HANDLER::NONE;
-            }
-        }
-        else {
-            msg("    No trace buffer");
-            if ( trigger ) {
-                triggerHandler = HANDLER::BEFORE_CLOCK;
-                wpAction->invokeAction(this);
-                trigger        = false;
-                triggerHandler = HANDLER::NONE;
-            }
-        }
+        genericHandler(HANDLER::BEFORE_CLOCK);
     } // if AFTER_CLOCK
 }
 
@@ -209,31 +176,7 @@ WatchPoint::afterHandler(uintptr_t UNUSED(key), const bool& UNUSED(ret))
     if ( handler & AFTER_CLOCK ) {
         msg("  After Clock Handler");
         check();
-        if ( tb_ ) {
-            if ( reset_ && !getInteractive() ) {
-                tb_->resetTraceBuffer();
-                reset_ = false;
-            }
-
-            SimTime_t cycle  = getCurrentSimCycle();
-            bool      invoke = tb_->sampleT(trigger, cycle, "AC");
-            trigger          = false;
-            if ( invoke ) {
-                triggerHandler = HANDLER::AFTER_CLOCK;
-                setBufferReset();
-                wpAction->invokeAction(this);
-                triggerHandler = HANDLER::NONE;
-            }
-        }
-        else {
-            msg("    No trace buffer");
-            if ( trigger ) {
-                triggerHandler = HANDLER::AFTER_CLOCK;
-                wpAction->invokeAction(this);
-                trigger        = false;
-                triggerHandler = HANDLER::NONE;
-            }
-        }
+        genericHandler(HANDLER::AFTER_CLOCK);
     } // if AFTER_CLOCK
 }
 
@@ -260,6 +203,7 @@ void
 WatchPoint::printTrace()
 {
     if ( tb_ != nullptr ) {
+        std::cout << "TriggerCount=" << triggerCount << "\n";
         tb_->dumpTriggerRecord();
         tb_->dumpTraceBufferT();
     }
@@ -317,28 +261,28 @@ WatchPoint::handlerToString(HANDLER h)
 }
 
 void
-WatchPoint::printHandler()
+WatchPoint::printHandler(std::stringstream& ss)
 {
-    std::cout << handlerToString(handler);
-    std::cout << " : ";
+    ss << handlerToString(handler);
+    ss << " : ";
 }
 
 void
-WatchPoint::printWatchpoint()
+WatchPoint::printWatchpoint(std::stringstream& ss)
 {
-    printHandler();
+    ss << "TriggerCount " << triggerCount << " : ";
+    printHandler(ss);
     // TODO: print the logic values
-    for ( size_t i = 0; i < numCmpObj_; i++ ) { // Print trigger tests
-        cmpObjects_[i]->print(std::cout);
-    }
-    std::cout << " : ";
+    cmpObjects_->print(ss, 0, cmpObjects_->operators.size() * 2);
+    ss << " : ";
 
     if ( tb_ != nullptr ) { // print trace buffer config
-        tb_->printConfig();
-        std::cout << " : ";
+        tb_->printConfig(ss);
+        ss << " : ";
     }
-    printAction();
-    std::cout << std::endl;
+    printAction(ss);
+
+    ss << std::endl;
 }
 
 void
@@ -355,42 +299,42 @@ WatchPoint::resetTraceBuffer()
 bool
 WatchPoint::getInteractive()
 {
-    return Simulation_impl::getSimulation()->enter_interactive_;
+    return Simulation::getSimulation()->enter_interactive_;
 }
 
 void
 WatchPoint::setEnterInteractive()
 {
-    Simulation_impl::getSimulation()->enter_interactive_ = true;
+    Simulation::getSimulation()->enter_interactive_ = true;
 }
 
 void
 WatchPoint::setInteractiveMsg(const std::string& msg)
 {
-    Simulation_impl::getSimulation()->interactive_msg_ = msg;
+    Simulation::getSimulation()->interactive_msg_ = msg;
 }
 
 SimTime_t
 WatchPoint::getCurrentSimCycle()
 {
-    return Simulation_impl::getSimulation()->getCurrentSimCycle();
+    return Simulation::getSimulation()->getCurrentSimCycle();
 }
 
 void
 WatchPoint::setCheckpoint()
 {
-    if ( Simulation_impl::getSimulation()->checkpoint_directory_ == "" ) {
+    if ( Simulation::getSimulation()->checkpoint_directory_ == "" ) {
         std::cout << "Invalid action: checkpointing not enabled (use --checkpoint-enable cmd line option)\n";
     }
     else {
-        Simulation_impl::getSimulation()->scheduleCheckpoint();
+        Simulation::getSimulation()->scheduleCheckpoint();
     }
 }
 
 void
 WatchPoint::printStatus()
 {
-    Simulation_impl::getSimulation()->printStatus(true);
+    Simulation::getSimulation()->printStatus(true);
 }
 
 void
@@ -403,32 +347,26 @@ WatchPoint::heartbeat()
 void
 WatchPoint::simulationShutdown()
 {
-    Simulation_impl::getSimulation()->endSimulation();
+    Simulation::getSimulation()->consoleShutdown(false);
+    std::cout << "wp simulation shutdown\n";
 }
 
 void
-WatchPoint::printAction()
+WatchPoint::printAction(std::stringstream& ss)
 {
-    std::cout << wpAction->actionToString();
+    ss << wpAction->actionToString();
 }
 
 void
-WatchPoint::addTraceBuffer(Core::Serialization::TraceBuffer* tb)
+WatchPoint::addTraceBuffer(Core::Serialization::ObjTreeTraceBuffer* tb)
 {
     tb_ = tb;
 }
 
 void
-WatchPoint::addObjectBuffer(Core::Serialization::ObjectBuffer* ob)
+WatchPoint::addObjectBuffer(std::unique_ptr<Core::Serialization::ObjTreeCont> ob)
 {
-    tb_->addObjectBuffer(ob);
-}
-
-void
-WatchPoint::addComparison(Core::Serialization::ObjectMapComparison* cmp)
-{
-    cmpObjects_.push_back(cmp);
-    numCmpObj_++;
+    tb_->addObjectBuffer(std::move(ob));
 }
 
 void
@@ -446,25 +384,27 @@ WatchPoint::check()
 {
     bool result = false;
 
-    if ( cmpObjects_[0]->compare() ) {
+    if ( cmpObjects_->evaluateComparison(0, nullptr) ) {
+
         result = true;
     }
+    // printf("      comparison_0 = %d\n", result);
     std::stringstream s;
     s << std::boolalpha;
     s << "    WatchPoint " << name_.c_str() << " tests:\n";
     s << "      ";
-    cmpObjects_[0]->print(s);
+    cmpObjects_->print(s, 0, 1);
     s << " -> " << result << std::endl;
 
-    for ( size_t i = 1; i < numCmpObj_; i++ ) {
+    for ( size_t i = 1; i < cmpObjects_->operators.size(); i++ ) {
         bool result2 = false;
-        if ( cmpObjects_[i]->compare() ) {
+        if ( cmpObjects_->evaluateComparison(i, nullptr) ) {
             result2 = true;
         }
+        //   printf("      comparison%ld = %d\n", i, result2);
         s << "      ";
-        cmpObjects_[i]->print(s);
+        cmpObjects_->print(s, i * 2, i * 2 + 1);
         s << " -> " << result2 << std::endl;
-        // printf("      comparison%ld = %d\n", i, result2);
 
         if ( logicOps_[i - 1] == LogicOp::AND ) {
             result = result && result2;

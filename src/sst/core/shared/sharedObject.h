@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -27,7 +27,7 @@ extern int main(int argc, char** argv);
 
 namespace SST {
 
-class Simulation_impl;
+class Simulation;
 
 namespace Shared {
 
@@ -292,7 +292,7 @@ public:
     ImplementSerializable(SharedObject)
 
 protected:
-    friend class SST::Simulation_impl;
+    friend class SST::Simulation;
 
     // To enable main to initialize manager on restart
     friend int ::main(int argc, char** argv);

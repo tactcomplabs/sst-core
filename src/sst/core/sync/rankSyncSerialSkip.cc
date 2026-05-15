@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -19,10 +19,12 @@
 #include "sst/core/profile.h"
 #include "sst/core/profile/syncProfileTool.h"
 #include "sst/core/serialization/serializer.h"
-#include "sst/core/simulation_impl.h"
+#include "sst/core/simulation.h"
 #include "sst/core/sst_mpi.h"
 #include "sst/core/sync/syncQueue.h"
 #include "sst/core/timeConverter.h"
+
+#include <atomic>
 
 #if SST_EVENT_PROFILING
 #define SST_EVENT_PROFILE_START auto event_profile_start = std::chrono::high_resolution_clock::now();
@@ -48,7 +50,7 @@ RankSyncSerialSkip::RankSyncSerialSkip(RankInfo num_ranks) :
     mpiWaitTime(0.0),
     deserializeTime(0.0)
 {
-    max_period     = Simulation_impl::getSimulation()->getMinPartTC().getFactor();
+    max_period     = Simulation::getSimulation()->getMinPartTC().getFactor();
     myNextSyncTime = max_period;
 }
 
@@ -91,7 +93,7 @@ RankSyncSerialSkip::registerLink(const RankInfo& to_rank, const RankInfo& UNUSED
 void
 RankSyncSerialSkip::setRestartTime(SimTime_t time)
 {
-    if ( Simulation_impl::getSimulation()->getRank().thread == 0 ) {
+    if ( Simulation::getSimulation()->getRank().thread == 0 ) {
         myNextSyncTime = time;
     }
 }
@@ -119,6 +121,70 @@ RankSyncSerialSkip::getSignals(int& end, int& usr, int& alrm)
     usr  = sig_usr_;
     alrm = sig_alrm_;
     return sig_end_ || sig_usr_ || sig_alrm_;
+}
+
+void
+RankSyncSerialSkip::setShutdownFlags(bool enter_shutdown, Simulation::ShutdownMode_t shutdown_mode)
+{
+    // This can be set from any thread
+    if ( enter_shutdown ) {
+        enter_shutdown_.store(enter_shutdown);
+        shutdown_mode_.store(static_cast<unsigned>(shutdown_mode));
+    }
+}
+
+void
+RankSyncSerialSkip::setCkptFlag(bool generate_ckpt)
+{
+    if ( generate_ckpt ) generate_ckpt_.store(true);
+}
+
+void
+RankSyncSerialSkip::setFlags(bool enter_interactive, bool enter_shutdown, Simulation::ShutdownMode_t shutdown_mode)
+{
+    // This can be set from any thread
+    if ( enter_interactive ) enter_interactive_.store(enter_interactive);
+
+    setShutdownFlags(enter_shutdown, shutdown_mode);
+}
+
+void
+RankSyncSerialSkip::getShutdownFlags(bool& enter_shutdown, Simulation::ShutdownMode_t& shutdown_mode)
+{
+    enter_shutdown = enter_shutdown_.load();
+    switch ( shutdown_mode_ ) {
+    case 0:
+        shutdown_mode = Simulation::ShutdownMode_t::SHUTDOWN_CLEAN;
+        break;
+    case 1:
+        shutdown_mode = Simulation::ShutdownMode_t::SHUTDOWN_SIGNAL;
+        break;
+    case 2:
+        shutdown_mode = Simulation::ShutdownMode_t::SHUTDOWN_EMERGENCY;
+        break;
+    }
+}
+
+void
+RankSyncSerialSkip::getCkptFlag(bool& generate_ckpt)
+{
+    generate_ckpt = generate_ckpt_.load();
+}
+
+void
+RankSyncSerialSkip::getFlags(bool& enter_interactive, bool& enter_shutdown, Simulation::ShutdownMode_t& shutdown_mode)
+{
+    enter_interactive = enter_interactive_.load();
+    getShutdownFlags(enter_shutdown, shutdown_mode);
+}
+
+void
+RankSyncSerialSkip::clearFlags()
+{
+    enter_interactive_.store(false);
+    enter_shutdown_.store(false);
+    shutdown_mode_.store(0);
+    generate_ckpt_.store(false);
 }
 
 uint64_t
@@ -150,7 +216,7 @@ RankSyncSerialSkip::exchange()
     int  sreq_count = 0;
     int  rreq_count = 0;
 
-    Simulation_impl* sim = Simulation_impl::getSimulation();
+    Simulation* sim = Simulation::getSimulation();
 
     for ( comm_map_t::iterator i = comm_map.begin(); i != comm_map.end(); ++i ) {
 
@@ -164,7 +230,7 @@ RankSyncSerialSkip::exchange()
 
         // Cast to Header so we can get/fill in data
         RankSyncQueue::Header* hdr = reinterpret_cast<RankSyncQueue::Header*>(send_buffer);
-        // Simulation_impl::getSimulation()->getSimulationOutput().output("Data size = %d\n", hdr->buffer_size);
+        // Simulation::getSimulation()->getSimulationOutput().output("Data size = %d\n", hdr->buffer_size);
         int                    tag = 1;
         // Check to see if remote queue is big enough for data
         if ( i->second.remote_size < hdr->buffer_size ) {
@@ -248,8 +314,8 @@ RankSyncSerialSkip::exchange()
     // min + max_period.
 
     // Need to get the local minimum, then do a global minimum
-    // SimTime_t input = Simulation_impl::getSimulation()->getNextActivityTime();
-    SimTime_t input = Simulation_impl::getLocalMinimumNextActivityTime();
+    // SimTime_t input = Simulation::getSimulation()->getNextActivityTime();
+    SimTime_t input = Simulation::getLocalMinimumNextActivityTime();
     SimTime_t min_time;
     MPI_Allreduce(&input, &min_time, 1, MPI_UINT64_T, MPI_MIN, MPI_COMM_WORLD);
 
@@ -262,6 +328,17 @@ RankSyncSerialSkip::exchange()
     sig_end_  = global_signals[0];
     sig_usr_  = global_signals[1];
     sig_alrm_ = global_signals[2];
+
+    int32_t local_flags[4]  = { static_cast<int32_t>(enter_interactive_), static_cast<int32_t>(enter_shutdown_),
+         static_cast<int32_t>(shutdown_mode_), static_cast<int32_t>(generate_ckpt_) };
+    int32_t global_flags[4] = { 0, 0, 0, 0 };
+    MPI_Allreduce(&local_flags, &global_flags, 4, MPI_INT32_T, MPI_MAX, MPI_COMM_WORLD);
+
+    enter_interactive_ = global_flags[0];
+    enter_shutdown_    = global_flags[1];
+    shutdown_mode_     = global_flags[2];
+    generate_ckpt_     = global_flags[3];
+
 #endif
 }
 
@@ -365,8 +442,12 @@ RankSyncSerialSkip::setProfileToolList(Profile::SyncProfileToolList* profile_too
 }
 
 
-int RankSyncSerialSkip::sig_end_(0);
-int RankSyncSerialSkip::sig_usr_(0);
-int RankSyncSerialSkip::sig_alrm_(0);
+int                   RankSyncSerialSkip::sig_end_(0);
+int                   RankSyncSerialSkip::sig_usr_(0);
+int                   RankSyncSerialSkip::sig_alrm_(0);
+std::atomic<bool>     RankSyncSerialSkip::enter_interactive_(false);
+std::atomic<bool>     RankSyncSerialSkip::enter_shutdown_(false);
+std::atomic<unsigned> RankSyncSerialSkip::shutdown_mode_(0);
+std::atomic<bool>     RankSyncSerialSkip::generate_ckpt_(false);
 
 } // namespace SST

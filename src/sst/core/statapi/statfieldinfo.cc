@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -14,7 +14,7 @@
 #include "sst/core/statapi/statfieldinfo.h"
 
 #include "sst/core/output.h"
-#include "sst/core/simulation_impl.h"
+#include "sst/core/simulation.h"
 #include "sst/core/stringize.h"
 
 #include <cstring>
@@ -52,7 +52,7 @@ StatisticFieldTypeBase::getField(fieldType_t id)
 {
     auto iter = fields_->find(id);
     if ( iter == fields_->end() ) {
-        Simulation_impl::getSimulationOutput().fatal(CALL_INFO, 1, "Invalid Field ID: %d", int(id));
+        Simulation::getSimulationOutput().fatal(CALL_INFO, 1, "Invalid Field ID: %d", int(id));
     }
     return iter->second;
 }
@@ -65,7 +65,7 @@ StatisticFieldTypeBase::getField(const char* field_short_name)
             return field.first;
         }
     }
-    Simulation_impl::getSimulationOutput().fatal(
+    Simulation::getSimulationOutput().fatal(
         CALL_INFO, 1, "Look up field name: %s; No such field found", field_short_name);
     return 0;
 }
@@ -83,7 +83,7 @@ void
 StatisticFieldTypeBase::checkRegisterConflict(const char* old_name, const char* new_name)
 {
     if ( old_name && ::strcmp(old_name, new_name) ) {
-        Simulation_impl::getSimulationOutput().fatal(
+        Simulation::getSimulationOutput().fatal(
             CALL_INFO, 1, "Conflicting names registered for field: %s != %s", old_name, new_name);
     }
 }

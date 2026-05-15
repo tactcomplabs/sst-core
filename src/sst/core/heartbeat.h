@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -23,7 +23,7 @@
 
 namespace SST {
 
-class Simulation_impl;
+class Simulation;
 class TimeConverter;
 
 /**
@@ -36,7 +36,7 @@ public:
     /**
     Create a new heartbeat object for the simulation core to show progress
     */
-    SimulatorHeartbeat(Config* cfg, int this_rank, Simulation_impl* sim, TimeConverter period);
+    SimulatorHeartbeat(Config* cfg, int this_rank, Simulation* sim, TimeConverter period);
     ~SimulatorHeartbeat() = default;
 
     // Used to re-schedule the new heartbeat event during restart

@@ -1,10 +1,10 @@
 // -*- c++ -*-
 
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -29,7 +29,7 @@ namespace SST {
 
 class Link;
 class Simulation;
-class Simulation_impl;
+class Simulation;
 class TimeConverter;
 class UnitAlgebra;
 class BaseComponent;
@@ -99,7 +99,7 @@ public:
 
 private:
     friend class SST::Simulation;
-    friend class SST::Simulation_impl;
+    friend class SST::Simulation;
     friend class SST::Link;
     friend class SST::BaseComponent;
     friend class SST::TimeConverter;

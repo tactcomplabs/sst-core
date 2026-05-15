@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -17,7 +17,7 @@
 #include "sst/core/output.h"
 #include "sst/core/serialization/serialize.h"
 #include "sst/core/serialization/serializer.h"
-#include "sst/core/simulation_impl.h"
+#include "sst/core/simulation.h"
 #include "sst/core/timeConverter.h"
 #include "sst/core/warnmacros.h"
 
@@ -118,7 +118,7 @@ TimeLord::getSimCycles(const std::string& ts, const std::string& UNUSED(where))
 UnitAlgebra
 TimeConverter::getPeriod() const
 {
-    return Simulation_impl::getTimeLord()->getTimeBase() * factor;
+    return Simulation::getTimeLord()->getTimeBase() * factor;
 }
 
 SimTime_t
@@ -176,12 +176,12 @@ TimeLord::getFactorForTime(const UnitAlgebra& time)
 
 TimeConverter::TimeConverter(const std::string& time)
 {
-    factor = Simulation_impl::getSimulation()->timeLord.getFactorForTime(time);
+    factor = Simulation::getSimulation()->timeLord.getFactorForTime(time);
 }
 
 TimeConverter::TimeConverter(const UnitAlgebra& time)
 {
-    factor = Simulation_impl::getSimulation()->timeLord.getFactorForTime(time);
+    factor = Simulation::getSimulation()->timeLord.getFactorForTime(time);
 }
 
 namespace Core::Serialization {
@@ -200,7 +200,7 @@ public:
     // We'll treat this as a period when printing
     std::string get() const final override
     {
-        TimeLord*   timelord = Simulation_impl::getTimeLord();
+        TimeLord*   timelord = Simulation::getTimeLord();
         UnitAlgebra base     = timelord->getTimeBase();
         base *= addr_->getFactor();
         return base.toStringBestSI();

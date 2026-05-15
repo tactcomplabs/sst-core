@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2009-2025 NTESS. Under the terms
+# Copyright 2009-2026 NTESS. Under the terms
 # of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 #
-# Copyright (c) 2009-2025, NTESS
+# Copyright (c) 2009-2026, NTESS
 # All rights reserved.
 #
 # This file is part of the SST software package. For license
@@ -70,7 +70,8 @@ class testcase_Profiling(SSTTestCase):
         self.run_sst(sdlfile, outfile, other_args=options)
 
         # Perform the test
-        cmp_result = testing_compare_sorted_diff(testtype, checkfile, reffile)
+        filters = [ StartsWithFilter("  Simulation Input File") ]
+        cmp_result = testing_compare_filtered_diff(testtype, checkfile, reffile, sort=True, filters=filters)
         if not cmp_result:
             diffdata = testing_get_diff_data(testtype)
             log_failure(diffdata)

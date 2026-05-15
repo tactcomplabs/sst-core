@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -12,7 +12,9 @@
 #ifndef SST_CORE_SERIALIZATION_OBJECTMAPDEFERRED_H
 #define SST_CORE_SERIALIZATION_OBJECTMAPDEFERRED_H
 
+#include "sst/core/baseComponent.h"
 #include "sst/core/serialization/serializer.h"
+#include "sst/core/baseComponent.h"
 
 #include <map>
 #include <string>
@@ -79,7 +81,12 @@ public:
         ObjectMap(),
         addr_(addr),
         type_(demangle_name(type.c_str()))
-    {}
+    {
+        // Set category based on type
+        if constexpr ( std::is_base_of_v<BaseComponent, T> || std::is_base_of_v<SubComponent, T> ) {
+            setCategory(ObjectCategory::Component);
+        }
+    }
 
     ~ObjectMapDeferred() override { delete obj_; }
 
@@ -120,6 +127,25 @@ private:
        typeid(T).name() for the type.
      */
     std::string type_ = "";
+};
+
+class ComponentSerializer : public ObjectMapDeferred<BaseComponent>
+{
+public:
+    ComponentSerializer(BaseComponent* comp) :
+        ObjectMapDeferred<BaseComponent>(comp, typeid(*comp).name())
+    {}
+
+    // Expose the protected activate to trigger serialization
+    void serialize() { activate_callback(); }
+
+    // Check if serialization produced results
+    bool hasSerialized() const
+    {
+        // After activate_callback, obj_ is set via addVariable("!proxy!", ...)
+        // getVariables() delegates to obj_->getVariables()
+        return !getVariables().empty();
+    }
 };
 
 } // namespace SST::Core::Serialization

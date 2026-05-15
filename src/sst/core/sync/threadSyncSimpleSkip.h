@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -13,11 +13,13 @@
 #define SST_CORE_SYNC_THREADSYNCSIMPLESKIP_H
 
 #include "sst/core/action.h"
+#include "sst/core/simulation.h"
 #include "sst/core/sst_types.h"
 #include "sst/core/sync/syncManager.h"
 #include "sst/core/sync/syncQueue.h"
 #include "sst/core/threadsafe.h"
 
+#include <atomic>
 #include <cstdint>
 #include <string>
 #include <unordered_map>
@@ -30,14 +32,14 @@ class Link;
 class TimeConverter;
 class Exit;
 class Event;
-class Simulation_impl;
+class Simulation;
 class ThreadSyncQueue;
 
 class ThreadSyncSimpleSkip : public ThreadSync
 {
 public:
     /** Create a new ThreadSync object */
-    ThreadSyncSimpleSkip(int num_threads, int thread, Simulation_impl* sim);
+    ThreadSyncSimpleSkip(int num_threads, int thread, Simulation* sim);
     ThreadSyncSimpleSkip() {} // For serialization only
     ~ThreadSyncSimpleSkip();
 
@@ -51,6 +53,16 @@ public:
     void setSignals(int end, int usr, int alrm) override;
     /** Return exchanged signals after sync */
     bool getSignals(int& end, int& usr, int& alrm) override;
+
+    /** Set interactive flags to exchange during sync */
+    // Separated enter_interactive from from shutdown since they may be needed separately
+    void setShutdownFlags(bool enter_shutdown, Simulation::ShutdownMode_t shutdown_mode) override;
+    void setFlags(bool enter_interactive, bool enter_shutdown, Simulation::ShutdownMode_t shutdown_mode) override;
+    /** Return exchanged interactive flags after sync */
+    void getShutdownFlags(bool& enter_shutdown, Simulation::ShutdownMode_t& shutdown_mode) override;
+    void getFlags(bool& enter_interactive, bool& enter_shutdown, Simulation::ShutdownMode_t& shutdown_mode) override;
+    /** Clear interactive flags before next run */
+    void clearFlags() override;
 
     /** Cause an exchange of Untimed Data to occur */
     void processLinkUntimedData() override;
@@ -84,7 +96,7 @@ private:
     int                              num_threads;
     int                              thread;
     static SimTime_t                 localMinimumNextActivityTime;
-    Simulation_impl*                 sim;
+    Simulation*                      sim;
     static Core::ThreadSafe::Barrier barrier[3];
     double                           totalWaitTime;
     bool                             single_rank;
@@ -92,6 +104,9 @@ private:
     static int                       sig_end_;
     static int                       sig_usr_;
     static int                       sig_alrm_;
+    static std::atomic<bool>         enter_interactive_;
+    static std::atomic<bool>         enter_shutdown_;
+    static std::atomic<unsigned>     shutdown_mode_;
 };
 
 } // namespace SST

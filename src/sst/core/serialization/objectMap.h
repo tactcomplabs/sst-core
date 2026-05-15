@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -26,9 +26,11 @@
 #include <exception>
 #include <functional>
 #include <iostream>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <ostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -39,6 +41,7 @@
 // #define _OBJMAP_DEBUG_
 
 namespace SST::Core::Serialization {
+class ObjTreeCont; 
 
 // Comparison of two keys: If both keys are integers, use numeric comparison, else lexicographic
 struct ObjectMultimapCmp
@@ -184,6 +187,9 @@ protected:
  */
 class ObjectMap
 {
+public:
+    enum class ObjectCategory : uint8_t { Generic = 0, Component, SubComponent, Module };
+
 protected:
     /**
        Metadata object for walking the object hierarchy.  When this
@@ -201,7 +207,9 @@ protected:
        will return to the highest level path and the metadata from
        that path to the current path will be erased.
      */
-    ObjectMapMetaData* mdata_ = nullptr;
+    ObjectMapMetaData* mdata_    = nullptr;
+    ObjectCategory     category_ = ObjectCategory::Generic;
+
 
     /**
        Indicates whether or not the variable is read-only
@@ -226,6 +234,8 @@ protected:
        (i.e selectParent() is called)
      */
     virtual void deactivate_callback() {}
+
+    virtual void* getActualAddr() { return nullptr; }
 
 private:
     /**
@@ -347,6 +357,9 @@ public:
      */
     size_t getRefCount() const { return refCount_; }
 
+    ObjectCategory getCategory() const { return category_; }
+    void           setCategory(ObjectCategory cat) { category_ = cat; }
+
     /**
        Get a watch point for this object.  If it is not a valid object
        for a watch point, nullptr will be returned.
@@ -382,11 +395,12 @@ public:
        TODO: prefer this return nullptr as bugs have occurred with incorrect use
 
        @param name Name of variable to select
+       @param confirm Prompt user to resolve duplicate match of name. Select first found if false.
 
        @return ObjectMap for specified variable, if it exists, this
        otherwise
     */
-    ObjectMap* selectVariable(std::string name, bool& loop_detected);
+    ObjectMap* selectVariable(std::string name, bool& loop_detected, bool confirm = false);
 
     /**
        Adds a variable to this ObjectMap.  NOTE: calls to this
@@ -538,28 +552,33 @@ public:
        @return String representing this object and any children
        included based on the value of recurse
      */
-    virtual std::string list(int recurse = 0);
+    virtual std::string list(int recurse = 0 );
 
     /**
        Find a variable in this object map
 
        @param name Name of variable to find
+       @param confirm Prompt user to resolve duplicate match of name. Select first found if false.
 
        @return ObjectMap representing the requested variable if it is
        found, nullptr otherwise
      */
-    ObjectMap* findVariable(const std::string& name) const
-    {
-        auto& variables = getVariables();
-        for ( auto [it, end] = variables.equal_range(name); it != end; ++it )
-            return it->second; // For now, we return only the first match if multiple matches
-        return nullptr;
-    }
+    ObjectMap* findVariable(const std::string& name, bool confirm = false) const;
 
     /**
        Refresh the ObjectMap, reconstructing children
     */
     virtual void refresh() {}
+
+    /**
+           Helper function to build an ObjTreeCont representation of this 
+           ObjectMap, if the subclass has type-specific knowledge of how 
+           to do so. This is useful for reference proxy types (std::bitset 
+           std::atomic<>, vector<bool>, etc). Returning nullptr means 
+           "use the generic ObjMapToTree::convert path." 
+    */
+    virtual SST::Core::Serialization::ObjTreeCont*
+    buildTreeNode(const std::string& UNUSED(name)) { return nullptr; }
 
 private:
     /**
@@ -1152,7 +1171,7 @@ public:
                 ObjectBuffer* varBuffer_ = objBuffers_[obj];
                 std::cout << SST::Core::to_string(varBuffer_->getName()) << "=" << varBuffer_->get(i) << " ";
             }
-            std::cout << std::endl;
+            std::cout << "\n";
 
             if ( i == end ) {
                 break;
@@ -1162,32 +1181,34 @@ public:
 
     void dumpTriggerRecord()
     {
+        std::stringstream ss;
         if ( numRecs_ == 0 ) {
             std::cout << "No trace samples in current buffer" << std::endl;
             return;
         }
         if ( state_ != CLEAR ) {
-            std::cout << "TriggerRecord:@cycle" << triggerCycle << ": samples lost = " << samplesLost_ << ": ";
+            ss << "LastTriggerRecord:@cycle" << triggerCycle << ": SamplesLost=" << samplesLost_ << ": ";
             for ( size_t obj = 0; obj < numObjects; obj++ ) {
                 ObjectBuffer* varBuffer_ = objBuffers_[obj];
-                std::cout << SST::Core::to_string(varBuffer_->getName()) << "=" << varBuffer_->getTriggerVal() << " ";
+                ss << SST::Core::to_string(varBuffer_->getName()) << "=" << varBuffer_->getTriggerVal() << " ";
             }
-            std::cout << std::endl;
+            ss << "\n";
+            std::cout << ss.str();
         }
     }
 
-    void printVars()
+    void printVars(std::stringstream& ss)
     {
         for ( size_t obj = 0; obj < numObjects; obj++ ) {
             ObjectBuffer* varBuffer_ = objBuffers_[obj];
-            std::cout << SST::Core::to_string(varBuffer_->getName()) << " ";
+            ss << SST::Core::to_string(varBuffer_->getName()) << " ";
         }
     }
 
-    void printConfig()
+    void printConfig(std::stringstream& ss)
     {
-        std::cout << "bufsize = " << bufSize_ << " postDelay = " << postDelay_ << " : ";
-        printVars();
+        ss << "bufsize = " << bufSize_ << " postDelay = " << postDelay_ << " : ";
+        printVars(ss);
     }
 
     // private:
@@ -1282,6 +1303,8 @@ public:
      */
     void* getAddr() const override { return addr_; }
 
+    void* getActualAddr() override { return addr_; }
+
     explicit ObjectMapFundamental(REF* addr) :
         addr_(addr)
     {}
@@ -1336,67 +1359,69 @@ public:
         // Create ObjectMapComparison_var which compares two variables
         // Only support arithmetic types for now
         if constexpr ( std::is_arithmetic_v<T> ) {
-            if ( type == "int" ) {
-                return new ObjectMapComparison_var<REF, int>(
-                    name, addr_, op, name2, static_cast<int*>(var2->getAddr()));
-            }
-            else if ( type == "unsigned" || type == "unsigned int" ) {
-                return new ObjectMapComparison_var<REF, unsigned>(
-                    name, addr_, op, name2, static_cast<unsigned*>(var2->getAddr()));
-            }
-            else if ( type == "long" ) {
-                return new ObjectMapComparison_var<REF, long>(
-                    name, addr_, op, name2, static_cast<long*>(var2->getAddr()));
-            }
-            else if ( type == "unsigned long" ) {
-                return new ObjectMapComparison_var<REF, unsigned long>(
-                    name, addr_, op, name2, static_cast<unsigned long*>(var2->getAddr()));
-            }
-            else if ( type == "char" ) {
-                return new ObjectMapComparison_var<REF, char>(
-                    name, addr_, op, name2, static_cast<char*>(var2->getAddr()));
-            }
-            else if ( type == "signed char" ) {
-                return new ObjectMapComparison_var<REF, signed char>(
-                    name, addr_, op, name2, static_cast<signed char*>(var2->getAddr()));
-            }
-            else if ( type == "unsigned char" ) {
-                return new ObjectMapComparison_var<REF, unsigned char>(
-                    name, addr_, op, name2, static_cast<unsigned char*>(var2->getAddr()));
-            }
-            else if ( type == "short" ) {
-                return new ObjectMapComparison_var<REF, short>(
-                    name, addr_, op, name2, static_cast<short*>(var2->getAddr()));
-            }
-            else if ( type == "unsigned short" ) {
-                return new ObjectMapComparison_var<REF, unsigned short>(
-                    name, addr_, op, name2, static_cast<unsigned short*>(var2->getAddr()));
-            }
-            else if ( type == "long long" ) {
-                return new ObjectMapComparison_var<REF, long long>(
-                    name, addr_, op, name2, static_cast<long long*>(var2->getAddr()));
-            }
-            else if ( type == "unsigned long long" ) {
-                return new ObjectMapComparison_var<REF, unsigned long long>(
-                    name, addr_, op, name2, static_cast<unsigned long long*>(var2->getAddr()));
-            }
-            else if ( type == "bool" ) {
-                return new ObjectMapComparison_var<REF, bool>(
-                    name, addr_, op, name2, static_cast<bool*>(var2->getAddr()));
-            }
-            else if ( type == "float" ) {
-                return new ObjectMapComparison_var<REF, float>(
-                    name, addr_, op, name2, static_cast<float*>(var2->getAddr()));
-            }
-            else if ( type == "double" ) {
-                return new ObjectMapComparison_var<REF, double>(
-                    name, addr_, op, name2, static_cast<double*>(var2->getAddr()));
-            }
-            else if ( type == "long double" ) {
-                return new ObjectMapComparison_var<REF, long double>(
-                    name, addr_, op, name2, static_cast<long double*>(var2->getAddr()));
-            }
-        } // end if first var is arithmetic
+            return new ObjectMapComparison_var<REF, T>(name, addr_, op, name2, static_cast<T*>(var2->getAddr()));
+        } /*
+             if ( type == "int" ) {
+                 return new ObjectMapComparison_var<REF, int>(
+                     name, addr_, op, name2, static_cast<int*>(var2->getAddr()));
+             }
+             else if ( type == "unsigned" || type == "unsigned int" ) {
+                 return new ObjectMapComparison_var<REF, unsigned>(
+                     name, addr_, op, name2, static_cast<unsigned*>(var2->getAddr()));
+             }
+             else if ( type == "long" ) {
+                 return new ObjectMapComparison_var<REF, long>(
+                     name, addr_, op, name2, static_cast<long*>(var2->getAddr()));
+             }
+             else if ( type == "unsigned long" ) {
+                 return new ObjectMapComparison_var<REF, unsigned long>(
+                     name, addr_, op, name2, static_cast<unsigned long*>(var2->getAddr()));
+             }
+             else if ( type == "char" ) {
+                 return new ObjectMapComparison_var<REF, char>(
+                     name, addr_, op, name2, static_cast<char*>(var2->getAddr()));
+             }
+             else if ( type == "signed char" ) {
+                 return new ObjectMapComparison_var<REF, signed char>(
+                     name, addr_, op, name2, static_cast<signed char*>(var2->getAddr()));
+             }
+             else if ( type == "unsigned char" ) {
+                 return new ObjectMapComparison_var<REF, unsigned char>(
+                     name, addr_, op, name2, static_cast<unsigned char*>(var2->getAddr()));
+             }
+             else if ( type == "short" ) {
+                 return new ObjectMapComparison_var<REF, short>(
+                     name, addr_, op, name2, static_cast<short*>(var2->getAddr()));
+             }
+             else if ( type == "unsigned short" ) {
+                 return new ObjectMapComparison_var<REF, unsigned short>(
+                     name, addr_, op, name2, static_cast<unsigned short*>(var2->getAddr()));
+             }
+             else if ( type == "long long" ) {
+                 return new ObjectMapComparison_var<REF, long long>(
+                     name, addr_, op, name2, static_cast<long long*>(var2->getAddr()));
+             }
+             else if ( type == "unsigned long long" ) {
+                 return new ObjectMapComparison_var<REF, unsigned long long>(
+                     name, addr_, op, name2, static_cast<unsigned long long*>(var2->getAddr()));
+             }
+             else if ( type == "bool" ) {
+                 return new ObjectMapComparison_var<REF, bool>(
+                     name, addr_, op, name2, static_cast<bool*>(var2->getAddr()));
+             }
+             else if ( type == "float" ) {
+                 return new ObjectMapComparison_var<REF, float>(
+                     name, addr_, op, name2, static_cast<float*>(var2->getAddr()));
+             }
+             else if ( type == "double" ) {
+                 return new ObjectMapComparison_var<REF, double>(
+                     name, addr_, op, name2, static_cast<double*>(var2->getAddr()));
+             }
+             else if ( type == "long double" ) {
+                 return new ObjectMapComparison_var<REF, long double>(
+                     name, addr_, op, name2, static_cast<long double*>(var2->getAddr()));
+             }
+         } // end if first var is arithmetic*/
 
         std::cout << "Invalid type for comparison: " << name2 << "(" << type << ")\n";
         return nullptr;
@@ -1443,6 +1468,7 @@ public:
     ~ObjectMapContainer() override = default;
 };
 
+
 // ObjectMap for reference proxy types such as std::bitset<N>::reference, std::vector<bool>::reference,
 // atomic_reference, whose referenced types cannot be copied or pointed to with pointers, but whose
 // underlying values are ordinary fundamental types.
@@ -1472,8 +1498,15 @@ public:
     ObjectMapFundamentalReference(const ObjectMapFundamentalReference&)            = default;
     ObjectMapFundamentalReference& operator=(const ObjectMapFundamentalReference&) = delete;
     ~ObjectMapFundamentalReference() override                                      = default;
+
+    ObjTreeCont* buildTreeNode(const std::string& name) override;
 };
 
 } // namespace SST::Core::Serialization
+
+//clang-format off
+#include "sst/core/serialization/objectMapTreeBuilder.h"
+//clang-format on
+
 
 #endif // SST_CORE_SERIALIZATION_OBJECTMAP_H

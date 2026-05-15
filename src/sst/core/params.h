@@ -1,8 +1,8 @@
-// Copyright 2009-2025 NTESS. Under the terms
+// Copyright 2009-2026 NTESS. Under the terms
 // of Contract DE-NA0003525 with NTESS, the U.S.
 // Government retains certain rights in this software.
 //
-// Copyright (c) 2009-2025, NTESS
+// Copyright (c) 2009-2026, NTESS
 // All rights reserved.
 //
 // This file is part of the SST software package. For license
@@ -24,6 +24,7 @@
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <ostream>
 #include <set>
 #include <sstream>
 #include <stack>
@@ -966,7 +967,7 @@ private:
     /* Friend main() because it broadcasts the maps */
     friend int ::main(int argc, char* argv[]);
     /* Friend simulation because it checkpoints the maps */
-    friend class Simulation_impl;
+    friend class Simulation;
 
     static std::map<std::string, uint32_t> keyMap;
     static std::vector<std::string>        keyMapReverse;
