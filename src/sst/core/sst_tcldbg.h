@@ -5,14 +5,16 @@
 // See LICENSE in the top level directory for licensing details
 //
 
-#ifndef _TCLDBG_H
-#define _TCLDBG_H
+#ifndef _SST_TCLDBG_H
+#define _SST_TCLDBG_H
 
 #include <iostream>
 #include <unistd.h>
 
-namespace tcldbg {
+namespace sst_tcldbg {
 
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
 static inline void spin(const char* id = "") {
   std::cout << id << " spinning PID " << getpid() << std::endl;
   unsigned long spinner = 1;
@@ -24,6 +26,7 @@ static inline void spin(const char* id = "") {
   }
   std::cout << std::endl;
 }
+#pragma GCC pop_options
 
 static inline void spinner( const char* id, bool cond = true ) {
   if( !std::getenv( id ) )
@@ -34,6 +37,6 @@ static inline void spinner( const char* id, bool cond = true ) {
 }
 
 
-}  //namespace tcldbg
+}  //namespace sst_tcldbg
 
-#endif  //_TCLDBG_H
+#endif  //_SST_TCLDBG_H

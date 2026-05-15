@@ -31,7 +31,7 @@
 #include <unistd.h>
 #include <utility>
 
-#include <tcldbg.h>
+#include <sst_tcldbg.h>
 
 namespace SST::IMPL::Interactive {
 
@@ -503,7 +503,7 @@ DebugConsole::consoleExecute(const std::string& msg)
     // Select the input source and next command line
     std::string line;
     while ( !exit_console ) {
-        tcldbg::spinner("CONSOLE_SPINNER");
+        sst_tcldbg::spinner("CONSOLE_SPINNER");
         try {
             // User input prompt (except during user command)
             if ( eStack.size() == 0 ) std::cout << "> " << std::flush;
