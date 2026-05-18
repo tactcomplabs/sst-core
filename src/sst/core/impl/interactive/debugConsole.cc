@@ -80,6 +80,13 @@ DebugConsole::DebugConsole(Params& params) :
             ConsoleCommandGroup::GENERAL,
             [this](std::string& cmd_str) { return cmd_help(cmd_str); },
         },
+        {
+            "show",
+            "sh",
+            "[CMD]: show user-defined command \"CMD\" or show all user-defined commands",
+            ConsoleCommandGroup::GENERAL,
+            [this](std::string& cmd_str) { return cmd_show(cmd_str); },
+        },
         { "verbose", "v", "[mask]: set verbosity mask or print if no mask specified", ConsoleCommandGroup::GENERAL,
             exec_type, [this](std::string& cmd_str) { return cmd_verbose_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_verbose_thread(cmd_str); },
@@ -780,6 +787,45 @@ DebugConsole::cmd_help(std::string& UNUSED(cmd_str))
         }
     }
     return true;
+}
+
+bool
+DebugConsole::cmd_show(std::string& UNUSED(cmd_str))
+{
+    // First check for specific command help
+    if ( tokens.size() == 1 ) {
+        if ( cmdRegistry.getUserRegistryVector().size() > 0 ) {
+            std::cout << "--- User-Defined Commands ---" << std::endl;
+            for ( const auto& cmd : cmdRegistry.getUserRegistryVector() ) {
+                //if ( g.first == c.group() ) {
+                //    std::cout << c << std::endl;
+                //}
+                std::string c  = cmd.str_long();
+                std::cout << "User command \"" << c << "\":\n";
+                auto insts = cmdRegistry.userCommandInsts(c);
+                for ( auto i : *insts ){
+                    std::cout << "\t" << i << "\n";
+                }
+                std::cout << std::endl;
+            }
+        }
+        return true;
+    }
+
+    if ( tokens.size() > 1 ) {
+        std::string c = tokens[1];
+        auto insts = cmdRegistry.userCommandInsts(c);
+        if ( insts == nullptr ) {
+            std::cout << "User-defined command \"" << c << "\" not found" << std::endl;
+            return false;
+        }
+        std::cout << "User command \"" << c << "\":\n";
+        for ( auto i : *insts ){
+            std::cout << "\t" << i << "\n";
+        }
+        return true;
+    }
+    return false;
 }
 
 // verbose [mask] : set verbosity mask or print if no mask specified

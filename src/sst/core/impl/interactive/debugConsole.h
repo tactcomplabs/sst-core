@@ -118,6 +118,7 @@ private:
 
     // Navigation
     bool cmd_help(std::string& cmd_str);
+    bool cmd_show(std::string& cmd_str);
 
     bool cmd_verbose_query();
     bool cmd_verbose_serial(std::string& cmd_str);
