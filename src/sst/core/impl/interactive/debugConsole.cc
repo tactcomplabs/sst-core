@@ -4380,6 +4380,19 @@ CommandRegistry::seek(std::string token, SEARCH_TYPE search_type)
 }
 
 bool
+CommandRegistry::replace_user_cmd(std::string token)
+{
+    for ( auto consoleCommand : user_registry ) {
+        if ( consoleCommand.match(token) ) {
+            consoleCommand = ConsoleCommand(token);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool
 CommandRegistry::beginUserCommand(std::string name)
 {
     // Make sure not a built-in command
@@ -4388,7 +4401,19 @@ CommandRegistry::beginUserCommand(std::string name)
         std::cout << "Cannot overwrite built-in command \"" << name << "\"" << std::endl;
         return false;
     }
-    user_command_wip                        = name;
+    // Make sure it is not already user defined
+    auto res2 = seek(name, CommandRegistry::SEARCH_TYPE::USER);
+    if ( res2.second ) {
+        std::string line;
+        std::cout << "User-defined command \"" << name << "\" already exists\n";
+        std::cout << "--Type r to re-define \"" << name << "\" or a to abort define" << std::endl;
+        std::getline(std::cin, line);
+        if (line.size() == 0 || !(line == "r")) {
+            std::cout << "Ignoring command to define \"" << name << "\"" << std::endl;
+            return false;
+        }
+    }
+    user_command_wip = name;
     // Create or overwrite existing user defined command
     user_defined_commands[user_command_wip] = {};
     std::cout << "Enter commands for \"" << user_command_wip << "\" terminated by \"end\"" << std::endl;
@@ -4424,6 +4449,13 @@ CommandRegistry::appendUserCommand(std::string token0, std::string line)
 void
 CommandRegistry::commitUserCommand()
 {
+    // Replace if it already exists
+    bool res = replace_user_cmd(user_command_wip);
+    if (res) {
+        std::cout << "Committing re-defined command \"" << user_command_wip << "\"" << std::endl;
+        return;
+    }
+
     std::cout << "Committing definition for " << user_command_wip << std::endl;
     user_registry.emplace_back(ConsoleCommand(user_command_wip));
     user_command_wip = "";
