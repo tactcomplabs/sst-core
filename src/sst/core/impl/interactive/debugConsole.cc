@@ -391,7 +391,7 @@ DebugConsole::DebugConsole(Params& params) :
                      "\ttab: auto-completion\n"
                      "\tctrl-a: move cursor to beginning of line\n"
                      "\tctrl-b: move cursor to the left\n"
-                     "\tctrl-d: delete character at cursor or quit debugger\n"
+                     "\tctrl-d: delete character at cursor or shutdown\n"
                      "\tctrl-e: move cursor to end of line\n"
                      "\tctrl-f: move cursor to the right\n" 
                      "\tNote: this functionality is not available when using mpi"},
@@ -609,6 +609,12 @@ DebugConsole::cd_name_stack()
 bool
 DebugConsole::dispatch_cmd(std::string& cmd)
 {
+    // ctrl+d 
+    if (std::cin.eof()) {
+        std::cout << "<ctrl+d>" << std::endl;
+        cmd="shutdown";
+    }
+
     // empty command
     if ( cmd.size() == 0 ) return true;
 
