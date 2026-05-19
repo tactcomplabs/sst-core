@@ -1899,10 +1899,6 @@ DebugConsole::cmd_print_remote(std::vector<std::string>& tokens)
 
     auto* target = curObj_->findByName(tokens[var_index]);
     if ( target ) {
-        // auto tmp = SST::Core::Serialization::NumericHandle::from(target);
-        // bool gt = false;
-        // if(tmp < 100) gt = true;
-        // if(gt) printf("----- True ---- ");
         if ( !indices.empty() ) {
             SST::Core::Serialization::ContainerObj* tmp = dynamic_cast<SST::Core::Serialization::ContainerObj*>(target);
             if ( tmp ) {
@@ -1916,6 +1912,15 @@ DebugConsole::cmd_print_remote(std::vector<std::string>& tokens)
         else {
             target->Dump(print_verbose + 1, base, result);
             if ( recurse > 0 ) {
+                if(target->getChildren().empty()){
+                    // Object we are trying to recursively print has (potentially) not yet been serialized
+                    // If it's a ComponentObj that hasn't been serialized yet, serialize it
+                    if ( auto* comp = dynamic_cast<Core::Serialization::ComponentObj*>(target) ) {
+                        if ( comp->getChildren().empty() ) {
+                            Core::Serialization::ObjectMapToTree::serializeComponent(comp, true);
+                        }
+                    }
+                }
                 target->applyRecursive([print_verbose, base](SST::Core::Serialization::ObjTreeCont* child) {
                     child->Dump(print_verbose + 1, base, result);
                 });
