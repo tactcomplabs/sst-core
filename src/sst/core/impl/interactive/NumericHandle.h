@@ -11,6 +11,9 @@
 
 #include "sst/core/serialization/ObjTree.h"
 
+#include <cstdint>
+#include <type_traits>
+
 namespace SST::Core::Serialization {
 // A lightweight non-owning handle returned by findByName that enables
 // direct comparisons against constants and other tree nodes.

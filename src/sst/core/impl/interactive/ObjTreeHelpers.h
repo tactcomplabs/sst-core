@@ -14,8 +14,19 @@
 
 #include "sst/core/serialization/ObjTree.h"
 
+#include <climits>
+#include <cstddef>
+#include <cstdint>
+#include <deque>
+#include <iostream>
 #include <limits.h>
+#include <map>
 #include <memory>
+#include <ostream>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace SST::Core::Serialization {
 

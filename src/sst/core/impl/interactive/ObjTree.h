@@ -40,6 +40,7 @@
 #include <typeinfo>
 #include <unordered_set>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace SST::Core::Serialization {

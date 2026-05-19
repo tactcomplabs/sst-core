@@ -11,9 +11,14 @@
 
 #ifndef SST_CORE_SERIALIZATION_OBJECTTREELEAVES_DEBUGGER_H
 #define SST_CORE_SERIALIZATION_OBJECTTREELEAVES_DEBUGGER_H
+#include <cstddef>
+#include <cstdint>
+#include <functional>
 #include <iostream>
+#include <memory>
 #include <ostream>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
