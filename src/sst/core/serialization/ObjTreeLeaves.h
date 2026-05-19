@@ -440,7 +440,7 @@ namespace SST::Core::Serialization {
             if (useAccessor_ && getter_) {
                 const long double live = getter_();
                 return std::visit([live](const auto& v) -> bool {
-                    return static_cast<int64_t>(v) != live;
+                    return static_cast<int64_t>(v) != static_cast<int64_t>(live);
                 }, val_);
             } else if (addr_) {
                 return std::visit([this](const auto& v) -> bool {
