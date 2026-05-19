@@ -15,6 +15,11 @@
 #include "sst/core/serialization/ObjTree.h"
 #include "sst/core/serialization/objectMapTreeBuilder.h"
 
+#include <memory>
+#include <string>
+#include <unordered_set>
+#include <vector>
+
 namespace SST::Core::Serialization {
 
 class ObjectMapToTree
