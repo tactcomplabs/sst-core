@@ -125,8 +125,8 @@ DebugConsole::DebugConsole(Params& params) :
             [this](std::string& cmd_str) { return cmd_cd_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_cd_rank_parallel(cmd_str); },
             [this](std::vector<std::string>& tokens) { return cmd_cd_remote(tokens); } },
-        { "list", "ls", "[-l] [-ll]: list the objects in the current level of the object tree", ConsoleCommandGroup::NAVIGATION,
-            exec_type, [this](std::string& cmd_str) { return cmd_ls_serial(cmd_str); },
+        { "list", "ls", "[-l] [-ll]: list the objects in the current level of the object tree",
+            ConsoleCommandGroup::NAVIGATION, exec_type, [this](std::string& cmd_str) { return cmd_ls_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_ls_thread(cmd_str); },
             [this](std::string& cmd_str) { return cmd_ls_rank_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_ls_rank_parallel(cmd_str); },
@@ -300,8 +300,8 @@ DebugConsole::DebugConsole(Params& params) :
         // Logging/Replay
         { "logging", "log", "<filepath>: log command line entries to file", ConsoleCommandGroup::LOGGING,
             [this](std::string& cmd_str) { return cmd_logging(cmd_str); } },
-        { "replay", "rep", "<filepath>: run commands from a file. See also: 'sst --replay'", ConsoleCommandGroup::LOGGING,
-            [this](std::string& cmd_str) { return cmd_replay(cmd_str); } },
+        { "replay", "rep", "<filepath>: run commands from a file. See also: 'sst --replay'",
+            ConsoleCommandGroup::LOGGING, [this](std::string& cmd_str) { return cmd_replay(cmd_str); } },
         { "history", "h", "[N]: display all or last N unique commands", ConsoleCommandGroup::LOGGING,
             [this](std::string& cmd_str) { return cmd_history(cmd_str); } },
         // Misc
@@ -316,11 +316,10 @@ DebugConsole::DebugConsole(Params& params) :
     });
 
     // Detailed help from some commands. Can also add general things like 'help navigation'
-    cmdRegistry.cmdHelp = {
-        { "verbose", "[mask]: set verbosity mask or print if no mask specified\n"
-                     "\tA mask is used to select which features to enable verbosity.\n"
-                     "\tTo turn on all features set the mask to 0xffffffff\n"
-                     "\t\t0x10: Show trigger details" },
+    cmdRegistry.cmdHelp = { { "verbose", "[mask]: set verbosity mask or print if no mask specified\n"
+                                         "\tA mask is used to select which features to enable verbosity.\n"
+                                         "\tTo turn on all features set the mask to 0xffffffff\n"
+                                         "\t\t0x10: Show trigger details" },
         { "print", "[-r N] <obj>: print objects in the current level of the object tree\n"
                    "\tif -r N is provided print recursive N levels" },
         { "set", "<obj> <value>: sets an object in the current scope to the provided value\n"
@@ -353,24 +352,27 @@ DebugConsole::DebugConsole(Params& params) :
             "\tAvailable actions include: \n"
             "\t  interactive, printTrace, checkpoint, set <var> <val>, printStatus, or shutdown\n"
             "\t  Note: checkpoint action must be enabled at startup via the '--checkpoint-enable' command line option\n"
-            "\tExample: trace var1 > 90 || var2 == 100 : 32 4 : size count state : printTrace\n" 
+            "\tExample: trace var1 > 90 || var2 == 100 : 32 4 : size count state : printTrace\n"
             "\tThis example will sample the size, count, and state variables in a circular buffer of size 32 until  \n"
-            "\tuntil the trigger condition is true, i.e. 'var1 > 90 || var2 == 100'.  It will then sample 4 additional \n"
-            "\ttimes before printing the trace buffer and resetting it.\n"},
+            "\tuntil the trigger condition is true, i.e. 'var1 > 90 || var2 == 100'.  It will then sample 4 additional "
+            "\n"
+            "\ttimes before printing the trace buffer and resetting it.\n" },
         { "watchlist", "prints the current list of watchpoints and their associated indices" },
         { "addtracevar", "<watchpointIndex> <var1> ... <varN> : adds the variables to the specified "
                          "watchpoint's trace buffer" },
         { "printwatchpoint", "<watchpointIndex>: prints the watchpoint at that index in the local watchlist" },
-        { "printtrace", "<watchpointIndex>: prints the trace buffer for the specified watchpoint in the local watchlist" },
-        { "resettrace", "<watchpointIndex>: resets the trace buffer for the specified watchpoint in the local watchlist" },
+        { "printtrace",
+            "<watchpointIndex>: prints the trace buffer for the specified watchpoint in the local watchlist" },
+        { "resettrace",
+            "<watchpointIndex>: resets the trace buffer for the specified watchpoint in the local watchlist" },
         { "sethandler", "<wpIndex> <handlerType1> ... <handlerTypeN>\n"
                         "\tset location(s) to execute trigger checks and sampling (default is all)\n"
                         "\t  bc: before clock handler\n"
                         "\t  ac: after clock handler\n"
                         "\t  be: before event handler\n"
-                        "\t  ae: after event handler\n" 
+                        "\t  ae: after event handler\n"
                         "\t  all: all 4 locations\n"
-                        "\tExample setHandler 1 ac ae"},
+                        "\tExample setHandler 1 ac ae" },
         { "unwatch", "<watchpointIndex>: removes the specified watchpoint from the current watch list.\n"
                      "\tIf no index is provided, all watchpoints are removed." },
         { "run", "[TIME]: runs the simulation from the current point for TIME and then returns to interactive mode;\n"
@@ -393,18 +395,18 @@ DebugConsole::DebugConsole(Params& params) :
                      "\tctrl-b: move cursor to the left\n"
                      "\tctrl-d: delete character at cursor or shutdown\n"
                      "\tctrl-e: move cursor to end of line\n"
-                     "\tctrl-f: move cursor to the right\n" 
-                     "\tNote: this functionality is not available when using mpi"},
+                     "\tctrl-f: move cursor to the right\n"
+                     "\tNote: this functionality is not available when using mpi" },
         { "define", "<cmd-name>: enter a command sequence for a user defined command.\n"
                     "\tTerminate the sequence by typing \"end\"\n" },
         { "document", "<cmd-name>: provide help documentation for a user defined command.\n"
                       "\tThe first line will be summarized in the short help text.\n"
                       "\tRemaining lines will be provided in detailed help\n"
                       "\tTerminate the sequence by typing \"end\"\n" },
-        { "list", "[-l] [-ll]: list the objects in the current level of the object tree with varying detail (default 1).\n"
-                    "\tl: verbosity level 2\n"
-                    "\tll: verbosity level 3\n"}
-    };
+        { "list",
+            "[-l] [-ll]: list the objects in the current level of the object tree with varying detail (default 1).\n"
+            "\tl: verbosity level 2\n"
+            "\tll: verbosity level 3\n" } };
 
     // Command autofill strings
     std::list<std::string> cmdStrings;
@@ -566,7 +568,7 @@ DebugConsole::consoleExecute(const std::string& msg)
 
     // Save the position on the name_stack, and clear objTree_ and curObj_
     save_name_stack();
-     
+
     done = true;
     return retState;
 }
@@ -577,7 +579,7 @@ DebugConsole::save_name_stack()
 {
     name_stack.clear();
 
-    if(curObj_ && !curObj_->isRoot()){
+    if ( curObj_ && !curObj_->isRoot() ) {
         SST::Core::Serialization::ObjTreeCont* parent = curObj_->getParent();
         name_stack.push_front(std::move(curObj_->getObjName()));
         while ( parent && !parent->isRoot() ) {
@@ -586,11 +588,10 @@ DebugConsole::save_name_stack()
         }
     }
 
-     if(!objTree_->isEmpty()){
-        objTree_->clear();     // tear down the children so we refresh next time we break in
-        curObj_ = nullptr;  
-    }  
-
+    if ( !objTree_->isEmpty() ) {
+        objTree_->clear(); // tear down the children so we refresh next time we break in
+        curObj_ = nullptr;
+    }
 }
 
 // Descend into the name_stack
@@ -609,10 +610,10 @@ DebugConsole::cd_name_stack()
 bool
 DebugConsole::dispatch_cmd(std::string& cmd)
 {
-    // ctrl+d 
-    if (std::cin.eof()) {
+    // ctrl+d
+    if ( std::cin.eof() ) {
         std::cout << "<ctrl+d>" << std::endl;
-        cmd="shutdown";
+        cmd = "shutdown";
     }
 
     // empty command
@@ -811,7 +812,7 @@ DebugConsole::cmd_verbose_query()
 bool
 DebugConsole::cmd_verbose_remote(std::vector<std::string>& tokens)
 {
-    if(tokens.size() <= 1){ 
+    if ( tokens.size() <= 1 ) {
         std::cout << "Invalid format for verbose command (verbose N)" << std::endl;
         return false;
     }
@@ -1053,7 +1054,7 @@ DebugConsole::cmd_info_rank_parallel(std::string& cmd_str)
         succeed2 = sendCommandAll(cmd_str);
         dout << result.str();
         dout << dreset;
-        
+
         return succeed || succeed2;
     }
     else {
@@ -1814,7 +1815,7 @@ DebugConsole::cmd_print_remote(std::vector<std::string>& tokens)
         return false;
     }
 
-    size_t pos = containsArg(tokens, "-r");
+    size_t      pos     = containsArg(tokens, "-r");
     // See if have a -r or not
     int         recurse = 0; // default -r depth
     std::string tok     = tokens[1];
@@ -1843,18 +1844,18 @@ DebugConsole::cmd_print_remote(std::vector<std::string>& tokens)
             }
         }
 
-        var_index = (pos + 2 > var_index) ? pos+=2 : var_index;
+        var_index = (pos + 2 > var_index) ? pos += 2 : var_index;
     }
 
-     // See if have a -v or not
+    // See if have a -v or not
     int print_verbose = 0;
-    pos = containsArg(tokens, "-v");
-    if ( std::string::npos != pos ){
+    pos               = containsArg(tokens, "-v");
+    if ( std::string::npos != pos ) {
         // Got a -v
-        std::string num = tokens[pos+1];
+        std::string num = tokens[pos + 1];
         if ( num.size() != 0 ) {
             try {
-                print_verbose = std::stoi(num, nullptr, 10); 
+                print_verbose = std::stoi(num, nullptr, 10);
             }
             catch ( const std::invalid_argument& e ) {
                 printf("Invalid number format specified with -v: %s\n", num.c_str());
@@ -3030,7 +3031,7 @@ parseComparison(std::vector<std::string>& tokens, size_t& index, Core::Serializa
         }
         v2 = tokens[index++];
     }
-     
+
     // Is operator valid
     if ( op->operators.back() == Core::Serialization::ObjTreeComparison::Op::INVALID ) {
         std::cout << "Unknown comparison operation specified in trigger test" << std::endl;
