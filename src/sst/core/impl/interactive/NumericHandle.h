@@ -12,7 +12,7 @@
 #include "sst/core/serialization/ObjTree.h"
 
 namespace SST::Core::Serialization {
-    // A lightweight non-owning handle returned by findByName that enables
+// A lightweight non-owning handle returned by findByName that enables
 // direct comparisons against constants and other tree nodes.
 //
 // Usage:

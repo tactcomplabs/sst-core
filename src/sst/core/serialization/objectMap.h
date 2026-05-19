@@ -41,7 +41,7 @@
 // #define _OBJMAP_DEBUG_
 
 namespace SST::Core::Serialization {
-class ObjTreeCont; 
+class ObjTreeCont;
 
 // Comparison of two keys: If both keys are integers, use numeric comparison, else lexicographic
 struct ObjectMultimapCmp
@@ -552,7 +552,7 @@ public:
        @return String representing this object and any children
        included based on the value of recurse
      */
-    virtual std::string list(int recurse = 0 );
+    virtual std::string list(int recurse = 0);
 
     /**
        Find a variable in this object map
@@ -571,14 +571,13 @@ public:
     virtual void refresh() {}
 
     /**
-           Helper function to build an ObjTreeCont representation of this 
-           ObjectMap, if the subclass has type-specific knowledge of how 
-           to do so. This is useful for reference proxy types (std::bitset 
-           std::atomic<>, vector<bool>, etc). Returning nullptr means 
-           "use the generic ObjMapToTree::convert path." 
+           Helper function to build an ObjTreeCont representation of this
+           ObjectMap, if the subclass has type-specific knowledge of how
+           to do so. This is useful for reference proxy types (std::bitset
+           std::atomic<>, vector<bool>, etc). Returning nullptr means
+           "use the generic ObjMapToTree::convert path."
     */
-    virtual SST::Core::Serialization::ObjTreeCont*
-    buildTreeNode(const std::string& UNUSED(name)) { return nullptr; }
+    virtual SST::Core::Serialization::ObjTreeCont* buildTreeNode(const std::string& UNUSED(name)) { return nullptr; }
 
 private:
     /**
