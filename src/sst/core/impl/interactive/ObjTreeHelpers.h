@@ -13,8 +13,20 @@
 #define SST_CORE_SERIALIZATION_OBJECTTREEHELPERS_DEBUGGER_H
 
 #include "sst/core/serialization/ObjTree.h"
-#include <memory>
+
+#include <climits>
+#include <cstddef>
+#include <cstdint>
+#include <deque>
+#include <iostream>
 #include <limits.h>
+#include <map>
+#include <memory>
+#include <ostream>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace SST::Core::Serialization {
 
@@ -131,13 +143,13 @@ public:
         state_       = CLEAR;
 
         // should we do a syncFromSim on the remaining objBuffers?
-        for(size_t obj = 0; obj < objBuffers_.size(); obj++){
+        for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
             auto& [bufVec, storedTriggerIdx] = objBuffers_[obj];
-            auto e = bufVec.end();
+            auto e                           = bufVec.end();
             e--;
             bufVec.erase(bufVec.begin(), e);
             bufVec.front()->syncFromSim();
-            storedTriggerIdx = 0;
+            storedTriggerIdx = INT_MAX;
         }
     }
 
@@ -197,19 +209,20 @@ public:
 
             for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
                 auto& [bufVec, storedTriggerIdx] = objBuffers_[obj];
-                varBuffer_ = bufVec.back().get();
-                //varBuffer_->sample(cur_, trigger);
-                if(storedTriggerIdx != INT_MAX){
+                varBuffer_                       = bufVec.back().get();
+                // varBuffer_->sample(cur_, trigger);
+                if ( storedTriggerIdx != INT_MAX ) {
                     std::unique_ptr<ObjTreeCont> updatedBuf(varBuffer_->clone());
                     updatedBuf->syncFromSim();
                     bufVec.push_back(std::move(updatedBuf));
-                    unsigned triggerIdx = trigger ? bufVec.size()-1 : storedTriggerIdx;
-                    storedTriggerIdx = triggerIdx;
-                }else{
+                    unsigned triggerIdx = trigger ? bufVec.size() - 1 : storedTriggerIdx;
+                    storedTriggerIdx    = triggerIdx;
+                }
+                else {
                     bufVec.back()->syncFromSim();
                     storedTriggerIdx = 0;
                 }
-                //DDD: Add a way to flag which of these values was the trigger value 
+                // DDD: Add a way to flag which of these values was the trigger value
             }
 
             if ( numRecs_ < bufSize_ ) {
@@ -228,10 +241,10 @@ public:
                 numRecs_++;
                 cur_   = (cur_ + 1) % bufSize_;
                 first_ = cur_;
-                for( size_t obj=0; obj <objBuffers_.size(); obj++){
+                for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
                     auto& [bufVec, storedTriggerIdx] = objBuffers_[obj];
                     bufVec.erase(bufVec.begin());
-                    if(storedTriggerIdx == bufVec.size()){
+                    if ( storedTriggerIdx == bufVec.size() ) {
                         storedTriggerIdx--;
                     }
                 }
@@ -275,16 +288,20 @@ public:
             size_t i = j % bufSize_;
 
             os << "buf[" << i << "] " << handlerBuffer_.at(i) << " @" << cycleBuffer_.at(i) << " ("
-                      << state2char.at(tagBuffer_.at(i)) << ") ";
+               << state2char.at(tagBuffer_.at(i)) << ") ";
 
             std::ostringstream tmpBuf;
-            std::string objNames;
+            std::string        objNames;
             for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
-                ObjTreeCont* varBuffer_ = std::get<std::vector<std::unique_ptr<ObjTreeCont>>>(objBuffers_[obj])[buf].get();  //DDD: Maybe?
+                ObjTreeCont* varBuffer_ =
+                    std::get<std::vector<std::unique_ptr<ObjTreeCont>>>(objBuffers_[obj])[buf].get(); // DDD: Maybe?
                 varBuffer_->Dump(1, std::ios_base::dec, tmpBuf);
-                //std::cout << varBuffer_->getObjName() << "=" << varBuffer_->get() << " ";
+                // std::cout << varBuffer_->getObjName() << "=" << varBuffer_->get() << " ";
                 objNames.append(tmpBuf.str());
-                if(!objNames.empty() && objNames.back() == '\n'){objNames.pop_back(); objNames.push_back(' ');}
+                if ( !objNames.empty() && objNames.back() == '\n' ) {
+                    objNames.pop_back();
+                    objNames.push_back(' ');
+                }
                 tmpBuf.str("");
                 tmpBuf.clear();
             }
@@ -305,23 +322,27 @@ public:
         }
         if ( state_ != CLEAR ) {
             std::ostringstream tmpBuf;
-            std::string objNames;
-            unsigned idxToPrint = 0;
-            //print trigger value for the one variable (variables?) that actually triggered
+            std::string        objNames;
+            unsigned           idxToPrint = 0;
+            // print trigger value for the one variable (variables?) that actually triggered
             os << "LastTriggerRecord:@cycle" << triggerCycle << ": SamplesLost=" << samplesLost_ << ": ";
             for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
                 unsigned triggerIdx = std::get<unsigned>(objBuffers_[obj]);
-                auto* record = &std::get<std::vector<std::unique_ptr<ObjTreeCont>>>(objBuffers_[obj]);
-                if(triggerIdx < record->size()){
+                auto*    record     = &std::get<std::vector<std::unique_ptr<ObjTreeCont>>>(objBuffers_[obj]);
+                if ( triggerIdx < record->size() ) {
                     idxToPrint = triggerIdx;
-                }else{
+                }
+                else {
                     idxToPrint = record->size() - 1;
                 }
                 ObjTreeCont* varBuffer_ = (*record)[idxToPrint].get();
-                    //OK, so we have to use Dump() to get the value, but it adds a \n after each call, so strip it out
-                varBuffer_->Dump(1,std::ios_base::dec, tmpBuf);
+                // OK, so we have to use Dump() to get the value, but it adds a \n after each call, so strip it out
+                varBuffer_->Dump(1, std::ios_base::dec, tmpBuf);
                 objNames.append(tmpBuf.str());
-                if(!objNames.empty() && objNames.back() == '\n'){objNames.pop_back(); objNames.push_back(' ');}
+                if ( !objNames.empty() && objNames.back() == '\n' ) {
+                    objNames.pop_back();
+                    objNames.push_back(' ');
+                }
                 tmpBuf.str("");
                 tmpBuf.clear();
             }
@@ -332,8 +353,9 @@ public:
     void printVars(std::stringstream& ss)
     {
         for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
-            ObjTreeCont* varBuffer_ = std::get<std::vector<std::unique_ptr<ObjTreeCont>>>(objBuffers_[obj]).back().get();
-            //ss << SST::Core::to_string(varBuffer_->getName()) << " ";
+            ObjTreeCont* varBuffer_ =
+                std::get<std::vector<std::unique_ptr<ObjTreeCont>>>(objBuffers_[obj]).back().get();
+            // ss << SST::Core::to_string(varBuffer_->getName()) << " ";
             ss << varBuffer_->getObjName() << " ";
         }
     }
@@ -345,25 +367,25 @@ public:
     }
 
     // private:
-    size_t                          bufSize_     = 64;
-    size_t                          postDelay_   = 8;
-    size_t                          postCount_   = 0;
-    size_t                          cur_         = 0;
-    size_t                          first_       = 0;
-    size_t                          numRecs_     = 0;
-    bool                            isOverrun_   = false;
-    size_t                          samplesLost_ = 0;
-    bool                            reset_       = false;
-    BufferState                     state_       = CLEAR;
+    size_t      bufSize_     = 64;
+    size_t      postDelay_   = 8;
+    size_t      postCount_   = 0;
+    size_t      cur_         = 0;
+    size_t      first_       = 0;
+    size_t      numRecs_     = 0;
+    bool        isOverrun_   = false;
+    size_t      samplesLost_ = 0;
+    bool        reset_       = false;
+    BufferState state_       = CLEAR;
 
-    std::vector<BufferState>   tagBuffer_;
-    std::vector<std::string>   handlerBuffer_;
-    //Vector of ObjTreeCont - organized as all the sampled values with the index of the last
-    //  triggered value
-    std::vector<std::tuple<std::vector<std::unique_ptr<ObjTreeCont>>, unsigned> > objBuffers_;
-    std::vector<uint64_t>      cycleBuffer_;
-    uint64_t                   triggerCycle;
+    std::vector<BufferState>                                                     tagBuffer_;
+    std::vector<std::string>                                                     handlerBuffer_;
+    // Vector of ObjTreeCont - organized as all the sampled values with the index of the last
+    //   triggered value
+    std::vector<std::tuple<std::vector<std::unique_ptr<ObjTreeCont>>, unsigned>> objBuffers_;
+    std::vector<uint64_t>                                                        cycleBuffer_;
+    uint64_t                                                                     triggerCycle;
 
 }; // class TraceBuffer
-}
+} // namespace SST::Core::Serialization
 #endif

@@ -17,7 +17,6 @@
 #include "sst/core/impl/interactive/ObjTreeHelpers.h"
 #include "sst/core/serialization/objectMap.h"
 #include "sst/core/stringize.h"
-#include "sst/core/impl/interactive/ObjTreeHelpers.h"
 
 namespace SST {
 
