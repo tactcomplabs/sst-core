@@ -3024,7 +3024,8 @@ DebugConsole::cmd_define(std::string& UNUSED(cmd_str))
     }
 
     // Create a user command entry (or clear existing one)
-    if ( cmdRegistry.beginUserCommand(tokens[1]) ) line_entry_mode = LINE_ENTRY_MODE::DEFINE;
+    if ( cmdRegistry.beginUserCommand(tokens[1], confirm_) ) 
+        line_entry_mode = LINE_ENTRY_MODE::DEFINE;
 
     return true;
 }
@@ -4439,7 +4440,7 @@ CommandRegistry::replace_user_cmd(std::string token)
 }
 
 bool
-CommandRegistry::beginUserCommand(std::string name)
+CommandRegistry::beginUserCommand(std::string name, bool confirm)
 {
     // Make sure not a built-in command
     auto res = seek(name, CommandRegistry::SEARCH_TYPE::BUILTIN);
@@ -4450,13 +4451,17 @@ CommandRegistry::beginUserCommand(std::string name)
     // Make sure it is not already user defined
     auto res2 = seek(name, CommandRegistry::SEARCH_TYPE::USER);
     if ( res2.second ) {
-        std::string line;
-        std::cout << "User-defined command \"" << name << "\" already exists\n";
-        std::cout << "--Type r to re-define \"" << name << "\" or a to abort define" << std::endl;
-        std::getline(std::cin, line);
-        if (line.size() == 0 || !(line == "r")) {
-            std::cout << "Ignoring command to define \"" << name << "\"" << std::endl;
-            return false;
+        if ( !confirm ) {
+            std::cout << "Re-defining user command \"" << name << "\"" << std::endl;
+        } else {
+            std::string line;
+            std::cout << "User-defined command \"" << name << "\" already exists\n";
+            std::cout << "--Type r to re-define \"" << name << "\" or a to abort define" << std::endl;
+            std::getline(std::cin, line);
+            if (line.size() == 0 || !(line == "r")) {
+                std::cout << "Ignoring command to define \"" << name << "\"" << std::endl;
+                return false;
+            }
         }
     }
     user_command_wip = name;
@@ -4495,6 +4500,12 @@ CommandRegistry::appendUserCommand(std::string token0, std::string line)
 void
 CommandRegistry::commitUserCommand()
 {
+    // Check if empty command
+    if (user_defined_commands[user_command_wip].size() == 0) {
+        std::cout << "Ignore empty user-defined command\n";
+        return;
+    }
+
     // Replace if it already exists
     bool res = replace_user_cmd(user_command_wip);
     if (res) {
