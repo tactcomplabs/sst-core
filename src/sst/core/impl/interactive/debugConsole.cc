@@ -80,6 +80,13 @@ DebugConsole::DebugConsole(Params& params) :
             ConsoleCommandGroup::GENERAL,
             [this](std::string& cmd_str) { return cmd_help(cmd_str); },
         },
+        {
+            "show",
+            "sh",
+            "[CMD]: show user-defined command \"CMD\" or show all user-defined commands",
+            ConsoleCommandGroup::GENERAL,
+            [this](std::string& cmd_str) { return cmd_show(cmd_str); },
+        },
         { "verbose", "v", "[mask]: set verbosity mask or print if no mask specified", ConsoleCommandGroup::GENERAL,
             exec_type, [this](std::string& cmd_str) { return cmd_verbose_serial(cmd_str); },
             [this](std::string& cmd_str) { return cmd_verbose_thread(cmd_str); },
@@ -789,6 +796,45 @@ DebugConsole::cmd_help(std::string& UNUSED(cmd_str))
     return true;
 }
 
+bool
+DebugConsole::cmd_show(std::string& UNUSED(cmd_str))
+{
+    // First check for specific command help
+    if ( tokens.size() == 1 ) {
+        if ( cmdRegistry.getUserRegistryVector().size() > 0 ) {
+            std::cout << "--- User-Defined Commands ---" << std::endl;
+            for ( const auto& cmd : cmdRegistry.getUserRegistryVector() ) {
+                // if ( g.first == c.group() ) {
+                //     std::cout << c << std::endl;
+                // }
+                std::string c = cmd.str_long();
+                std::cout << "User command \"" << c << "\":\n";
+                auto insts = cmdRegistry.userCommandInsts(c);
+                for ( auto i : *insts ) {
+                    std::cout << "\t" << i << "\n";
+                }
+                std::cout << std::endl;
+            }
+        }
+        return true;
+    }
+
+    if ( tokens.size() > 1 ) {
+        std::string c     = tokens[1];
+        auto        insts = cmdRegistry.userCommandInsts(c);
+        if ( insts == nullptr ) {
+            std::cout << "User-defined command \"" << c << "\" not found" << std::endl;
+            return false;
+        }
+        std::cout << "User command \"" << c << "\":\n";
+        for ( auto i : *insts ) {
+            std::cout << "\t" << i << "\n";
+        }
+        return true;
+    }
+    return false;
+}
+
 // verbose [mask] : set verbosity mask or print if no mask specified
 bool
 DebugConsole::cmd_verbose_query()
@@ -1054,7 +1100,6 @@ DebugConsole::cmd_info_rank_parallel(std::string& cmd_str)
         succeed2 = sendCommandAll(cmd_str);
         dout << result.str();
         dout << dreset;
-
         return succeed || succeed2;
     }
     else {
@@ -2990,7 +3035,7 @@ DebugConsole::cmd_define(std::string& UNUSED(cmd_str))
     }
 
     // Create a user command entry (or clear existing one)
-    if ( cmdRegistry.beginUserCommand(tokens[1]) ) line_entry_mode = LINE_ENTRY_MODE::DEFINE;
+    if ( cmdRegistry.beginUserCommand(tokens[1], confirm_) ) line_entry_mode = LINE_ENTRY_MODE::DEFINE;
 
     return true;
 }
@@ -4392,13 +4437,43 @@ CommandRegistry::seek(std::string token, SEARCH_TYPE search_type)
 }
 
 bool
-CommandRegistry::beginUserCommand(std::string name)
+CommandRegistry::replace_user_cmd(std::string token)
+{
+    for ( auto consoleCommand : user_registry ) {
+        if ( consoleCommand.match(token) ) {
+            consoleCommand = ConsoleCommand(token);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool
+CommandRegistry::beginUserCommand(std::string name, bool confirm)
 {
     // Make sure not a built-in command
     auto res = seek(name, CommandRegistry::SEARCH_TYPE::BUILTIN);
     if ( res.second ) {
         std::cout << "Cannot overwrite built-in command \"" << name << "\"" << std::endl;
         return false;
+    }
+    // Make sure it is not already user defined
+    auto res2 = seek(name, CommandRegistry::SEARCH_TYPE::USER);
+    if ( res2.second ) {
+        if ( !confirm ) {
+            std::cout << "Re-defining user command \"" << name << "\"" << std::endl;
+        }
+        else {
+            std::string line;
+            std::cout << "User-defined command \"" << name << "\" already exists\n";
+            std::cout << "--Type r to re-define \"" << name << "\" or a to abort define" << std::endl;
+            std::getline(std::cin, line);
+            if ( line.size() == 0 || !(line == "r") ) {
+                std::cout << "Ignoring command to define \"" << name << "\"" << std::endl;
+                return false;
+            }
+        }
     }
     user_command_wip                        = name;
     // Create or overwrite existing user defined command
@@ -4436,6 +4511,19 @@ CommandRegistry::appendUserCommand(std::string token0, std::string line)
 void
 CommandRegistry::commitUserCommand()
 {
+    // Check if empty command
+    if ( user_defined_commands[user_command_wip].size() == 0 ) {
+        std::cout << "Ignore empty user-defined command\n";
+        return;
+    }
+
+    // Replace if it already exists
+    bool res = replace_user_cmd(user_command_wip);
+    if ( res ) {
+        std::cout << "Committing re-defined command \"" << user_command_wip << "\"" << std::endl;
+        return;
+    }
+
     std::cout << "Committing definition for " << user_command_wip << std::endl;
     user_registry.emplace_back(ConsoleCommand(user_command_wip));
     user_command_wip = "";

@@ -24,6 +24,7 @@
 #include <cstdio>
 #include <ios>
 #include <iostream>
+#include <memory>
 #include <ostream>
 #include <sstream>
 #include <string>
