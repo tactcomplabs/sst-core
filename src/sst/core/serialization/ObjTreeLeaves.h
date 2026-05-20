@@ -521,7 +521,7 @@ public:
         if ( useAccessor_ && getter_ ) {
             const long double live = getter_();
             return std::visit(
-                [live](const auto& v) -> bool { return static_cast<int64_t>(v) != static_cast<int64_t>(live); }, val_);
+                [live](const auto& v) -> bool { return static_cast<long double>(v) != static_cast<long double>(live); }, val_);
         }
         else if ( addr_ ) {
             return std::visit(
