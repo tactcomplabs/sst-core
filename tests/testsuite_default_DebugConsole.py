@@ -129,10 +129,14 @@ class testcase_DebugConsole(SSTTestCase):
         # Filter out printstatus queue order due to differences across architectures
         filter2 = LineFilter();
         filter2 = RemoveRegexFromLineFilter(r"queue order:.*")
+        # Filter out printstatus queue order due to differences across architectures
+        filter3 = LineFilter();
+        filter3 = RemoveRegexFromLineFilter(r"std::vector<SST::Link.*")
+
 
         # Perform the test comparison with refFile
         #cmp_result = testing_compare_sorted_diff(testtype, outfile, reffile)
-        cmp_result = testing_compare_filtered_diff(testtype, outfile, reffile, sort=True, filters=[filter1, filter2])
+        cmp_result = testing_compare_filtered_diff(testtype, outfile, reffile, sort=True, filters=[filter1, filter2, filter3])
         if not cmp_result:
             diffdata = testing_get_diff_data(testtype)
             log_failure(diffdata)
