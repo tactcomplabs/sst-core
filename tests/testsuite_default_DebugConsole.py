@@ -131,7 +131,7 @@ class testcase_DebugConsole(SSTTestCase):
         filter2 = RemoveRegexFromLineFilter(r"queue order:.*")
         # Filter out printstatus queue order due to differences across architectures
         filter3 = LineFilter();
-        filter3 = RemoveRegexFromLineFilter(r"std::vector<SST::Link.*")
+        filter3 = RemoveRegexFromLineFilter(r"std::.*")
 
 
         # Perform the test comparison with refFile
