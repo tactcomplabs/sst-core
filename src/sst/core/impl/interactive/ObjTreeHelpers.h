@@ -321,7 +321,7 @@ public:
             return;
         }
         if ( state_ != CLEAR ) {
-            std::stringstream ss;  // Need to buffer in a stream so it doesn't get split in parallel execution
+            std::stringstream  ss; // Need to buffer in a stream so it doesn't get split in parallel execution
             std::ostringstream tmpBuf;
             std::string        objNames;
             unsigned           idxToPrint = 0;
@@ -348,8 +348,7 @@ public:
                 tmpBuf.clear();
             }
             ss << objNames << std::endl;
-            os << ss.str();  // Print everything at once to avoid splitting
-            
+            os << ss.str(); // Print everything at once to avoid splitting
         }
     }
 

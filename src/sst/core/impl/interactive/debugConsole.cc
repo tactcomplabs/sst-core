@@ -1958,7 +1958,7 @@ DebugConsole::cmd_print_remote(std::vector<std::string>& tokens)
         else {
             target->Dump(print_verbose + 1, base, result);
             if ( recurse > 0 ) {
-                if(target->getChildren().empty()){
+                if ( target->getChildren().empty() ) {
                     // Object we are trying to recursively print has (potentially) not yet been serialized
                     // If it's a ComponentObj that hasn't been serialized yet, serialize it
                     if ( auto* comp = dynamic_cast<Core::Serialization::ComponentObj*>(target) ) {
@@ -5156,9 +5156,10 @@ DebugConsole::executeRankParallel(const std::string& UNUSED_WO_MPI(msg))
 
         // Set done in local rank threads
         tokens.clear();
-        if (tokens.size()==0) {
+        if ( tokens.size() == 0 ) {
             tokens.push_back("done");
-        } else {
+        }
+        else {
             tokens[0] = "done";
         }
         handleCommand();
