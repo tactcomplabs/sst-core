@@ -321,11 +321,12 @@ public:
             return;
         }
         if ( state_ != CLEAR ) {
+            std::stringstream ss;  // Need to buffer in a stream so it doesn't get split in parallel execution
             std::ostringstream tmpBuf;
             std::string        objNames;
             unsigned           idxToPrint = 0;
             // print trigger value for the one variable (variables?) that actually triggered
-            os << "LastTriggerRecord:@cycle" << triggerCycle << ": SamplesLost=" << samplesLost_ << ": ";
+            ss << "LastTriggerRecord:@cycle" << triggerCycle << ": SamplesLost=" << samplesLost_ << ": ";
             for ( size_t obj = 0; obj < objBuffers_.size(); obj++ ) {
                 unsigned triggerIdx = std::get<unsigned>(objBuffers_[obj]);
                 auto*    record     = &std::get<std::vector<std::unique_ptr<ObjTreeCont>>>(objBuffers_[obj]);
@@ -346,7 +347,9 @@ public:
                 tmpBuf.str("");
                 tmpBuf.clear();
             }
-            os << objNames << std::endl;
+            ss << objNames << std::endl;
+            os << ss.str();  // Print everything at once to avoid splitting
+            
         }
     }
 
