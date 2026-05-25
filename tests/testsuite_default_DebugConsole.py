@@ -129,7 +129,7 @@ class testcase_DebugConsole(SSTTestCase):
         # Filter out printstatus queue order due to differences across architectures
         filter2 = LineFilter();
         filter2 = RemoveRegexFromLineFilter(r"queue order:.*")
-        # Filter out printstatus queue order due to differences across architectures
+        # Filter out variable types due to differences across architectures
         filter3 = LineFilter();
         filter3 = RemoveRegexFromLineFilter(r"std::.*")
 
