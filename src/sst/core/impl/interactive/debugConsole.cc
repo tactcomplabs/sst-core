@@ -1866,6 +1866,10 @@ DebugConsole::cmd_print_remote(std::vector<std::string>& tokens)
     std::string tok     = tokens[1];
     if ( (tok.size() >= 2) && (tok[0] == '-') && (tok[1] == 'r') ) {
         // Got a -r
+        if ( tokens.size() < (pos + 2) ) {
+            printf("Invalid format for print command (print [-r N] [-v N] [-f <base>] [<obj>][[idx][idx]])\n");
+            return false;
+        }
         std::string num = tokens[pos + 1];
         if ( num.size() != 0 ) {
             try {
@@ -1897,6 +1901,10 @@ DebugConsole::cmd_print_remote(std::vector<std::string>& tokens)
     pos               = containsArg(tokens, "-v");
     if ( std::string::npos != pos ) {
         // Got a -v
+        if ( tokens.size() < (pos + 2) ) {
+            printf("Invalid format for print command (print [-r N] [-v N] [-f <base>] [<obj>][[idx][idx]])\n");
+            return false;
+        }
         std::string num = tokens[pos + 1];
         if ( num.size() != 0 ) {
             try {
