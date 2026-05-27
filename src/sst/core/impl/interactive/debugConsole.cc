@@ -327,8 +327,10 @@ DebugConsole::DebugConsole(Params& params) :
                                          "\tA mask is used to select which features to enable verbosity.\n"
                                          "\tTo turn on all features set the mask to 0xffffffff\n"
                                          "\t\t0x10: Show trigger details" },
-        { "print", "[-r N] <obj>: print objects in the current level of the object tree\n"
-                   "\tif -r N is provided print recursive N levels" },
+        { "print", "[-r R] [-v V] [-f F] [<obj>][[idx][idx]]\n"
+                   "\t-r R prints recursively to R levels\n"
+                   "\t-v V prints with increasing verbosity\n"
+                   "\t-f F formatted print (hex oct dec(default))" },
         { "set", "<obj> <value>: sets an object in the current scope to the provided value\n"
                  "\t Example: set mystring hello world" },
         { "watchpoints",
