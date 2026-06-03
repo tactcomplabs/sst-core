@@ -23,6 +23,7 @@
 #include <deque>
 #include <string>
 #include <unordered_map>
+#include <iostream>
 
 namespace SST::Core::Serialization::pvt {
 
@@ -33,12 +34,16 @@ class ser_mapper
 
 public:
     explicit ser_mapper(ObjectMap* object) :
-        obj_ { object }
+        obj_ { object } //0x621000184d10 is located 16 bytes inside of 4096-byte region [0x621000184d00,0x621000185d00) allocated by thread T0 here:
     {}
 
     ObjectMap* get_top() const { return obj_.back(); }
-
-    void map_object(const std::string& name, ObjectMap* map) { obj_.back()->addVariable(name, map); }
+    //KGDBG ==14346==ERROR: AddressSanitizer: container-overflow on address 0x621000184d10 at pc 0x0001029ca364 bp 0x00016d44dd80 sp 0x00016d44dd78
+    void map_object(const std::string& name, ObjectMap* map) {
+        std::cout << "GOT HERE" << std::endl;
+        std::cout << "&name=" << std::hex << &name << " name=" << name << " map=" << map << " map->getFullName()=" << map->getName() << " &map=" << &map << std::endl;
+        obj_.back()->addVariable(name, map); 
+    } //KGDBG READ of size 8 at 0x621000184d10 thread T0
 
     void map_existing_object(const std::string& name, ObjectMap* map)
     {
